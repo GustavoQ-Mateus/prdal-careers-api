@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id        String        @id @default(uuid())
+  email     String        @unique
+  senhaHash String        @map("senha_hash")
+  criadoEm  DateTime      @default(now()) @map("criado_em")
+  perfil    PerfilMestre?
+  vagas     Vaga[]
+
+  @@map("usuarios")
+}
+
+model PerfilMestre {
+  id           String   @id @default(uuid())
+  usuarioId    String   @unique @map("usuario_id")
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  nome         String
+  contato      Json
+  resumo       String
+  experiencias Json
+  formacao     Json
+  skills       Json
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@map("perfil_mestre")
+}
+
+model Vaga {
+  id         String      @id @default(uuid())
+  usuarioId  String      @map("usuario_id")
+  usuario    Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  titulo     String
+  empresa    String
+  descricao  String
+  fonte      String?
+  keywords   Json
+  criadoEm   DateTime    @default(now()) @map("criado_em")
+  curriculos Curriculo[]
+
+  @@map("vagas")
+}
+
+model Curriculo {
+  id             String   @id @default(uuid())
+  vagaId         String   @map("vaga_id")
+  vaga           Vaga     @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  markdown       String
+  docxPath       String?  @map("docx_path")
+  pdfPath        String?  @map("pdf_path")
+  score          Int?
+  scoreBreakdown Json?    @map("score_breakdown")
+  geradoEm       DateTime @default(now()) @map("gerado_em")
+
+  @@map("curriculos")
+}

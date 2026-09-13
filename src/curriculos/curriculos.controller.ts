@@ -1,7 +1,8 @@
-import { Controller, Get, Param, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Put, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { EditarCurriculoDto } from './curriculo.dto';
 import { CurriculosService } from './curriculos.service';
 
 @UseGuards(JwtAuthGuard)
@@ -12,6 +13,15 @@ export class CurriculosController {
   @Get(':id')
   buscar(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.curriculos.buscar(user.userId, id);
+  }
+
+  @Put(':id')
+  editar(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: EditarCurriculoDto,
+  ) {
+    return this.curriculos.editar(user.userId, id, dto);
   }
 
   @Get(':id/docx')

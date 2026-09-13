@@ -38,6 +38,11 @@ export class VagasController {
     return this.vagas.buscar(user.userId, id);
   }
 
+  @Get(':id/curriculos')
+  listarCurriculos(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.curriculos.listarPorVaga(user.userId, id);
+  }
+
   @Put(':id')
   atualizar(
     @CurrentUser() user: AuthUser,

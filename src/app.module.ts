@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { CurriculosModule } from './curriculos/curriculos.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { PerfilModule } from './perfil/perfil.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { VagasModule } from './vagas/vagas.module';
@@ -16,6 +17,7 @@ import { VagasModule } from './vagas/vagas.module';
     PerfilModule,
     VagasModule,
     CurriculosModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

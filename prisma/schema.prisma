@@ -52,6 +52,7 @@ model Curriculo {
   id             String   @id @default(uuid())
   vagaId         String   @map("vaga_id")
   vaga           Vaga     @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  rotulo         String   @default("Versao 1")
   markdown       String
   docxPath       String?  @map("docx_path")
   pdfPath        String?  @map("pdf_path")

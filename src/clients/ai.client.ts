@@ -58,4 +58,17 @@ export class AiClient {
     );
     return data;
   }
+
+  async classify(
+    titulo: string,
+    descricao: string,
+  ): Promise<{ categoria: string; nivel: string }> {
+    const { data } = await firstValueFrom(
+      this.http.post<{ categoria: string; nivel: string }>(
+        `${this.baseUrl}/classify`,
+        { titulo, descricao },
+      ),
+    );
+    return data;
+  }
 }

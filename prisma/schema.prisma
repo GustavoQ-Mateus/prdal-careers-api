@@ -14,6 +14,7 @@ model Usuario {
   criadoEm  DateTime      @default(now()) @map("criado_em")
   perfil    PerfilMestre?
   vagas     Vaga[]
+  lotes     Lote[]
 
   @@map("usuarios")
 }
@@ -34,31 +35,97 @@ model PerfilMestre {
 }
 
 model Vaga {
-  id         String      @id @default(uuid())
-  usuarioId  String      @map("usuario_id")
-  usuario    Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  titulo     String
-  empresa    String
-  descricao  String
-  fonte      String?
-  keywords   Json
-  criadoEm   DateTime    @default(now()) @map("criado_em")
-  curriculos Curriculo[]
+  id           String        @id @default(uuid())
+  usuarioId    String        @map("usuario_id")
+  usuario      Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  titulo       String
+  empresa      String
+  descricao    String
+  fonte        String?
+  keywords     Json
+  categoria    String?
+  nivel        String?
+  criadoEm     DateTime      @default(now()) @map("criado_em")
+  curriculos   Curriculo[]
+  candidaturas Candidatura[]
 
   @@map("vagas")
 }
 
 model Curriculo {
-  id             String   @id @default(uuid())
-  vagaId         String   @map("vaga_id")
-  vaga           Vaga     @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  rotulo         String   @default("Versao 1")
+  id             String        @id @default(uuid())
+  vagaId         String        @map("vaga_id")
+  vaga           Vaga          @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  rotulo         String        @default("Versao 1")
   markdown       String
-  docxPath       String?  @map("docx_path")
-  pdfPath        String?  @map("pdf_path")
+  docxPath       String?       @map("docx_path")
+  pdfPath        String?       @map("pdf_path")
   score          Int?
-  scoreBreakdown Json?    @map("score_breakdown")
-  geradoEm       DateTime @default(now()) @map("gerado_em")
+  scoreBreakdown Json?         @map("score_breakdown")
+  geradoEm       DateTime      @default(now()) @map("gerado_em")
+  candidaturas   Candidatura[]
 
   @@map("curriculos")
+}
+
+enum StatusCandidatura {
+  RASCUNHO
+  INSCRITA
+  EM_PROCESSO
+  ENTREVISTA
+  OFERTA
+  REJEITADA
+  DESISTIU
+}
+
+model Candidatura {
+  id           String            @id @default(uuid())
+  vagaId       String            @map("vaga_id")
+  vaga         Vaga              @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  curriculoId  String?           @map("curriculo_id")
+  curriculo    Curriculo?        @relation(fields: [curriculoId], references: [id], onDelete: SetNull)
+  status       StatusCandidatura @default(RASCUNHO)
+  notas        String            @default("")
+  atualizadoEm DateTime          @updatedAt @map("atualizado_em")
+
+  @@map("candidaturas")
+}
+
+enum StatusLote {
+  PENDENTE
+  PROCESSANDO
+  CONCLUIDO
+}
+
+enum StatusLoteItem {
+  PENDENTE
+  PROCESSANDO
+  CONCLUIDO
+  ERRO
+}
+
+model Lote {
+  id          String      @id @default(uuid())
+  usuarioId   String      @map("usuario_id")
+  usuario     Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tipo        String
+  status      StatusLote  @default(PENDENTE)
+  total       Int
+  processados Int         @default(0)
+  criadoEm    DateTime    @default(now()) @map("criado_em")
+  itens       LoteItem[]
+
+  @@map("lotes")
+}
+
+model LoteItem {
+  id          String         @id @default(uuid())
+  loteId      String         @map("lote_id")
+  lote        Lote           @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  bancoVagaId String         @map("banco_vaga_id")
+  status      StatusLoteItem @default(PENDENTE)
+  tentativas  Int            @default(0)
+  erro        String?
+
+  @@map("lote_itens")
 }

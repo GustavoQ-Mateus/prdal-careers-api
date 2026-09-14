@@ -71,4 +71,35 @@ export class AiClient {
     );
     return data;
   }
+
+  async contextIngest(
+    documentos: {
+      usuarioId: string;
+      origem: string;
+      origemId: string;
+      titulo: string;
+      texto: string;
+    }[],
+  ): Promise<{ indexados: number }> {
+    const { data } = await firstValueFrom(
+      this.http.post<{ indexados: number }>(`${this.baseUrl}/context/ingest`, {
+        documentos,
+      }),
+    );
+    return data;
+  }
+
+  async contextQuery(
+    usuarioId: string,
+    query: string,
+    k = 5,
+  ): Promise<{ chunks: { texto: string; origem: string; titulo: string }[] }> {
+    const { data } = await firstValueFrom(
+      this.http.post<{ chunks: { texto: string; origem: string; titulo: string }[] }>(
+        `${this.baseUrl}/context/query`,
+        { usuarioId, query, k },
+      ),
+    );
+    return data;
+  }
 }

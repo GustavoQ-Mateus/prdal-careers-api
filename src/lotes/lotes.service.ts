@@ -82,8 +82,12 @@ export class LotesService implements OnModuleInit {
     const pendentes = await this.prisma.loteItem.findMany({
       where: { loteId, status: 'PENDENTE' },
     });
+    const acao =
+      lote.tipo === 'INGESTAO'
+        ? (ref: string) => this.indexarDocumento(ref)
+        : (ref: string) => this.processarBancoVaga(ref);
     await this.executarComConcorrencia(pendentes, CONCORRENCIA, (item) =>
-      this.processarItem(item),
+      this.processarItem(item, acao),
     );
 
     const restantes = await this.prisma.loteItem.count({
@@ -97,7 +101,10 @@ export class LotesService implements OnModuleInit {
     }
   }
 
-  private async processarItem(item: LoteItem) {
+  private async processarItem(
+    item: LoteItem,
+    acao: (ref: string) => Promise<void>,
+  ) {
     await this.prisma.loteItem.update({
       where: { id: item.id },
       data: { status: 'PROCESSANDO' },
@@ -107,7 +114,7 @@ export class LotesService implements OnModuleInit {
     while (tentativas < MAX_TENTATIVAS) {
       tentativas += 1;
       try {
-        await this.processarBancoVaga(item.bancoVagaId);
+        await acao(item.bancoVagaId);
         await this.prisma.loteItem.update({
           where: { id: item.id },
           data: { status: 'CONCLUIDO', tentativas },
@@ -135,6 +142,20 @@ export class LotesService implements OnModuleInit {
     await this.mongo
       .bancoVagas()
       .updateOne({ _id: bancoVagaId }, { $set: { keywords, categoria, nivel } });
+  }
+
+  private async indexarDocumento(documentoId: string) {
+    const doc = await this.mongo.documentosRag().findOne({ _id: documentoId });
+    if (!doc) throw new Error('documento nao encontrado');
+    await this.ai.contextIngest([
+      {
+        usuarioId: doc.usuarioId,
+        origem: doc.origem,
+        origemId: doc.origemId,
+        titulo: doc.titulo,
+        texto: doc.texto,
+      },
+    ]);
   }
 
   private async executarComConcorrencia<T>(

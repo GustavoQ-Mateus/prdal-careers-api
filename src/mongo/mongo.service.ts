@@ -16,6 +16,24 @@ export interface BancoVagaDoc {
   criadoEm: Date;
 }
 
+export interface DocumentoRagDoc {
+  _id: string;
+  usuarioId: string;
+  origem: 'perfil' | 'candidatura' | 'nota';
+  origemId: string;
+  titulo: string;
+  texto: string;
+  criadoEm: Date;
+}
+
+export interface NotaObsidianDoc {
+  _id: string;
+  usuarioId: string;
+  titulo: string;
+  corpo: string;
+  criadoEm: Date;
+}
+
 @Injectable()
 export class MongoService implements OnModuleInit, OnModuleDestroy {
   private client!: MongoClient;
@@ -34,5 +52,13 @@ export class MongoService implements OnModuleInit, OnModuleDestroy {
 
   bancoVagas(): Collection<BancoVagaDoc> {
     return this.db.collection<BancoVagaDoc>('banco_vagas');
+  }
+
+  documentosRag(): Collection<DocumentoRagDoc> {
+    return this.db.collection<DocumentoRagDoc>('documentos_rag');
+  }
+
+  notasObsidian(): Collection<NotaObsidianDoc> {
+    return this.db.collection<NotaObsidianDoc>('notas_obsidian');
   }
 }

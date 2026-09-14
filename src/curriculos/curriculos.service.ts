@@ -38,6 +38,7 @@ export class CurriculosService {
     }
 
     const keywords = vaga.keywords as unknown as Keyword[];
+    const contexto = await this.recuperarContexto(usuarioId, vaga);
 
     const markdown = await this.aiClient.generateCv({
       perfilMestre: {
@@ -55,7 +56,7 @@ export class CurriculosService {
         keywords,
       },
       keywords,
-      contexto: [],
+      contexto,
     });
 
     const { score, breakdown } = await this.aiClient.score(markdown, {
@@ -175,6 +176,22 @@ export class CurriculosService {
     const caminho = formato === 'docx' ? curriculo.docxPath : curriculo.pdfPath;
     if (!caminho) throw new NotFoundException('arquivo indisponivel');
     return lerArquivo(caminho);
+  }
+
+  private async recuperarContexto(
+    usuarioId: string,
+    vaga: { titulo: string; descricao: string },
+  ): Promise<string[]> {
+    try {
+      const { chunks } = await this.aiClient.contextQuery(
+        usuarioId,
+        `${vaga.titulo} ${vaga.descricao}`,
+      );
+      return chunks.map((c) => c.texto);
+    } catch (err) {
+      this.logger.warn(`contexto indisponivel: ${(err as Error).message}`);
+      return [];
+    }
   }
 
   private async renderizar(curriculoId: string, markdown: string) {

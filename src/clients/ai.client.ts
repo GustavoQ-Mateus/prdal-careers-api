@@ -102,4 +102,61 @@ export class AiClient {
     );
     return data;
   }
+
+  async copilotoTurn(payload: {
+    modo: string;
+    oportunidadeId: string | null;
+    mensagens: { papel: string; conteudo: string; tool?: string | null }[];
+    tools: {
+      nome: string;
+      efeito: string;
+      descricao: string;
+      parametros: Record<string, unknown>;
+    }[];
+  }): Promise<CopilotoTurno> {
+    const { data } = await firstValueFrom(
+      this.http.post<CopilotoTurno>(`${this.baseUrl}/copiloto/turn`, payload),
+    );
+    return data;
+  }
+
+  async redigirMensagem(payload: {
+    vaga: unknown;
+    perfil: unknown;
+    contexto: string;
+  }): Promise<{ titulo: string; texto: string; destino: string }> {
+    const { data } = await firstValueFrom(
+      this.http.post<{ titulo: string; texto: string; destino: string }>(
+        `${this.baseUrl}/copiloto/redigir-mensagem`,
+        payload,
+      ),
+    );
+    return data;
+  }
+
+  async redigirFormulario(payload: {
+    vaga: unknown;
+    perfil: unknown;
+    campos: string[];
+  }): Promise<{
+    titulo: string;
+    respostas: { campo: string; texto: string }[];
+    texto: string;
+  }> {
+    const { data } = await firstValueFrom(
+      this.http.post<{
+        titulo: string;
+        respostas: { campo: string; texto: string }[];
+        texto: string;
+      }>(`${this.baseUrl}/copiloto/redigir-formulario`, payload),
+    );
+    return data;
+  }
+}
+
+export interface CopilotoTurno {
+  tipo: 'texto' | 'tool_call';
+  texto: string | null;
+  tool: string | null;
+  args: Record<string, unknown>;
 }

@@ -35,6 +35,30 @@ export interface NotaObsidianDoc {
   criadoEm: Date;
 }
 
+export interface MensagemCopiloto {
+  papel: 'user' | 'assistant' | 'tool';
+  conteudo: string;
+  tool?: string | null;
+}
+
+export interface PendenciaCopiloto {
+  callId: string;
+  tool: string;
+  efeito: 'escrita';
+  args: Record<string, unknown>;
+}
+
+export interface ConversaCopilotoDoc {
+  _id: string;
+  usuarioId: string;
+  modo: 'assistido' | 'autopiloto';
+  oportunidadeId: string | null;
+  mensagens: MensagemCopiloto[];
+  pendencia: PendenciaCopiloto | null;
+  criadoEm: Date;
+  atualizadoEm: Date;
+}
+
 @Injectable()
 export class MongoService implements OnModuleInit, OnModuleDestroy {
   private client!: MongoClient;
@@ -61,5 +85,9 @@ export class MongoService implements OnModuleInit, OnModuleDestroy {
 
   notasObsidian(): Collection<NotaObsidianDoc> {
     return this.db.collection<NotaObsidianDoc>('notas_obsidian');
+  }
+
+  conversasCopiloto(): Collection<ConversaCopilotoDoc> {
+    return this.db.collection<ConversaCopilotoDoc>('copiloto_conversas');
   }
 }

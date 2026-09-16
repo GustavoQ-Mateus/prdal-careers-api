@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { BancoVagasModule } from './banco-vagas/banco-vagas.module';
 import { CandidaturasModule } from './candidaturas/candidaturas.module';
 import { ContextoModule } from './contexto/contexto.module';
+import { CopilotoModule } from './copiloto/copiloto.module';
 import { CurriculosModule } from './curriculos/curriculos.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { LotesModule } from './lotes/lotes.module';
@@ -36,6 +37,7 @@ import { VagasModule } from './vagas/vagas.module';
     OportunidadesModule,
     HojeModule,
     PipelineModule,
+    CopilotoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,0 +1,360 @@
+import { HttpService } from '@nestjs/axios';
+import { Injectable } from '@nestjs/common';
+import { AxiosError } from 'axios';
+import type { Response } from 'express';
+import { randomUUID } from 'node:crypto';
+import { firstValueFrom } from 'rxjs';
+import { AuthUser } from '../auth/current-user.decorator';
+import { CopilotoTurno } from '../clients/ai.client';
+import { AiClient } from '../clients/ai.client';
+import { ConversaCopilotoDoc, MensagemCopiloto } from '../mongo/mongo.service';
+import { ConversasService } from './conversas.service';
+import { ChatDto } from './copiloto.dto';
+import { CATALOGO_TOOLS, ToolDef, TOOLS_POR_NOME } from './tools';
+
+const MAX_PASSOS = 8;
+const LIMITE_HISTORICO = 2000;
+
+@Injectable()
+export class ChatService {
+  private readonly selfUrl =
+    process.env.API_SELF_URL ?? `http://127.0.0.1:${process.env.PORT ?? 3000}`;
+
+  constructor(
+    private readonly conversas: ConversasService,
+    private readonly ai: AiClient,
+    private readonly http: HttpService,
+  ) {}
+
+  async chat(
+    res: Response,
+    user: AuthUser,
+    authHeader: string,
+    dto: ChatDto,
+  ): Promise<void> {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const modo = dto.modo ?? 'assistido';
+    const conversa = await this.conversas.abrir(
+      user.userId,
+      dto.conversaId,
+      modo,
+      dto.oportunidadeId ?? null,
+    );
+
+    try {
+      if (dto.confirmacao) {
+        const seguir = await this.resolverConfirmacao(
+          res,
+          conversa,
+          authHeader,
+          dto,
+        );
+        if (!seguir) return;
+      } else if (dto.mensagem) {
+        if (conversa.pendencia) {
+          await this.conversas.definirPendencia(conversa._id, null);
+          conversa.pendencia = null;
+        }
+        await this.registrar(conversa, { papel: 'user', conteudo: dto.mensagem });
+      }
+
+      await this.laco(res, conversa, authHeader, modo);
+    } catch (err) {
+      this.enviar(res, 'erro', {
+        escopo: 'interno',
+        mensagem: this.mensagemErro(err),
+        recuperavel: true,
+      });
+      this.finalizar(res, conversa._id, 'erro');
+    }
+  }
+
+  private async resolverConfirmacao(
+    res: Response,
+    conversa: ConversaCopilotoDoc,
+    authHeader: string,
+    dto: ChatDto,
+  ): Promise<boolean> {
+    const pend = conversa.pendencia;
+    const confirmacao = dto.confirmacao!;
+    if (!pend || pend.callId !== confirmacao.callId) {
+      this.enviar(res, 'erro', {
+        escopo: 'interno',
+        mensagem: 'nao ha confirmacao pendente para este passo',
+        recuperavel: true,
+      });
+      this.finalizar(res, conversa._id, 'erro');
+      return false;
+    }
+
+    await this.conversas.definirPendencia(conversa._id, null);
+    conversa.pendencia = null;
+
+    if (confirmacao.decisao === 'recusar') {
+      await this.registrar(conversa, {
+        papel: 'tool',
+        tool: pend.tool,
+        conteudo: 'o candidato recusou esta escrita; nao repita',
+      });
+      return true;
+    }
+
+    const tool = TOOLS_POR_NOME.get(pend.tool);
+    if (!tool) return true;
+    const args = { ...pend.args, ...(confirmacao.ajustes ?? {}) };
+    this.enviar(res, 'tool_call', {
+      callId: pend.callId,
+      tool: tool.nome,
+      efeito: 'escrita',
+      args,
+      exigeConfirmacao: false,
+    });
+    await this.executarTool(res, conversa, authHeader, tool, pend.callId, args);
+    return true;
+  }
+
+  private async laco(
+    res: Response,
+    conversa: ConversaCopilotoDoc,
+    authHeader: string,
+    modo: 'assistido' | 'autopiloto',
+  ): Promise<void> {
+    for (let passo = 0; passo < MAX_PASSOS; passo++) {
+      let turno: CopilotoTurno;
+      try {
+        turno = await this.ai.copilotoTurn({
+          modo,
+          oportunidadeId: conversa.oportunidadeId,
+          mensagens: conversa.mensagens,
+          tools: CATALOGO_TOOLS,
+        });
+      } catch (err) {
+        this.enviar(res, 'erro', {
+          escopo: 'ai-service',
+          mensagem: this.mensagemErro(err),
+          recuperavel: true,
+        });
+        this.finalizar(res, conversa._id, 'erro');
+        return;
+      }
+
+      if (turno.tipo === 'texto' || !turno.tool) {
+        const texto = turno.texto ?? '';
+        this.streamTokens(res, texto);
+        await this.registrar(conversa, { papel: 'assistant', conteudo: texto });
+        this.finalizar(res, conversa._id, 'completo');
+        return;
+      }
+
+      const tool = TOOLS_POR_NOME.get(turno.tool);
+      if (!tool) {
+        this.enviar(res, 'erro', {
+          escopo: 'tool',
+          mensagem: `tool desconhecida: ${turno.tool}`,
+          recuperavel: true,
+        });
+        this.finalizar(res, conversa._id, 'erro');
+        return;
+      }
+
+      const args = turno.args ?? {};
+      const callId = randomUUID();
+
+      if (tool.efeito === 'escrita' && modo === 'assistido') {
+        this.enviar(res, 'tool_call', {
+          callId,
+          tool: tool.nome,
+          efeito: 'escrita',
+          args,
+          exigeConfirmacao: true,
+        });
+        this.enviar(res, 'confirmacao', {
+          callId,
+          tool: tool.nome,
+          resumo: tool.resumo ? tool.resumo(args) : `Executar ${tool.nome}`,
+          args,
+        });
+        await this.conversas.definirPendencia(conversa._id, {
+          callId,
+          tool: tool.nome,
+          efeito: 'escrita',
+          args,
+        });
+        this.finalizar(res, conversa._id, 'aguardando_confirmacao');
+        return;
+      }
+
+      if (tool.efeito === 'entrega_externa') {
+        this.enviar(res, 'tool_call', {
+          callId,
+          tool: tool.nome,
+          efeito: 'leitura',
+          args,
+          exigeConfirmacao: false,
+        });
+        const entregue = await this.entregar(
+          res,
+          conversa,
+          authHeader,
+          tool,
+          args,
+        );
+        this.finalizar(
+          res,
+          conversa._id,
+          entregue ? 'aguardando_acao_externa' : 'erro',
+        );
+        return;
+      }
+
+      this.enviar(res, 'tool_call', {
+        callId,
+        tool: tool.nome,
+        efeito: tool.efeito,
+        args,
+        exigeConfirmacao: false,
+      });
+      await this.executarTool(res, conversa, authHeader, tool, callId, args);
+    }
+
+    this.finalizar(res, conversa._id, 'completo');
+  }
+
+  private async executarTool(
+    res: Response,
+    conversa: ConversaCopilotoDoc,
+    authHeader: string,
+    tool: ToolDef,
+    callId: string,
+    args: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      const resultado = await this.requisitar(tool, args, authHeader);
+      this.enviar(res, 'tool_resultado', {
+        callId,
+        tool: tool.nome,
+        ok: true,
+        resultado,
+        erro: null,
+      });
+      await this.registrar(conversa, {
+        papel: 'tool',
+        tool: tool.nome,
+        conteudo: this.resumirResultado(resultado),
+      });
+    } catch (err) {
+      const mensagem = this.mensagemErro(err);
+      this.enviar(res, 'tool_resultado', {
+        callId,
+        tool: tool.nome,
+        ok: false,
+        resultado: null,
+        erro: { mensagem, recuperavel: true },
+      });
+      await this.registrar(conversa, {
+        papel: 'tool',
+        tool: tool.nome,
+        conteudo: `falha: ${mensagem}`,
+      });
+    }
+  }
+
+  private async entregar(
+    res: Response,
+    conversa: ConversaCopilotoDoc,
+    authHeader: string,
+    tool: ToolDef,
+    args: Record<string, unknown>,
+  ): Promise<boolean> {
+    try {
+      const r = (await this.requisitar(tool, args, authHeader)) as {
+        tipo: string;
+        titulo: string;
+        texto: string;
+        destino?: string;
+      };
+      this.enviar(res, 'entrega_externa', {
+        tipo: r.tipo,
+        titulo: r.titulo,
+        texto: r.texto,
+        destino: r.destino ?? '',
+      });
+      await this.registrar(conversa, {
+        papel: 'tool',
+        tool: tool.nome,
+        conteudo: `texto entregue ao candidato: ${r.titulo}`,
+      });
+      return true;
+    } catch (err) {
+      this.enviar(res, 'erro', {
+        escopo: 'ai-service',
+        mensagem: this.mensagemErro(err),
+        recuperavel: true,
+      });
+      return false;
+    }
+  }
+
+  private async requisitar(
+    tool: ToolDef,
+    args: Record<string, unknown>,
+    authHeader: string,
+  ): Promise<unknown> {
+    const req = tool.requisicao(args);
+    const { data } = await firstValueFrom(
+      this.http.request({
+        method: req.metodo,
+        url: `${this.selfUrl}${req.caminho}`,
+        params: req.query,
+        data: req.corpo,
+        headers: { Authorization: authHeader },
+      }),
+    );
+    return data;
+  }
+
+  private streamTokens(res: Response, texto: string): void {
+    if (!texto) return;
+    for (const parte of texto.match(/\S+\s*/g) ?? [texto]) {
+      this.enviar(res, 'token', { delta: parte });
+    }
+  }
+
+  private enviar(res: Response, evento: string, data: unknown): void {
+    res.write(`event: ${evento}\ndata: ${JSON.stringify(data)}\n\n`);
+  }
+
+  private finalizar(res: Response, conversaId: string, motivo: string): void {
+    this.enviar(res, 'fim_turno', { motivo, conversaId });
+    res.end();
+  }
+
+  private async registrar(
+    conversa: ConversaCopilotoDoc,
+    mensagem: MensagemCopiloto,
+  ): Promise<void> {
+    conversa.mensagens.push(mensagem);
+    await this.conversas.anexar(conversa._id, mensagem);
+  }
+
+  private resumirResultado(resultado: unknown): string {
+    const texto = JSON.stringify(resultado ?? null);
+    return texto.length > LIMITE_HISTORICO
+      ? `${texto.slice(0, LIMITE_HISTORICO)}...`
+      : texto;
+  }
+
+  private mensagemErro(err: unknown): string {
+    if (err instanceof AxiosError) {
+      const data = err.response?.data as { message?: string } | undefined;
+      if (data?.message) return String(data.message);
+      if (err.code === 'ECONNREFUSED') return 'servico indisponivel';
+      return err.message;
+    }
+    return err instanceof Error ? err.message : 'erro inesperado';
+  }
+}

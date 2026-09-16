@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
+import { EventosService } from '../eventos/eventos.service';
 import { BancoVagaDoc, MongoService } from '../mongo/mongo.service';
 import { LotesService } from '../lotes/lotes.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -12,6 +13,7 @@ export class BancoVagasService {
     private readonly mongo: MongoService,
     private readonly prisma: PrismaService,
     private readonly lotes: LotesService,
+    private readonly eventos: EventosService,
   ) {}
 
   async importar(usuarioId: string, dto: ImportarBancoVagasDto) {
@@ -58,26 +60,50 @@ export class BancoVagasService {
   }
 
   async ativar(usuarioId: string, id: string) {
+    const existente = await this.prisma.vaga.findFirst({
+      where: { usuarioId, origemImportacaoId: id },
+    });
+    if (existente) {
+      await this.mongo.bancoVagas().updateOne(
+        { _id: id, usuarioId },
+        { $set: { status: 'ATIVADA', origemRelacionalId: existente.id } },
+      );
+      return existente;
+    }
+
     const doc = await this.mongo.bancoVagas().findOne({ _id: id, usuarioId });
     if (!doc) throw new NotFoundException('postagem nao encontrada');
 
-    const vaga = await this.prisma.vaga.create({
-      data: {
+    const vaga = await this.prisma.$transaction(async (tx) => {
+      const criada = await tx.vaga.create({
+        data: {
+          usuarioId,
+          titulo: doc.titulo,
+          empresa: doc.empresa,
+          descricao: doc.descricao,
+          fonte: doc.fonte,
+          keywords: (doc.keywords ?? []) as unknown as Prisma.InputJsonValue,
+          categoria: doc.categoria,
+          nivel: doc.nivel,
+          origem: 'IMPORTACAO',
+          origemImportacaoId: id,
+        },
+      });
+      await this.eventos.registrar(tx, {
         usuarioId,
-        titulo: doc.titulo,
-        empresa: doc.empresa,
-        descricao: doc.descricao,
-        fonte: doc.fonte,
-        keywords: (doc.keywords ?? []) as unknown as Prisma.InputJsonValue,
-        categoria: doc.categoria,
-        nivel: doc.nivel,
-      },
+        vagaId: criada.id,
+        tipo: 'OPORTUNIDADE_ATIVADA',
+        origem: 'SISTEMA',
+        descricao: 'Entrada ativada',
+        dados: { entradaId: id },
+      });
+      return criada;
     });
 
-    await this.mongo
-      .bancoVagas()
-      .updateOne({ _id: id }, { $set: { status: 'ATIVADA' } });
-
+    await this.mongo.bancoVagas().updateOne(
+      { _id: id, usuarioId },
+      { $set: { status: 'ATIVADA', origemRelacionalId: vaga.id } },
+    );
     return vaga;
   }
 }

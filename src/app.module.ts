@@ -11,6 +11,10 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { LotesModule } from './lotes/lotes.module';
 import { MongoModule } from './mongo/mongo.module';
 import { PerfilModule } from './perfil/perfil.module';
+import { EventosModule } from './eventos/eventos.module';
+import { HojeModule } from './hoje/hoje.module';
+import { OportunidadesModule } from './oportunidades/oportunidades.module';
+import { PipelineModule } from './pipeline/pipeline.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { VagasModule } from './vagas/vagas.module';
 
@@ -21,6 +25,7 @@ import { VagasModule } from './vagas/vagas.module';
     MongoModule,
     AuthModule,
     PerfilModule,
+    EventosModule,
     VagasModule,
     CurriculosModule,
     DashboardModule,
@@ -28,6 +33,9 @@ import { VagasModule } from './vagas/vagas.module';
     BancoVagasModule,
     CandidaturasModule,
     ContextoModule,
+    OportunidadesModule,
+    HojeModule,
+    PipelineModule,
   ],
   controllers: [AppController],
   providers: [AppService],

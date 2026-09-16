@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AiClient } from '../clients/ai.client';
+import { EventosService } from '../eventos/eventos.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AtualizarVagaDto, CriarVagaDto } from './vaga.dto';
 
@@ -9,12 +10,28 @@ export class VagasService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiClient: AiClient,
+    private readonly eventos: EventosService,
   ) {}
 
   async criar(usuarioId: string, dto: CriarVagaDto) {
     const keywords = await this.aiClient.keywords(dto.descricao);
-    return this.prisma.vaga.create({
-      data: { ...dto, usuarioId, keywords: keywords as unknown as Prisma.InputJsonValue },
+    return this.prisma.$transaction(async (tx) => {
+      const vaga = await tx.vaga.create({
+        data: {
+          ...dto,
+          usuarioId,
+          keywords: keywords as unknown as Prisma.InputJsonValue,
+        },
+      });
+      await this.eventos.registrar(tx, {
+        usuarioId,
+        vagaId: vaga.id,
+        tipo: 'OPORTUNIDADE_CRIADA',
+        origem: 'SISTEMA',
+        descricao: 'Oportunidade registrada',
+        dados: { origem: 'MANUAL' },
+      });
+      return vaga;
     });
   }
 

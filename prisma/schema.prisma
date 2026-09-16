@@ -8,13 +8,18 @@ datasource db {
 }
 
 model Usuario {
-  id        String        @id @default(uuid())
-  email     String        @unique
-  senhaHash String        @map("senha_hash")
-  criadoEm  DateTime      @default(now()) @map("criado_em")
-  perfil    PerfilMestre?
-  vagas     Vaga[]
-  lotes     Lote[]
+  id           String              @id @default(uuid())
+  email        String              @unique
+  senhaHash    String              @map("senha_hash")
+  criadoEm     DateTime            @default(now()) @map("criado_em")
+  perfil       PerfilMestre?
+  vagas        Vaga[]
+  lotes        Lote[]
+  acoes        AcaoOportunidade[]
+  eventos      EventoOportunidade[]
+  layouts      PipelineLayout[]
+  preferencia  PreferenciaUsuario?
+  geracoes     GeracaoCurriculo[]
 
   @@map("usuarios")
 }
@@ -34,36 +39,59 @@ model PerfilMestre {
   @@map("perfil_mestre")
 }
 
-model Vaga {
-  id           String        @id @default(uuid())
-  usuarioId    String        @map("usuario_id")
-  usuario      Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  titulo       String
-  empresa      String
-  descricao    String
-  fonte        String?
-  keywords     Json
-  categoria    String?
-  nivel        String?
-  criadoEm     DateTime      @default(now()) @map("criado_em")
-  curriculos   Curriculo[]
-  candidaturas Candidatura[]
+enum PrioridadeOportunidade {
+  BAIXA
+  MEDIA
+  ALTA
+}
 
+enum OrigemOportunidade {
+  MANUAL
+  IMPORTACAO
+}
+
+model Vaga {
+  id                 String                 @id @default(uuid())
+  usuarioId          String                 @map("usuario_id")
+  usuario            Usuario                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  titulo             String
+  empresa            String
+  descricao          String
+  fonte              String?
+  keywords           Json
+  categoria          String?
+  nivel              String?
+  prioridade         PrioridadeOportunidade @default(MEDIA)
+  origem             OrigemOportunidade     @default(MANUAL)
+  origemImportacaoId String?                @map("origem_importacao_id")
+  criadoEm           DateTime               @default(now()) @map("criado_em")
+  atualizadoEm       DateTime               @default(now()) @updatedAt @map("atualizado_em")
+  arquivadaEm        DateTime?              @map("arquivada_em")
+  curriculos         Curriculo[]
+  candidaturas       Candidatura[]
+  acoes              AcaoOportunidade[]
+  eventos            EventoOportunidade[]
+  layouts            PipelineLayout[]
+  geracoes           GeracaoCurriculo[]
+
+  @@unique([usuarioId, origemImportacaoId])
   @@map("vagas")
 }
 
 model Curriculo {
-  id             String        @id @default(uuid())
-  vagaId         String        @map("vaga_id")
-  vaga           Vaga          @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  rotulo         String        @default("Versao 1")
+  id             String                 @id @default(uuid())
+  vagaId         String                 @map("vaga_id")
+  vaga           Vaga                   @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  rotulo         String                 @default("Versao 1")
   markdown       String
-  docxPath       String?       @map("docx_path")
-  pdfPath        String?       @map("pdf_path")
+  docxPath       String?                @map("docx_path")
+  pdfPath        String?                @map("pdf_path")
   score          Int?
-  scoreBreakdown Json?         @map("score_breakdown")
-  geradoEm       DateTime      @default(now()) @map("gerado_em")
+  scoreBreakdown Json?                  @map("score_breakdown")
+  geradoEm       DateTime               @default(now()) @map("gerado_em")
   candidaturas   Candidatura[]
+  eventos        EventoOportunidade[]
+  geracoes       GeracaoCurriculo[]
 
   @@map("curriculos")
 }
@@ -79,14 +107,21 @@ enum StatusCandidatura {
 }
 
 model Candidatura {
-  id           String            @id @default(uuid())
-  vagaId       String            @map("vaga_id")
-  vaga         Vaga              @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  curriculoId  String?           @map("curriculo_id")
-  curriculo    Curriculo?        @relation(fields: [curriculoId], references: [id], onDelete: SetNull)
-  status       StatusCandidatura @default(RASCUNHO)
-  notas        String            @default("")
-  atualizadoEm DateTime          @updatedAt @map("atualizado_em")
+  id                 String              @id @default(uuid())
+  vagaId             String              @map("vaga_id")
+  vaga               Vaga                @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  curriculoId        String?             @map("curriculo_id")
+  curriculo          Curriculo?          @relation(fields: [curriculoId], references: [id], onDelete: Restrict)
+  status             StatusCandidatura   @default(RASCUNHO)
+  notas              String              @default("")
+  principal          Boolean             @default(false)
+  enviadaEm          DateTime?           @map("enviada_em")
+  encerradaEm        DateTime?           @map("encerrada_em")
+  motivoEncerramento String?             @map("motivo_encerramento")
+  criadoEm           DateTime            @default(now()) @map("criado_em")
+  atualizadoEm       DateTime            @updatedAt @map("atualizado_em")
+  acoes              AcaoOportunidade[]
+  eventos            EventoOportunidade[]
 
   @@map("candidaturas")
 }
@@ -128,4 +163,117 @@ model LoteItem {
   erro        String?
 
   @@map("lote_itens")
+}
+
+enum TipoAcaoOportunidade {
+  REVISAR_VAGA
+  GERAR_CURRICULO
+  ENVIAR_CANDIDATURA
+  FAZER_FOLLOW_UP
+  PREPARAR_ENTREVISTA
+  PARTICIPAR_ENTREVISTA
+  ENVIAR_MATERIAL
+  OUTRO
+}
+
+model AcaoOportunidade {
+  id            String               @id @default(uuid())
+  usuarioId     String               @map("usuario_id")
+  usuario       Usuario              @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  vagaId        String               @map("vaga_id")
+  vaga          Vaga                 @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  candidaturaId String?              @map("candidatura_id")
+  candidatura   Candidatura?         @relation(fields: [candidaturaId], references: [id], onDelete: SetNull)
+  titulo        String
+  tipo          TipoAcaoOportunidade
+  principal     Boolean              @default(false)
+  venceEm       DateTime?            @map("vence_em")
+  lembrarEm     DateTime?            @map("lembrar_em")
+  concluidaEm   DateTime?            @map("concluida_em")
+  canceladaEm   DateTime?            @map("cancelada_em")
+  criadoEm      DateTime             @default(now()) @map("criado_em")
+  atualizadoEm  DateTime             @updatedAt @map("atualizado_em")
+
+  @@index([usuarioId, venceEm])
+  @@map("acoes_oportunidade")
+}
+
+enum OrigemEvento {
+  SISTEMA
+  USUARIO
+}
+
+model EventoOportunidade {
+  id            String       @id @default(uuid())
+  usuarioId     String       @map("usuario_id")
+  usuario       Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  vagaId        String       @map("vaga_id")
+  vaga          Vaga         @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  candidaturaId String?      @map("candidatura_id")
+  candidatura   Candidatura? @relation(fields: [candidaturaId], references: [id], onDelete: SetNull)
+  curriculoId   String?      @map("curriculo_id")
+  curriculo     Curriculo?   @relation(fields: [curriculoId], references: [id], onDelete: SetNull)
+  tipo          String
+  origem        OrigemEvento
+  descricao     String
+  dados         Json
+  ocorridoEm    DateTime     @map("ocorrido_em")
+  registradoEm  DateTime     @default(now()) @map("registrado_em")
+
+  @@index([usuarioId, vagaId, ocorridoEm])
+  @@map("eventos_oportunidade")
+}
+
+model PipelineLayout {
+  id           String   @id @default(uuid())
+  usuarioId    String   @map("usuario_id")
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  vagaId       String   @map("vaga_id")
+  vaga         Vaga     @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  modo         String
+  posX         Float    @map("pos_x")
+  posY         Float    @map("pos_y")
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@unique([usuarioId, vagaId, modo])
+  @@map("pipeline_layouts")
+}
+
+model PreferenciaUsuario {
+  usuarioId     String   @id @map("usuario_id")
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  fusoHorario   String   @map("fuso_horario")
+  canvasX       Float    @default(0) @map("canvas_x")
+  canvasY       Float    @default(0) @map("canvas_y")
+  canvasZoom    Float    @default(1) @map("canvas_zoom")
+  canvasRevisao Int      @default(1) @map("canvas_revisao")
+  atualizadoEm  DateTime @updatedAt @map("atualizado_em")
+
+  @@map("preferencias_usuario")
+}
+
+enum StatusGeracaoCurriculo {
+  PENDENTE
+  ANALISANDO
+  GERANDO
+  VALIDANDO
+  CONCLUIDA
+  ERRO
+}
+
+model GeracaoCurriculo {
+  id           String                  @id @default(uuid())
+  usuarioId    String                  @map("usuario_id")
+  usuario      Usuario                 @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  vagaId       String                  @map("vaga_id")
+  vaga         Vaga                    @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  curriculoId  String?                 @map("curriculo_id")
+  curriculo    Curriculo?              @relation(fields: [curriculoId], references: [id], onDelete: SetNull)
+  status       StatusGeracaoCurriculo  @default(PENDENTE)
+  erro         String?
+  criadoEm     DateTime                @default(now()) @map("criado_em")
+  atualizadoEm DateTime                @updatedAt @map("atualizado_em")
+
+  @@map("geracoes_curriculo")
 }

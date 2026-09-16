@@ -13,6 +13,7 @@ export interface BancoVagaDoc {
   categoria: string | null;
   nivel: string | null;
   keywords: Keyword[] | null;
+  origemRelacionalId?: string | null;
   criadoEm: Date;
 }
 

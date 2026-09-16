@@ -120,6 +120,18 @@ export class ContextoService {
       orderBy: { criadoEm: 'desc' },
       select: { criadoEm: true },
     });
-    return { documentos, ultimaIndexacao: ultimo?.criadoEm ?? null };
+    const [perfil, candidatura, nota] = await Promise.all([
+      this.mongo.documentosRag().countDocuments({ usuarioId, origem: 'perfil' }),
+      this.mongo
+        .documentosRag()
+        .countDocuments({ usuarioId, origem: 'candidatura' }),
+      this.mongo.documentosRag().countDocuments({ usuarioId, origem: 'nota' }),
+    ]);
+    return {
+      documentos,
+      ultimaIndexacao: ultimo?.criadoEm ?? null,
+      porOrigem: { perfil, candidatura, nota },
+      disponivel: true,
+    };
   }
 }

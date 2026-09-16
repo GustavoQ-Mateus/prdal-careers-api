@@ -3,24 +3,37 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { AiClient, Keyword } from '../clients/ai.client';
 import { DocClient } from '../clients/doc.client';
+import { EventosService } from '../eventos/eventos.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EditarCurriculoDto } from './curriculo.dto';
 import { lerArquivo, salvarArquivo } from './storage';
 
 @Injectable()
-export class CurriculosService {
+export class CurriculosService implements OnModuleInit {
   private readonly logger = new Logger(CurriculosService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiClient: AiClient,
     private readonly docClient: DocClient,
+    private readonly eventos: EventosService,
   ) {}
+
+  async onModuleInit() {
+    const pendentes = await this.prisma.geracaoCurriculo.findMany({
+      where: { status: { notIn: ['CONCLUIDA', 'ERRO'] } },
+      select: { id: true },
+    });
+    for (const geracao of pendentes) {
+      void this.processar(geracao.id);
+    }
+  }
 
   async gerar(usuarioId: string, vagaId: string) {
     const vaga = await this.prisma.vaga.findFirst({
@@ -37,53 +50,86 @@ export class CurriculosService {
       );
     }
 
-    const keywords = vaga.keywords as unknown as Keyword[];
-    const contexto = await this.recuperarContexto(usuarioId, vaga);
+    const geracao = await this.prisma.geracaoCurriculo.create({
+      data: { usuarioId, vagaId },
+    });
+    void this.processar(geracao.id);
+    return { jobId: geracao.id };
+  }
 
-    const markdown = await this.aiClient.generateCv({
-      perfilMestre: {
-        nome: perfil.nome,
-        contato: perfil.contato,
-        resumo: perfil.resumo,
-        experiencias: perfil.experiencias,
-        formacao: perfil.formacao,
-        skills: perfil.skills,
+  async statusGeracao(usuarioId: string, jobId: string) {
+    const geracao = await this.prisma.geracaoCurriculo.findFirst({
+      where: { id: jobId, usuarioId },
+    });
+    if (!geracao) throw new NotFoundException('geracao nao encontrada');
+    return {
+      id: geracao.id,
+      vagaId: geracao.vagaId,
+      status: geracao.status,
+      erro: geracao.erro,
+      curriculoId: geracao.curriculoId,
+    };
+  }
+
+  async listar(usuarioId: string, query: {
+    vagaId?: string;
+    scoreMinimo?: number;
+    vinculado?: string;
+    de?: string;
+    ate?: string;
+  }) {
+    const curriculos = await this.prisma.curriculo.findMany({
+      where: {
+        vaga: { usuarioId },
+        ...(query.vagaId ? { vagaId: query.vagaId } : {}),
+        ...(query.scoreMinimo !== undefined
+          ? { score: { gte: query.scoreMinimo } }
+          : {}),
+        ...(query.de || query.ate
+          ? {
+              geradoEm: {
+                ...(query.de ? { gte: new Date(query.de) } : {}),
+                ...(query.ate ? { lte: new Date(query.ate) } : {}),
+              },
+            }
+          : {}),
       },
-      vaga: {
-        titulo: vaga.titulo,
-        empresa: vaga.empresa,
-        descricao: vaga.descricao,
-        keywords,
+      include: {
+        vaga: { select: { id: true, titulo: true, empresa: true } },
+        candidaturas: {
+          where: { curriculoId: { not: null } },
+          select: { id: true, principal: true, status: true },
+        },
       },
-      keywords,
-      contexto,
+      orderBy: { geradoEm: 'desc' },
     });
 
-    const { score, breakdown } = await this.aiClient.score(markdown, {
-      keywords,
-    });
-
-    const versoes = await this.prisma.curriculo.count({
-      where: { vagaId: vaga.id },
-    });
-
-    const curriculoId = randomUUID();
-    const { docxPath, pdfPath } = await this.renderizar(curriculoId, markdown);
-
-    const curriculo = await this.prisma.curriculo.create({
-      data: {
-        id: curriculoId,
-        vagaId: vaga.id,
-        rotulo: `Versao ${versoes + 1}`,
-        markdown,
-        docxPath,
-        pdfPath,
-        score,
-        scoreBreakdown: breakdown as unknown as Prisma.InputJsonValue,
+    const itens = curriculos.map((c) => ({
+      id: c.id,
+      rotulo: c.rotulo,
+      score: c.score,
+      breakdown: c.scoreBreakdown,
+      geradoEm: c.geradoEm,
+      vagaId: c.vagaId,
+      oportunidade: {
+        id: c.vaga.id,
+        titulo: c.vaga.titulo,
+        empresa: c.vaga.empresa,
       },
-    });
+      vinculo: c.candidaturas[0]
+        ? {
+            candidaturaId: c.candidaturas[0].id,
+            principal: c.candidaturas[0].principal,
+            status: c.candidaturas[0].status,
+          }
+        : null,
+      downloadDocxUrl: c.docxPath ? `/curriculos/${c.id}/docx` : null,
+      downloadPdfUrl: c.pdfPath ? `/curriculos/${c.id}/pdf` : null,
+    }));
 
-    return { jobId: curriculo.id };
+    if (query.vinculado === 'true') return itens.filter((i) => i.vinculo);
+    if (query.vinculado === 'false') return itens.filter((i) => !i.vinculo);
+    return itens;
   }
 
   async listarPorVaga(usuarioId: string, vagaId: string) {
@@ -130,16 +176,27 @@ export class CurriculosService {
       dto.markdown,
     );
 
-    await this.prisma.curriculo.update({
-      where: { id: curriculo.id },
-      data: {
-        markdown: dto.markdown,
-        score,
-        scoreBreakdown: breakdown as unknown as Prisma.InputJsonValue,
-        docxPath,
-        pdfPath,
-        ...(dto.rotulo ? { rotulo: dto.rotulo } : {}),
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.curriculo.update({
+        where: { id: curriculo.id },
+        data: {
+          markdown: dto.markdown,
+          score,
+          scoreBreakdown: breakdown as unknown as Prisma.InputJsonValue,
+          docxPath,
+          pdfPath,
+          ...(dto.rotulo ? { rotulo: dto.rotulo } : {}),
+        },
+      });
+      await this.eventos.registrar(tx, {
+        usuarioId,
+        vagaId: curriculo.vagaId,
+        curriculoId: curriculo.id,
+        tipo: 'CURRICULO_EDITADO',
+        origem: 'SISTEMA',
+        descricao: 'Curriculo editado',
+        dados: { curriculoId: curriculo.id },
+      });
     });
 
     return this.buscar(usuarioId, curriculo.id);
@@ -148,6 +205,13 @@ export class CurriculosService {
   async buscar(usuarioId: string, id: string) {
     const curriculo = await this.prisma.curriculo.findFirst({
       where: { id, vaga: { usuarioId } },
+      include: {
+        vaga: { select: { id: true, titulo: true, empresa: true } },
+        candidaturas: {
+          where: { curriculoId: { not: null } },
+          select: { id: true, principal: true, status: true },
+        },
+      },
     });
     if (!curriculo) throw new NotFoundException('curriculo nao encontrado');
 
@@ -159,6 +223,8 @@ export class CurriculosService {
       score: curriculo.score,
       breakdown: curriculo.scoreBreakdown,
       geradoEm: curriculo.geradoEm,
+      oportunidade: curriculo.vaga,
+      vinculo: curriculo.candidaturas[0] ?? null,
       downloadDocxUrl: curriculo.docxPath
         ? `/curriculos/${curriculo.id}/docx`
         : null,
@@ -176,6 +242,103 @@ export class CurriculosService {
     const caminho = formato === 'docx' ? curriculo.docxPath : curriculo.pdfPath;
     if (!caminho) throw new NotFoundException('arquivo indisponivel');
     return lerArquivo(caminho);
+  }
+
+  private async processar(id: string) {
+    const geracao = await this.prisma.geracaoCurriculo.findUnique({
+      where: { id },
+      include: { vaga: true },
+    });
+    if (!geracao || geracao.status === 'CONCLUIDA' || geracao.status === 'ERRO') {
+      return;
+    }
+
+    try {
+      await this.prisma.geracaoCurriculo.update({
+        where: { id },
+        data: { status: 'ANALISANDO' },
+      });
+      const perfil = await this.prisma.perfilMestre.findUnique({
+        where: { usuarioId: geracao.usuarioId },
+      });
+      if (!perfil) throw new Error('perfil-mestre ausente');
+
+      const keywords = geracao.vaga.keywords as unknown as Keyword[];
+      const contexto = await this.recuperarContexto(
+        geracao.usuarioId,
+        geracao.vaga,
+      );
+
+      await this.prisma.geracaoCurriculo.update({
+        where: { id },
+        data: { status: 'GERANDO' },
+      });
+      const markdown = await this.aiClient.generateCv({
+        perfilMestre: {
+          nome: perfil.nome,
+          contato: perfil.contato,
+          resumo: perfil.resumo,
+          experiencias: perfil.experiencias,
+          formacao: perfil.formacao,
+          skills: perfil.skills,
+        },
+        vaga: {
+          titulo: geracao.vaga.titulo,
+          empresa: geracao.vaga.empresa,
+          descricao: geracao.vaga.descricao,
+          keywords,
+        },
+        keywords,
+        contexto,
+      });
+
+      await this.prisma.geracaoCurriculo.update({
+        where: { id },
+        data: { status: 'VALIDANDO' },
+      });
+      const { score, breakdown } = await this.aiClient.score(markdown, {
+        keywords,
+      });
+      const versoes = await this.prisma.curriculo.count({
+        where: { vagaId: geracao.vagaId },
+      });
+      const curriculoId = randomUUID();
+      const { docxPath, pdfPath } = await this.renderizar(curriculoId, markdown);
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.curriculo.create({
+          data: {
+            id: curriculoId,
+            vagaId: geracao.vagaId,
+            rotulo: `Versao ${versoes + 1}`,
+            markdown,
+            docxPath,
+            pdfPath,
+            score,
+            scoreBreakdown: breakdown as unknown as Prisma.InputJsonValue,
+          },
+        });
+        await tx.geracaoCurriculo.update({
+          where: { id },
+          data: { status: 'CONCLUIDA', curriculoId },
+        });
+        await this.eventos.registrar(tx, {
+          usuarioId: geracao.usuarioId,
+          vagaId: geracao.vagaId,
+          curriculoId,
+          tipo: 'CURRICULO_GERADO',
+          origem: 'SISTEMA',
+          descricao: 'Curriculo gerado',
+          dados: { curriculoId, score },
+        });
+      });
+    } catch (err) {
+      this.logger.warn(`geracao ${id} falhou: ${(err as Error).message}`);
+      await this.prisma.geracaoCurriculo.update({
+        where: { id },
+        data: { status: 'ERRO', erro: (err as Error).message },
+      });
+    }
   }
 
   private async recuperarContexto(

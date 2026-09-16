@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Put, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Put,
+  Query,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -6,16 +15,39 @@ import { EditarCurriculoDto } from './curriculo.dto';
 import { CurriculosService } from './curriculos.service';
 
 @UseGuards(JwtAuthGuard)
-@Controller('curriculos')
+@Controller()
 export class CurriculosController {
   constructor(private readonly curriculos: CurriculosService) {}
 
-  @Get(':id')
+  @Get('curriculos')
+  listar(
+    @CurrentUser() user: AuthUser,
+    @Query('vagaId') vagaId?: string,
+    @Query('scoreMinimo') scoreMinimo?: string,
+    @Query('vinculado') vinculado?: string,
+    @Query('de') de?: string,
+    @Query('ate') ate?: string,
+  ) {
+    return this.curriculos.listar(user.userId, {
+      vagaId,
+      scoreMinimo: scoreMinimo ? Number(scoreMinimo) : undefined,
+      vinculado,
+      de,
+      ate,
+    });
+  }
+
+  @Get('geracoes-curriculo/:jobId')
+  status(@CurrentUser() user: AuthUser, @Param('jobId') jobId: string) {
+    return this.curriculos.statusGeracao(user.userId, jobId);
+  }
+
+  @Get('curriculos/:id')
   buscar(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.curriculos.buscar(user.userId, id);
   }
 
-  @Put(':id')
+  @Put('curriculos/:id')
   editar(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -24,7 +56,7 @@ export class CurriculosController {
     return this.curriculos.editar(user.userId, id, dto);
   }
 
-  @Get(':id/docx')
+  @Get('curriculos/:id/docx')
   async docx(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -39,7 +71,7 @@ export class CurriculosController {
     res.send(buffer);
   }
 
-  @Get(':id/pdf')
+  @Get('curriculos/:id/pdf')
   async pdf(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,

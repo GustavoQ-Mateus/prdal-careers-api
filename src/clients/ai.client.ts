@@ -72,6 +72,15 @@ export class AiClient {
     return data;
   }
 
+  async taxonomy(): Promise<{ categorias: string[]; niveis: string[] }> {
+    const { data } = await firstValueFrom(
+      this.http.get<{ categorias: string[]; niveis: string[] }>(
+        `${this.baseUrl}/classify/taxonomy`,
+      ),
+    );
+    return data;
+  }
+
   async contextIngest(
     documentos: {
       usuarioId: string;

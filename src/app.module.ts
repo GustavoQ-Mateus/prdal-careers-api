@@ -17,6 +17,7 @@ import { HojeModule } from './hoje/hoje.module';
 import { OportunidadesModule } from './oportunidades/oportunidades.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { TaxonomiaModule } from './taxonomia/taxonomia.module';
 import { VagasModule } from './vagas/vagas.module';
 
 @Module({
@@ -38,6 +39,7 @@ import { VagasModule } from './vagas/vagas.module';
     HojeModule,
     PipelineModule,
     CopilotoModule,
+    TaxonomiaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

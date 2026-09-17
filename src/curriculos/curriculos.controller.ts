@@ -25,6 +25,8 @@ export class CurriculosController {
     @Query('vagaId') vagaId?: string,
     @Query('scoreMinimo') scoreMinimo?: string,
     @Query('vinculado') vinculado?: string,
+    @Query('categoria') categoria?: string,
+    @Query('nivel') nivel?: string,
     @Query('de') de?: string,
     @Query('ate') ate?: string,
   ) {
@@ -32,6 +34,8 @@ export class CurriculosController {
       vagaId,
       scoreMinimo: scoreMinimo ? Number(scoreMinimo) : undefined,
       vinculado,
+      categoria,
+      nivel,
       de,
       ate,
     });

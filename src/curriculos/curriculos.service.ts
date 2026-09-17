@@ -75,12 +75,18 @@ export class CurriculosService implements OnModuleInit {
     vagaId?: string;
     scoreMinimo?: number;
     vinculado?: string;
+    categoria?: string;
+    nivel?: string;
     de?: string;
     ate?: string;
   }) {
     const curriculos = await this.prisma.curriculo.findMany({
       where: {
-        vaga: { usuarioId },
+        vaga: {
+          usuarioId,
+          ...(query.categoria ? { categoria: query.categoria } : {}),
+          ...(query.nivel ? { nivel: query.nivel } : {}),
+        },
         ...(query.vagaId ? { vagaId: query.vagaId } : {}),
         ...(query.scoreMinimo !== undefined
           ? { score: { gte: query.scoreMinimo } }
@@ -95,7 +101,15 @@ export class CurriculosService implements OnModuleInit {
           : {}),
       },
       include: {
-        vaga: { select: { id: true, titulo: true, empresa: true } },
+        vaga: {
+          select: {
+            id: true,
+            titulo: true,
+            empresa: true,
+            categoria: true,
+            nivel: true,
+          },
+        },
         candidaturas: {
           where: { curriculoId: { not: null } },
           select: { id: true, principal: true, status: true },
@@ -111,6 +125,8 @@ export class CurriculosService implements OnModuleInit {
       breakdown: c.scoreBreakdown,
       geradoEm: c.geradoEm,
       vagaId: c.vagaId,
+      categoria: c.vaga.categoria,
+      nivel: c.vaga.nivel,
       oportunidade: {
         id: c.vaga.id,
         titulo: c.vaga.titulo,

@@ -7,6 +7,24 @@ import {
   limitesDoDia,
 } from '../dominio/fuso';
 import { apresentacaoRelacional } from '../dominio/apresentacao';
+import {
+  agregarSerieTemporal,
+  periodoValido,
+  type SerieTemporal,
+} from './hoje.agregacao';
+
+export type HojeResposta = {
+  fusoHorario: string;
+  inicioDia: Date;
+  fimDia: Date;
+  atrasadas: unknown[];
+  hoje: unknown[];
+  proximosDias: unknown[];
+  semProximoPasso: { id: string; titulo: string; empresa: string }[];
+  atividadeRecente: unknown[];
+  resumoAts: { curriculos: number; comScore: number; media: number | null };
+  serieTemporal: SerieTemporal;
+};
 
 @Injectable()
 export class HojeService {
@@ -28,7 +46,7 @@ export class HojeService {
     });
   }
 
-  async agenda(usuarioId: string, de?: string, ate?: string) {
+  async agenda(usuarioId: string, de?: string, ate?: string, periodo?: string): Promise<HojeResposta> {
     const pref = await this.garantirPreferencia(usuarioId);
     const fuso = pref.fusoHorario;
     const hoje = dataCivil(new Date(), fuso);
@@ -114,8 +132,32 @@ export class HojeService {
       comScore: scores.length,
       media: scores.length
         ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-        : null,
+      : null,
     };
+
+    const periodoDias = periodoValido(periodo);
+    const [oportunidades, acoesConcluidas, curriculosGerados] = await Promise.all([
+      this.prisma.vaga.findMany({
+        where: { usuarioId },
+        select: { criadoEm: true },
+      }),
+      this.prisma.acaoOportunidade.findMany({
+        where: { usuarioId, concluidaEm: { not: null } },
+        select: { concluidaEm: true },
+      }),
+      this.prisma.curriculo.findMany({
+        where: { vaga: { usuarioId } },
+        select: { geradoEm: true, score: true },
+      }),
+    ]);
+    const serieTemporal = agregarSerieTemporal({
+      hoje,
+      fuso,
+      periodoDias,
+      oportunidades: oportunidades.map((item) => ({ data: item.criadoEm })),
+      acoesConcluidas: acoesConcluidas.flatMap((item) => item.concluidaEm ? [{ data: item.concluidaEm }] : []),
+      curriculos: curriculosGerados.map((item) => ({ data: item.geradoEm, score: item.score })),
+    });
 
     return {
       fusoHorario: fuso,
@@ -135,6 +177,7 @@ export class HojeService {
         ocorridoEm: e.ocorridoEm,
       })),
       resumoAts,
+      serieTemporal,
     };
   }
 

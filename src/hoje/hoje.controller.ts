@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { PatchPreferenciasDto } from './hoje.dto';
+import { HojeQueryDto, PatchPreferenciasDto } from './hoje.dto';
 import { HojeService } from './hoje.service';
 
 @UseGuards(JwtAuthGuard)
@@ -20,12 +20,11 @@ export class HojeController {
   @Get('hoje')
   agenda(
     @CurrentUser() user: AuthUser,
-    @Query('de') de?: string,
-    @Query('ate') ate?: string,
+    @Query() query: HojeQueryDto,
     @Headers('x-timezone') fusoDetectado?: string,
   ) {
     return this.hoje.garantirPreferencia(user.userId, fusoDetectado).then(() =>
-      this.hoje.agenda(user.userId, de, ate),
+      this.hoje.agenda(user.userId, query.de, query.ate, query.periodo),
     );
   }
 

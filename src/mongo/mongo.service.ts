@@ -46,6 +46,16 @@ export interface PendenciaCopiloto {
   tool: string;
   efeito: 'escrita';
   args: Record<string, unknown>;
+  executando?: boolean;
+}
+
+export interface ConfirmacaoCopiloto {
+  callId: string;
+  tool: string;
+  decisao: 'confirmar' | 'recusar';
+  resultado?: unknown;
+  erro?: string;
+  concluidaEm: Date;
 }
 
 export interface ConversaCopilotoDoc {
@@ -55,6 +65,7 @@ export interface ConversaCopilotoDoc {
   oportunidadeId: string | null;
   mensagens: MensagemCopiloto[];
   pendencia: PendenciaCopiloto | null;
+  confirmacoes?: ConfirmacaoCopiloto[];
   criadoEm: Date;
   atualizadoEm: Date;
 }

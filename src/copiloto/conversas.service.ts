@@ -68,4 +68,35 @@ export class ConversasService {
         { $set: { pendencia, atualizadoEm: new Date() } },
       );
   }
+
+  async atualizarOportunidade(conversaId: string, oportunidadeId: string) {
+    await this.mongo.conversasCopiloto().updateOne(
+      { _id: conversaId },
+      { $set: { oportunidadeId, atualizadoEm: new Date() } },
+    );
+  }
+
+  async registrarConfirmacao(
+    conversaId: string,
+    confirmacao: import('../mongo/mongo.service').ConfirmacaoCopiloto,
+  ) {
+    await this.mongo.conversasCopiloto().updateOne(
+      { _id: conversaId },
+      { $push: { confirmacoes: confirmacao }, $set: { atualizadoEm: new Date() } },
+    );
+  }
+
+  async confirmarPendencia(conversaId: string, callId: string) {
+    const resultado = await this.mongo.conversasCopiloto().findOneAndUpdate(
+      { _id: conversaId, 'pendencia.callId': callId, 'pendencia.executando': { $ne: true } },
+      { $set: { 'pendencia.executando': true, atualizadoEm: new Date() } },
+      { returnDocument: 'after' },
+    );
+    return resultado?.pendencia ?? null;
+  }
+
+  async buscarConfirmacao(conversaId: string, callId: string) {
+    const conversa = await this.mongo.conversasCopiloto().findOne({ _id: conversaId });
+    return conversa?.confirmacoes?.find((item) => item.callId === callId) ?? null;
+  }
 }

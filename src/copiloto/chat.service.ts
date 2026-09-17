@@ -91,10 +91,23 @@ export class ChatService {
       return false;
     }
 
-    await this.conversas.definirPendencia(conversa._id, null);
-    conversa.pendencia = null;
+    const pendencia = await this.conversas.confirmarPendencia(conversa._id, confirmacao.callId);
+    if (!pendencia) {
+      const anterior = await this.conversas.buscarConfirmacao(conversa._id, confirmacao.callId);
+      if (anterior) {
+        this.enviar(res, 'tool_resultado', { callId: anterior.callId, tool: anterior.tool, ok: !anterior.erro, resultado: anterior.resultado ?? null, erro: anterior.erro ? { mensagem: anterior.erro, recuperavel: true } : null });
+        this.finalizar(res, conversa._id, anterior.erro ? 'erro' : 'completo');
+        return false;
+      }
+      this.enviar(res, 'erro', { escopo: 'interno', mensagem: 'este passo ja esta em execucao; consulte o status antes de repetir', recuperavel: true });
+      this.finalizar(res, conversa._id, 'erro');
+      return false;
+    }
+    conversa.pendencia = pendencia;
 
     if (confirmacao.decisao === 'recusar') {
+      await this.conversas.definirPendencia(conversa._id, null);
+      await this.conversas.registrarConfirmacao(conversa._id, { callId: pend.callId, tool: pend.tool, decisao: 'recusar', concluidaEm: new Date() });
       await this.registrar(conversa, {
         papel: 'tool',
         tool: pend.tool,
@@ -113,7 +126,18 @@ export class ChatService {
       args,
       exigeConfirmacao: false,
     });
-    await this.executarTool(res, conversa, authHeader, tool, pend.callId, args);
+    const resultado = await this.executarTool(res, conversa, authHeader, tool, pend.callId, args);
+    if (resultado.ok) {
+      await this.conversas.definirPendencia(conversa._id, null);
+      await this.conversas.registrarConfirmacao(conversa._id, { callId: pend.callId, tool: pend.tool, decisao: 'confirmar', resultado: resultado.valor, concluidaEm: new Date() });
+      if (tool.nome === 'registrar_oportunidade' && resultado.valor && typeof resultado.valor === 'object' && 'id' in resultado.valor) {
+        const oportunidadeId = String((resultado.valor as { id: unknown }).id);
+        conversa.oportunidadeId = oportunidadeId;
+        await this.conversas.atualizarOportunidade(conversa._id, oportunidadeId);
+      }
+    } else {
+      await this.conversas.definirPendencia(conversa._id, { ...pend, executando: false });
+    }
     return true;
   }
 
@@ -231,7 +255,7 @@ export class ChatService {
     tool: ToolDef,
     callId: string,
     args: Record<string, unknown>,
-  ): Promise<void> {
+  ): Promise<{ ok: boolean; valor?: unknown }> {
     try {
       const resultado = await this.requisitar(tool, args, authHeader);
       this.enviar(res, 'tool_resultado', {
@@ -246,6 +270,7 @@ export class ChatService {
         tool: tool.nome,
         conteudo: this.resumirResultado(resultado),
       });
+      return { ok: true, valor: resultado };
     } catch (err) {
       const mensagem = this.mensagemErro(err);
       this.enviar(res, 'tool_resultado', {
@@ -260,6 +285,7 @@ export class ChatService {
         tool: tool.nome,
         conteudo: `falha: ${mensagem}`,
       });
+      return { ok: false };
     }
   }
 
@@ -312,6 +338,7 @@ export class ChatService {
         params: req.query,
         data: req.corpo,
         headers: { Authorization: authHeader },
+        timeout: 120000,
       }),
     );
     return this.desembrulhar(data);

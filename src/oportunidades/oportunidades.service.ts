@@ -66,6 +66,17 @@ export class OportunidadesService {
   }
 
   async criar(usuarioId: string, dto: CriarOportunidadeDto) {
+    const normalizar = (valor: string) => valor.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+    const existentes = await this.prisma.vaga.findMany({
+      where: { usuarioId, titulo: { equals: dto.titulo, mode: 'insensitive' }, empresa: { equals: dto.empresa, mode: 'insensitive' } },
+      orderBy: { criadoEm: 'desc' },
+      take: 20,
+    });
+    const equivalente = existentes.find(
+      (vaga) => normalizar(vaga.descricao) === normalizar(dto.descricao),
+    );
+    if (equivalente) return equivalente;
+
     const keywords = await this.ai.keywords(dto.descricao);
     const taxonomia = await this.classificar(dto.titulo, dto.descricao);
     return this.prisma.$transaction(async (tx) => {

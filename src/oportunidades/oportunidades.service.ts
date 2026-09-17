@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -46,6 +47,8 @@ type VagaComPrincipal = Vaga & {
 
 @Injectable()
 export class OportunidadesService {
+  private readonly logger = new Logger(OportunidadesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly mongo: MongoService,
@@ -53,8 +56,18 @@ export class OportunidadesService {
     private readonly eventos: EventosService,
   ) {}
 
+  private async classificar(titulo: string, descricao: string) {
+    try {
+      return await this.ai.classify(titulo, descricao);
+    } catch (err) {
+      this.logger.warn(`classificacao indisponivel: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
   async criar(usuarioId: string, dto: CriarOportunidadeDto) {
     const keywords = await this.ai.keywords(dto.descricao);
+    const taxonomia = await this.classificar(dto.titulo, dto.descricao);
     return this.prisma.$transaction(async (tx) => {
       const vaga = await tx.vaga.create({
         data: {
@@ -62,6 +75,9 @@ export class OportunidadesService {
           usuarioId,
           origem: 'MANUAL',
           keywords: keywords as unknown as Prisma.InputJsonValue,
+          ...(taxonomia
+            ? { categoria: taxonomia.categoria, nivel: taxonomia.nivel }
+            : {}),
         },
       });
       await this.eventos.registrar(tx, {
@@ -148,6 +164,15 @@ export class OportunidadesService {
     const keywords = dto.descricao
       ? await this.ai.keywords(dto.descricao)
       : undefined;
+    const mudouTexto =
+      (dto.titulo !== undefined && dto.titulo !== atual.titulo) ||
+      (dto.descricao !== undefined && dto.descricao !== atual.descricao);
+    const taxonomia = mudouTexto
+      ? await this.classificar(
+          dto.titulo ?? atual.titulo,
+          dto.descricao ?? atual.descricao,
+        )
+      : null;
     const mudouPrioridade =
       dto.prioridade !== undefined && dto.prioridade !== atual.prioridade;
     const arquivar = dto.arquivar;
@@ -163,6 +188,9 @@ export class OportunidadesService {
           ...(dto.prioridade !== undefined ? { prioridade: dto.prioridade } : {}),
           ...(keywords
             ? { keywords: keywords as unknown as Prisma.InputJsonValue }
+            : {}),
+          ...(taxonomia
+            ? { categoria: taxonomia.categoria, nivel: taxonomia.nivel }
             : {}),
           ...(arquivar === true && !atual.arquivadaEm
             ? { arquivadaEm: new Date() }

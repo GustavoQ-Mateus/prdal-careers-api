@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "build": "nest build",
+    "typecheck": "tsc --noEmit",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
+    "backfill:taxonomia": "nest build && node dist/scripts/backfill-taxonomia.js",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate"
   },

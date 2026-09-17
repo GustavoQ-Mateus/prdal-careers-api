@@ -10,6 +10,7 @@ import { randomUUID } from 'node:crypto';
 import { AiClient, Keyword } from '../clients/ai.client';
 import { DocClient } from '../clients/doc.client';
 import { EventosService } from '../eventos/eventos.service';
+import { perfilParaIa } from '../perfil/perfil.normalizacao';
 import { PrismaService } from '../prisma/prisma.service';
 import { EditarCurriculoDto } from './curriculo.dto';
 import { lerArquivo, salvarArquivo } from './storage';
@@ -328,14 +329,7 @@ export class CurriculosService implements OnModuleInit {
         data: { status: 'GERANDO' },
       });
       const markdown = await this.aiClient.generateCv({
-        perfilMestre: {
-          nome: perfil.nome,
-          contato: perfil.contato,
-          resumo: perfil.resumo,
-          experiencias: perfil.experiencias,
-          formacao: perfil.formacao,
-          skills: perfil.skills,
-        },
+        perfilMestre: perfilParaIa(perfil),
         vaga: {
           titulo: geracao.vaga.titulo,
           empresa: geracao.vaga.empresa,

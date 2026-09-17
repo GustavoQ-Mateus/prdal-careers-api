@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { AiClient, Keyword } from '../clients/ai.client';
 import { OportunidadesService } from '../oportunidades/oportunidades.service';
 import { PerfilService } from '../perfil/perfil.service';
+import { perfilParaIa } from '../perfil/perfil.normalizacao';
 
 @Injectable()
 export class CapacidadesService {
@@ -48,7 +49,7 @@ export class CapacidadesService {
     const perfil = await this.perfil.buscar(usuarioId);
     const redacao = await this.ai.redigirMensagem({
       vaga,
-      perfil: perfil ?? {},
+      perfil: perfil ? perfilParaIa(perfil) : {},
       contexto: contexto ?? '',
     });
     return { tipo: 'mensagem_recrutador' as const, ...redacao };
@@ -63,7 +64,7 @@ export class CapacidadesService {
     const perfil = await this.perfil.buscar(usuarioId);
     const redacao = await this.ai.redigirFormulario({
       vaga,
-      perfil: perfil ?? {},
+      perfil: perfil ? perfilParaIa(perfil) : {},
       campos,
     });
     return { tipo: 'resposta_formulario' as const, ...redacao };

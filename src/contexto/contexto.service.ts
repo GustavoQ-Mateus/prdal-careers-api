@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { LotesService } from '../lotes/lotes.service';
 import { DocumentoRagDoc, MongoService } from '../mongo/mongo.service';
+import { normalizarExperiencias, textoExperiencia, tituloExperiencia } from '../perfil/perfil.normalizacao';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -37,8 +38,11 @@ export class ContextoService {
       if (perfil.resumo?.trim()) {
         novos.push(doc('perfil', 'resumo', 'Resumo', perfil.resumo));
       }
-      (perfil.experiencias as string[]).forEach((e, i) => {
-        if (String(e).trim()) novos.push(doc('perfil', `experiencia-${i}`, 'Experiencia', String(e)));
+      normalizarExperiencias(perfil.experiencias).forEach((experiencia) => {
+        const texto = textoExperiencia(experiencia);
+        if (texto) {
+          novos.push(doc('perfil', `experiencia-${experiencia.id}`, tituloExperiencia(experiencia), texto));
+        }
       });
       (perfil.formacao as string[]).forEach((f, i) => {
         if (String(f).trim()) novos.push(doc('perfil', `formacao-${i}`, 'Formacao', String(f)));

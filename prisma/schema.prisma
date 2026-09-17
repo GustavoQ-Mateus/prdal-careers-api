@@ -88,6 +88,9 @@ model Curriculo {
   pdfPath        String?                @map("pdf_path")
   score          Int?
   scoreBreakdown Json?                  @map("score_breakdown")
+  analiseInicial Json?                  @map("analise_inicial")
+  analiseFinal   Json?                  @map("analise_final")
+  degradacao     String?
   geradoEm       DateTime               @default(now()) @map("gerado_em")
   candidaturas   Candidatura[]
   eventos        EventoOportunidade[]
@@ -272,6 +275,9 @@ model GeracaoCurriculo {
   curriculo    Curriculo?              @relation(fields: [curriculoId], references: [id], onDelete: SetNull)
   status       StatusGeracaoCurriculo  @default(PENDENTE)
   erro         String?
+  analiseInicial Json?                 @map("analise_inicial")
+  analiseFinal   Json?                 @map("analise_final")
+  degradacao     String?
   criadoEm     DateTime                @default(now()) @map("criado_em")
   atualizadoEm DateTime                @updatedAt @map("atualizado_em")
 

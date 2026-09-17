@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
-import { AiClient, Keyword } from '../clients/ai.client';
+import { AiClient, AtsAnalysis, Keyword } from '../clients/ai.client';
 import { DocClient } from '../clients/doc.client';
 import { EventosService } from '../eventos/eventos.service';
 import { perfilParaIa } from '../perfil/perfil.normalizacao';
@@ -39,10 +39,10 @@ function ordemCurriculo(
 function normalizarKeywords(valor: Prisma.JsonValue): Keyword[] {
   if (!Array.isArray(valor)) return [];
   return valor.flatMap((item) => {
-    if (typeof item === 'string' && item.trim()) return [{ termo: item.trim(), peso: 0 }];
+    if (typeof item === 'string' && item.trim()) return [{ termo: item.trim(), peso: 1 }];
     if (item && typeof item === 'object' && !Array.isArray(item)) {
       const termo = 'termo' in item && typeof item.termo === 'string' ? item.termo.trim() : '';
-      const peso = 'peso' in item && typeof item.peso === 'number' ? item.peso : 0;
+      const peso = 'peso' in item && typeof item.peso === 'number' ? item.peso : 1;
       return termo ? [{ termo, peso }] : [];
     }
     return [];
@@ -85,6 +85,12 @@ export class CurriculosService implements OnModuleInit {
       );
     }
 
+    const existente = await this.prisma.geracaoCurriculo.findFirst({
+      where: { usuarioId, vagaId },
+      orderBy: { criadoEm: 'desc' },
+    });
+    if (existente) return { jobId: existente.id, status: existente.status, curriculoId: existente.curriculoId };
+
     const geracao = await this.prisma.geracaoCurriculo.create({
       data: { usuarioId, vagaId },
     });
@@ -103,6 +109,12 @@ export class CurriculosService implements OnModuleInit {
       status: geracao.status,
       erro: geracao.erro,
       curriculoId: geracao.curriculoId,
+      etapas: {
+        analiseInicial: geracao.analiseInicial,
+        reescrita: geracao.status === 'GERANDO' || geracao.status === 'VALIDANDO' || geracao.status === 'CONCLUIDA',
+        analiseFinal: geracao.analiseFinal,
+        degradacao: geracao.degradacao,
+      },
     };
   }
 
@@ -172,6 +184,9 @@ export class CurriculosService implements OnModuleInit {
       rotulo: c.rotulo,
       score: c.score,
       breakdown: c.scoreBreakdown,
+      analiseInicial: c.analiseInicial,
+      analiseFinal: c.analiseFinal,
+      degradacao: c.degradacao,
       geradoEm: c.geradoEm,
       vagaId: c.vagaId,
       categoria: c.vaga.categoria,
@@ -212,9 +227,12 @@ export class CurriculosService implements OnModuleInit {
       select: {
         id: true,
         rotulo: true,
-        score: true,
-        scoreBreakdown: true,
-        geradoEm: true,
+      score: true,
+      scoreBreakdown: true,
+      analiseInicial: true,
+      analiseFinal: true,
+      degradacao: true,
+      geradoEm: true,
       },
     });
 
@@ -223,6 +241,9 @@ export class CurriculosService implements OnModuleInit {
       rotulo: c.rotulo,
       score: c.score,
       breakdown: c.scoreBreakdown,
+      analiseInicial: c.analiseInicial,
+      analiseFinal: c.analiseFinal,
+      degradacao: c.degradacao,
       geradoEm: c.geradoEm,
     }));
   }
@@ -290,6 +311,9 @@ export class CurriculosService implements OnModuleInit {
       markdown: curriculo.markdown,
       score: curriculo.score,
       breakdown: curriculo.scoreBreakdown,
+      analiseInicial: curriculo.analiseInicial,
+      analiseFinal: curriculo.analiseFinal,
+      degradacao: curriculo.degradacao,
       geradoEm: curriculo.geradoEm,
       oportunidade: curriculo.vaga,
       vinculo: curriculo.candidaturas[0] ?? null,
@@ -341,7 +365,7 @@ export class CurriculosService implements OnModuleInit {
         where: { id },
         data: { status: 'GERANDO' },
       });
-      const markdown = await this.aiClient.generateCv({
+      const pipeline = await this.aiClient.generateCvPipeline({
         perfilMestre: perfilParaIa(perfil),
         vaga: {
           titulo: geracao.vaga.titulo,
@@ -352,14 +376,23 @@ export class CurriculosService implements OnModuleInit {
         keywords,
         contexto,
       });
+      await this.prisma.geracaoCurriculo.update({
+        where: { id },
+        data: {
+          analiseInicial: pipeline.analiseInicial as unknown as Prisma.InputJsonValue,
+          degradacao: pipeline.degradacao,
+        },
+      });
+      const markdown = pipeline.markdown;
 
       await this.prisma.geracaoCurriculo.update({
         where: { id },
-        data: { status: 'VALIDANDO' },
+        data: {
+          status: 'VALIDANDO',
+          analiseFinal: pipeline.analiseFinal as unknown as Prisma.InputJsonValue,
+        },
       });
-      const { score, breakdown } = await this.aiClient.score(markdown, {
-        keywords,
-      });
+      const { score, breakdown } = this.scoreDaAnalise(pipeline.analiseFinal);
       const versoes = await this.prisma.curriculo.count({
         where: { vagaId: geracao.vagaId },
       });
@@ -377,6 +410,10 @@ export class CurriculosService implements OnModuleInit {
             pdfPath,
             score,
             scoreBreakdown: breakdown as unknown as Prisma.InputJsonValue,
+            analiseInicial:
+              pipeline.analiseInicial as unknown as Prisma.InputJsonValue,
+            analiseFinal: pipeline.analiseFinal as unknown as Prisma.InputJsonValue,
+            degradacao: pipeline.degradacao,
           },
         });
         await tx.geracaoCurriculo.update({
@@ -390,7 +427,12 @@ export class CurriculosService implements OnModuleInit {
           tipo: 'CURRICULO_GERADO',
           origem: 'SISTEMA',
           descricao: 'Curriculo gerado',
-          dados: { curriculoId, score },
+          dados: {
+            curriculoId,
+            scoreInicial: pipeline.analiseInicial.score,
+            scoreFinal: score,
+            degradacao: pipeline.degradacao,
+          },
         });
       });
     } catch (err) {
@@ -425,10 +467,27 @@ export class CurriculosService implements OnModuleInit {
       const docx = await this.docClient.renderDocx(markdown);
       docxPath = await salvarArquivo(`${curriculoId}.docx`, docx);
       const pdf = await this.docClient.renderPdf(markdown);
+      const paginas = this.contarPaginasPdf(pdf);
+      if (paginas > 1) {
+        this.logger.warn(`curriculo ${curriculoId} gerou PDF com ${paginas} paginas`);
+      }
       pdfPath = await salvarArquivo(`${curriculoId}.pdf`, pdf);
     } catch (err) {
       this.logger.warn(`doc-service indisponivel: ${(err as Error).message}`);
     }
     return { docxPath, pdfPath };
+  }
+
+  private scoreDaAnalise(analise: AtsAnalysis) {
+    return {
+      score: analise.score,
+      breakdown: analise.breakdown,
+    };
+  }
+
+  private contarPaginasPdf(pdf: Buffer) {
+    const texto = pdf.toString('latin1');
+    const matches = texto.match(/\/Type\s*\/Page\b/g);
+    return matches?.length ?? 0;
   }
 }

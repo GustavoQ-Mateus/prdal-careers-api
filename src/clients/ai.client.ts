@@ -19,6 +19,22 @@ export interface ScoreResult {
   breakdown: ScoreBreakdown;
 }
 
+export interface AtsAnalysis {
+  score: number;
+  keywordsEncontradas: string[];
+  keywordsCriticasAusentes: string[];
+  pontosEliminatorios: string[];
+  veredicto: string;
+  breakdown: ScoreBreakdown;
+}
+
+export interface GeneratePipelineResult {
+  markdown: string;
+  analiseInicial: AtsAnalysis;
+  analiseFinal: AtsAnalysis;
+  degradacao: string | null;
+}
+
 @Injectable()
 export class AiClient {
   private readonly baseUrl =
@@ -48,6 +64,21 @@ export class AiClient {
       ),
     );
     return data.markdown;
+  }
+
+  async generateCvPipeline(payload: {
+    perfilMestre: unknown;
+    vaga: unknown;
+    keywords: Keyword[];
+    contexto: string[];
+  }): Promise<GeneratePipelineResult> {
+    const { data } = await firstValueFrom(
+      this.http.post<GeneratePipelineResult>(
+        `${this.baseUrl}/generate-cv-pipeline`,
+        payload,
+      ),
+    );
+    return data;
   }
 
   async score(markdown: string, vaga: {

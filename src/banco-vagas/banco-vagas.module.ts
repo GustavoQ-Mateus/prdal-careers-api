@@ -7,5 +7,6 @@ import { BancoVagasService } from './banco-vagas.service';
   imports: [LotesModule],
   controllers: [BancoVagasController],
   providers: [BancoVagasService],
+  exports: [BancoVagasService],
 })
 export class BancoVagasModule {}

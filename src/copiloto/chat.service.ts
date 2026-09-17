@@ -314,6 +314,18 @@ export class ChatService {
         headers: { Authorization: authHeader },
       }),
     );
+    return this.desembrulhar(data);
+  }
+
+  private desembrulhar(data: unknown): unknown {
+    if (
+      data !== null &&
+      typeof data === 'object' &&
+      Array.isArray((data as { itens?: unknown }).itens) &&
+      typeof (data as { total?: unknown }).total === 'number'
+    ) {
+      return (data as { itens: unknown }).itens;
+    }
     return data;
   }
 

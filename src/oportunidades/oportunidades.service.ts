@@ -22,7 +22,7 @@ import {
   transicaoPermitida,
 } from '../dominio/transicoes';
 import { EventosService } from '../eventos/eventos.service';
-import { BancoVagaDoc, MongoService } from '../mongo/mongo.service';
+import { MongoService } from '../mongo/mongo.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AtualizarOportunidadeDto,
@@ -101,6 +101,8 @@ export class OportunidadesService {
       nivel?: string;
       prioridade?: string;
       ordenarPor?: string;
+      limit?: number;
+      offset?: number;
     },
   ) {
     const visao = (query.visao ?? 'ativas').toLowerCase();
@@ -108,23 +110,8 @@ export class OportunidadesService {
       return this.listarEntradas(usuarioId, query);
     }
 
-    const vagas = await this.prisma.vaga.findMany({
-      where: {
-        usuarioId,
-        ...(query.categoria ? { categoria: query.categoria } : {}),
-        ...(query.nivel ? { nivel: query.nivel } : {}),
-        ...(query.prioridade
-          ? { prioridade: query.prioridade as Vaga['prioridade'] }
-          : {}),
-        ...(query.busca
-          ? {
-              OR: [
-                { titulo: { contains: query.busca, mode: 'insensitive' } },
-                { empresa: { contains: query.busca, mode: 'insensitive' } },
-              ],
-            }
-          : {}),
-      },
+    const where = this.filtroRelacional(usuarioId, visao, query);
+    const include = {
       include: {
         candidaturas: { where: { principal: true } },
         curriculos: {
@@ -141,17 +128,178 @@ export class OportunidadesService {
           select: { ocorridoEm: true },
         },
       },
-    });
+    } satisfies Prisma.VagaFindManyArgs;
 
-    const itens = vagas
-      .map((vaga) => this.resumo(vaga))
-      .filter((item) =>
-        visao === 'encerradas'
-          ? item.apresentacao === 'ENCERRADA'
-          : item.apresentacao === 'ATIVA',
+    if (query.limit !== undefined) {
+      const offset = query.offset ?? 0;
+      const [total, ids] = await Promise.all([
+        this.prisma.vaga.count({ where }),
+        this.idsPaginaRelacional(usuarioId, visao, query, query.limit, offset),
+      ]);
+      const vagas = ids.length
+        ? await this.prisma.vaga.findMany({
+            where: { usuarioId, id: { in: ids } },
+            ...include,
+          })
+        : [];
+      const porId = new Map(vagas.map((vaga) => [vaga.id, vaga]));
+      const itens = ids
+        .map((id) => porId.get(id))
+        .filter((vaga): vaga is (typeof vagas)[number] => !!vaga)
+        .map((vaga) => this.resumo(vaga));
+
+      return { itens, total, limit: query.limit, offset };
+    }
+
+    const vagas = await this.prisma.vaga.findMany({ where, ...include });
+
+    const itens = vagas.map((vaga) => this.resumo(vaga));
+
+    const ordenados = this.ordenar(itens, query.ordenarPor);
+    return { itens: ordenados, total: ordenados.length, limit: null, offset: 0 };
+  }
+
+  private filtroRelacional(
+    usuarioId: string,
+    visao: string,
+    query: {
+      busca?: string;
+      categoria?: string;
+      nivel?: string;
+      prioridade?: string;
+    },
+  ): Prisma.VagaWhereInput {
+    const estado: Prisma.VagaWhereInput =
+      visao === 'encerradas'
+        ? {
+            OR: [
+              { arquivadaEm: { not: null } },
+              {
+                candidaturas: {
+                  some: {
+                    principal: true,
+                    status: { in: ['REJEITADA', 'DESISTIU'] },
+                  },
+                },
+              },
+            ],
+          }
+        : {
+            arquivadaEm: null,
+            NOT: {
+              candidaturas: {
+                some: {
+                  principal: true,
+                  status: { in: ['REJEITADA', 'DESISTIU'] },
+                },
+              },
+            },
+          };
+    const busca: Prisma.VagaWhereInput | null = query.busca
+      ? {
+          OR: [
+            { titulo: { contains: query.busca, mode: 'insensitive' } },
+            { empresa: { contains: query.busca, mode: 'insensitive' } },
+          ],
+        }
+      : null;
+
+    return {
+      usuarioId,
+      AND: busca ? [estado, busca] : [estado],
+      ...(query.categoria ? { categoria: query.categoria } : {}),
+      ...(query.nivel ? { nivel: query.nivel } : {}),
+      ...(query.prioridade
+        ? { prioridade: query.prioridade as Vaga['prioridade'] }
+        : {}),
+    };
+  }
+
+  private async idsPaginaRelacional(
+    usuarioId: string,
+    visao: string,
+    query: {
+      busca?: string;
+      categoria?: string;
+      nivel?: string;
+      prioridade?: string;
+      ordenarPor?: string;
+    },
+    limit: number,
+    offset: number,
+  ): Promise<string[]> {
+    const filtros: Prisma.Sql[] = [Prisma.sql`v.usuario_id = ${usuarioId}`];
+    if (visao === 'encerradas') {
+      filtros.push(
+        Prisma.sql`(v.arquivada_em IS NOT NULL OR principal.status::text IN ('REJEITADA', 'DESISTIU'))`,
       );
+    } else {
+      filtros.push(
+        Prisma.sql`v.arquivada_em IS NULL AND (principal.status IS NULL OR principal.status::text NOT IN ('REJEITADA', 'DESISTIU'))`,
+      );
+    }
+    if (query.categoria) filtros.push(Prisma.sql`v.categoria = ${query.categoria}`);
+    if (query.nivel) filtros.push(Prisma.sql`v.nivel = ${query.nivel}`);
+    if (query.prioridade) {
+      filtros.push(Prisma.sql`v.prioridade::text = ${query.prioridade}`);
+    }
+    if (query.busca) {
+      const busca = `%${query.busca}%`;
+      filtros.push(Prisma.sql`(v.titulo ILIKE ${busca} OR v.empresa ILIKE ${busca})`);
+    }
 
-    return this.ordenar(itens, query.ordenarPor);
+    let ordem = Prisma.sql`COALESCE(evento.ocorrido_em, v.atualizado_em) DESC`;
+    if (query.ordenarPor === 'prioridade') {
+      ordem = Prisma.sql`CASE v.prioridade::text WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 ELSE 1 END DESC, COALESCE(evento.ocorrido_em, v.atualizado_em) DESC`;
+    } else if (query.ordenarPor === 'score') {
+      ordem = Prisma.sql`curriculo.score DESC NULLS LAST, COALESCE(evento.ocorrido_em, v.atualizado_em) DESC`;
+    } else if (query.ordenarPor === 'keywords') {
+      ordem = Prisma.sql`CASE WHEN jsonb_typeof(v.keywords) = 'array' THEN jsonb_array_length(v.keywords) ELSE 0 END DESC, COALESCE(evento.ocorrido_em, v.atualizado_em) DESC`;
+    } else if (query.ordenarPor === 'etapa') {
+      ordem = Prisma.sql`CASE WHEN principal.status IS NULL OR principal.status::text = 'RASCUNHO' THEN 'PREPARACAO' ELSE principal.status::text END ASC, COALESCE(evento.ocorrido_em, v.atualizado_em) DESC`;
+    } else if (query.ordenarPor === 'prazo') {
+      ordem = Prisma.sql`acao.vence_em ASC NULLS LAST, COALESCE(evento.ocorrido_em, v.atualizado_em) DESC`;
+    }
+
+    const linhas = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+      SELECT v.id
+      FROM vagas v
+      LEFT JOIN LATERAL (
+        SELECT c.status
+        FROM candidaturas c
+        WHERE c.vaga_id = v.id AND c.principal = true
+        LIMIT 1
+      ) principal ON true
+      LEFT JOIN LATERAL (
+        SELECT c.score
+        FROM curriculos c
+        WHERE c.vaga_id = v.id
+        ORDER BY c.gerado_em DESC
+        LIMIT 1
+      ) curriculo ON true
+      LEFT JOIN LATERAL (
+        SELECT a.vence_em
+        FROM acoes_oportunidade a
+        WHERE a.vaga_id = v.id
+          AND a.principal = true
+          AND a.concluida_em IS NULL
+          AND a.cancelada_em IS NULL
+        ORDER BY a.vence_em ASC NULLS LAST, a.criado_em DESC
+        LIMIT 1
+      ) acao ON true
+      LEFT JOIN LATERAL (
+        SELECT e.ocorrido_em
+        FROM eventos_oportunidade e
+        WHERE e.vaga_id = v.id
+        ORDER BY e.ocorrido_em DESC
+        LIMIT 1
+      ) evento ON true
+      WHERE ${Prisma.join(filtros, ' AND ')}
+      ORDER BY ${ordem}, v.id ASC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `);
+    return linhas.map((linha) => linha.id);
   }
 
   async buscar(usuarioId: string, id: string) {
@@ -523,19 +671,34 @@ export class OportunidadesService {
 
   private async listarEntradas(
     usuarioId: string,
-    query: { busca?: string; categoria?: string; nivel?: string },
+    query: {
+      busca?: string;
+      categoria?: string;
+      nivel?: string;
+      limit?: number;
+      offset?: number;
+    },
   ) {
     const filtro: Record<string, unknown> = { usuarioId, status: 'CRUA' };
     if (query.categoria) filtro.categoria = query.categoria;
     if (query.nivel) filtro.nivel = query.nivel;
-    const docs = await this.mongo
-      .bancoVagas()
-      .find(filtro)
-      .sort({ criadoEm: -1 })
-      .toArray();
-    return docs
-      .filter((d) => this.casaBusca(d, query.busca))
-      .map((d) => ({
+    if (query.busca) {
+      const busca = query.busca.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      filtro.$or = [
+        { titulo: { $regex: busca, $options: 'i' } },
+        { empresa: { $regex: busca, $options: 'i' } },
+      ];
+    }
+
+    const paginar = query.limit !== undefined;
+    const offset = query.offset ?? 0;
+    const cursor = this.mongo.bancoVagas().find(filtro).sort({ criadoEm: -1 });
+    if (paginar) cursor.skip(offset).limit(query.limit!);
+    const [total, docs] = await Promise.all([
+      paginar ? this.mongo.bancoVagas().countDocuments(filtro) : Promise.resolve(null),
+      cursor.toArray(),
+    ]);
+    const itens = docs.map((d) => ({
         tipo: 'ENTRADA' as const,
         id: d._id,
         titulo: d.titulo,
@@ -552,15 +715,12 @@ export class OportunidadesService {
         origem: 'IMPORTACAO' as const,
         keywords: d.keywords ?? [],
       }));
-  }
-
-  private casaBusca(doc: BancoVagaDoc, busca?: string) {
-    if (!busca) return true;
-    const q = busca.toLowerCase();
-    return (
-      doc.titulo.toLowerCase().includes(q) ||
-      doc.empresa.toLowerCase().includes(q)
-    );
+    return {
+      itens,
+      total: total ?? itens.length,
+      limit: paginar ? query.limit! : null,
+      offset: paginar ? offset : 0,
+    };
   }
 
   private resumo(vaga: VagaComPrincipal) {

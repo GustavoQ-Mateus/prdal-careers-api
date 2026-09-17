@@ -14,6 +14,27 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EditarCurriculoDto } from './curriculo.dto';
 import { lerArquivo, salvarArquivo } from './storage';
 
+function ordemCurriculo(
+  ordenarPor?: string,
+): Prisma.CurriculoOrderByWithRelationInput[] {
+  if (ordenarPor === 'score') {
+    return [
+      { score: { sort: 'desc', nulls: 'last' } },
+      { geradoEm: 'desc' },
+      { id: 'asc' },
+    ];
+  }
+  if (ordenarPor === 'oportunidade') {
+    return [
+      { vaga: { empresa: 'asc' } },
+      { vaga: { titulo: 'asc' } },
+      { geradoEm: 'desc' },
+      { id: 'asc' },
+    ];
+  }
+  return [{ geradoEm: 'desc' }, { id: 'asc' }];
+}
+
 @Injectable()
 export class CurriculosService implements OnModuleInit {
   private readonly logger = new Logger(CurriculosService.name);
@@ -79,44 +100,58 @@ export class CurriculosService implements OnModuleInit {
     nivel?: string;
     de?: string;
     ate?: string;
+    ordenarPor?: string;
+    limit?: number;
+    offset?: number;
   }) {
-    const curriculos = await this.prisma.curriculo.findMany({
-      where: {
-        vaga: {
-          usuarioId,
-          ...(query.categoria ? { categoria: query.categoria } : {}),
-          ...(query.nivel ? { nivel: query.nivel } : {}),
-        },
-        ...(query.vagaId ? { vagaId: query.vagaId } : {}),
-        ...(query.scoreMinimo !== undefined
-          ? { score: { gte: query.scoreMinimo } }
-          : {}),
-        ...(query.de || query.ate
-          ? {
-              geradoEm: {
-                ...(query.de ? { gte: new Date(query.de) } : {}),
-                ...(query.ate ? { lte: new Date(query.ate) } : {}),
-              },
-            }
-          : {}),
+    const where: Prisma.CurriculoWhereInput = {
+      vaga: {
+        usuarioId,
+        ...(query.categoria ? { categoria: query.categoria } : {}),
+        ...(query.nivel ? { nivel: query.nivel } : {}),
       },
-      include: {
-        vaga: {
-          select: {
-            id: true,
-            titulo: true,
-            empresa: true,
-            categoria: true,
-            nivel: true,
+      ...(query.vagaId ? { vagaId: query.vagaId } : {}),
+      ...(query.scoreMinimo !== undefined
+        ? { score: { gte: query.scoreMinimo } }
+        : {}),
+      ...(query.de || query.ate
+        ? {
+            geradoEm: {
+              ...(query.de ? { gte: new Date(query.de) } : {}),
+              ...(query.ate ? { lte: new Date(query.ate) } : {}),
+            },
+          }
+        : {}),
+      ...(query.vinculado === 'true' ? { candidaturas: { some: {} } } : {}),
+      ...(query.vinculado === 'false' ? { candidaturas: { none: {} } } : {}),
+    };
+
+    const paginar = query.limit !== undefined && query.limit !== null;
+    const offset = query.offset ?? 0;
+
+    const [total, curriculos] = await Promise.all([
+      this.prisma.curriculo.count({ where }),
+      this.prisma.curriculo.findMany({
+        where,
+        include: {
+          vaga: {
+            select: {
+              id: true,
+              titulo: true,
+              empresa: true,
+              categoria: true,
+              nivel: true,
+            },
+          },
+          candidaturas: {
+            where: { curriculoId: { not: null } },
+            select: { id: true, principal: true, status: true },
           },
         },
-        candidaturas: {
-          where: { curriculoId: { not: null } },
-          select: { id: true, principal: true, status: true },
-        },
-      },
-      orderBy: { geradoEm: 'desc' },
-    });
+        orderBy: ordemCurriculo(query.ordenarPor),
+        ...(paginar ? { skip: offset, take: query.limit } : {}),
+      }),
+    ]);
 
     const itens = curriculos.map((c) => ({
       id: c.id,
@@ -143,9 +178,12 @@ export class CurriculosService implements OnModuleInit {
       downloadPdfUrl: c.pdfPath ? `/curriculos/${c.id}/pdf` : null,
     }));
 
-    if (query.vinculado === 'true') return itens.filter((i) => i.vinculo);
-    if (query.vinculado === 'false') return itens.filter((i) => !i.vinculo);
-    return itens;
+    return {
+      itens,
+      total,
+      limit: paginar ? query.limit! : null,
+      offset: paginar ? offset : 0,
+    };
   }
 
   async listarPorVaga(usuarioId: string, vagaId: string) {

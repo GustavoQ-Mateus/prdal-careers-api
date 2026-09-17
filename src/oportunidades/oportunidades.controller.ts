@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -22,6 +23,16 @@ import {
 } from './oportunidade.dto';
 import { OportunidadesService } from './oportunidades.service';
 
+function numeroPaginacao(valor: string | undefined, nome: 'limit' | 'offset') {
+  if (valor === undefined) return undefined;
+  const numero = Number(valor);
+  const minimo = nome === 'limit' ? 1 : 0;
+  if (!Number.isInteger(numero) || numero < minimo) {
+    throw new BadRequestException(`${nome} invalido`);
+  }
+  return numero;
+}
+
 @UseGuards(JwtAuthGuard)
 @Controller('oportunidades')
 export class OportunidadesController {
@@ -40,6 +51,8 @@ export class OportunidadesController {
     @Query('nivel') nivel?: string,
     @Query('prioridade') prioridade?: string,
     @Query('ordenarPor') ordenarPor?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ) {
     return this.oportunidades.listar(user.userId, {
       visao,
@@ -48,6 +61,8 @@ export class OportunidadesController {
       nivel,
       prioridade,
       ordenarPor,
+      limit: numeroPaginacao(limit, 'limit'),
+      offset: numeroPaginacao(offset, 'offset'),
     });
   }
 

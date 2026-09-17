@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -14,6 +15,16 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { EditarCurriculoDto } from './curriculo.dto';
 import { CurriculosService } from './curriculos.service';
 
+function numeroPaginacao(valor: string | undefined, nome: 'limit' | 'offset') {
+  if (valor === undefined) return undefined;
+  const numero = Number(valor);
+  const minimo = nome === 'limit' ? 1 : 0;
+  if (!Number.isInteger(numero) || numero < minimo) {
+    throw new BadRequestException(`${nome} invalido`);
+  }
+  return numero;
+}
+
 @UseGuards(JwtAuthGuard)
 @Controller()
 export class CurriculosController {
@@ -27,8 +38,11 @@ export class CurriculosController {
     @Query('vinculado') vinculado?: string,
     @Query('categoria') categoria?: string,
     @Query('nivel') nivel?: string,
+    @Query('ordenarPor') ordenarPor?: string,
     @Query('de') de?: string,
     @Query('ate') ate?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ) {
     return this.curriculos.listar(user.userId, {
       vagaId,
@@ -36,8 +50,11 @@ export class CurriculosController {
       vinculado,
       categoria,
       nivel,
+      ordenarPor,
       de,
       ate,
+      limit: numeroPaginacao(limit, 'limit'),
+      offset: numeroPaginacao(offset, 'offset'),
     });
   }
 

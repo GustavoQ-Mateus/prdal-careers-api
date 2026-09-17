@@ -36,6 +36,19 @@ function ordemCurriculo(
   return [{ geradoEm: 'desc' }, { id: 'asc' }];
 }
 
+function normalizarKeywords(valor: Prisma.JsonValue): Keyword[] {
+  if (!Array.isArray(valor)) return [];
+  return valor.flatMap((item) => {
+    if (typeof item === 'string' && item.trim()) return [{ termo: item.trim(), peso: 0 }];
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      const termo = 'termo' in item && typeof item.termo === 'string' ? item.termo.trim() : '';
+      const peso = 'peso' in item && typeof item.peso === 'number' ? item.peso : 0;
+      return termo ? [{ termo, peso }] : [];
+    }
+    return [];
+  });
+}
+
 @Injectable()
 export class CurriculosService implements OnModuleInit {
   private readonly logger = new Logger(CurriculosService.name);
@@ -221,7 +234,7 @@ export class CurriculosService implements OnModuleInit {
     });
     if (!curriculo) throw new NotFoundException('curriculo nao encontrado');
 
-    const keywords = curriculo.vaga.keywords as unknown as Keyword[];
+    const keywords = normalizarKeywords(curriculo.vaga.keywords);
     const { score, breakdown } = await this.aiClient.score(dto.markdown, {
       keywords,
     });
@@ -318,7 +331,7 @@ export class CurriculosService implements OnModuleInit {
       });
       if (!perfil) throw new Error('perfil-mestre ausente');
 
-      const keywords = geracao.vaga.keywords as unknown as Keyword[];
+      const keywords = normalizarKeywords(geracao.vaga.keywords);
       const contexto = await this.recuperarContexto(
         geracao.usuarioId,
         geracao.vaga,

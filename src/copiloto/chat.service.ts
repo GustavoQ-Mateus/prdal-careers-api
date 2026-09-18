@@ -15,6 +15,8 @@ import { CATALOGO_TOOLS, ToolDef, TOOLS_POR_NOME } from './tools';
 
 const MAX_PASSOS = 8;
 const LIMITE_HISTORICO = 2000;
+const ORCAMENTO_ACOMPANHAMENTO_MS = 20_000;
+const INTERVALO_ACOMPANHAMENTO_MS = 1_500;
 @Injectable()
 export class ChatService {
   private readonly selfUrl =
@@ -156,6 +158,14 @@ export class ChatService {
       exigeConfirmacao: false,
     });
     const resultado = await this.executarTool(res, conversa, authHeader, tool, pend.callId, args);
+    if (tool.nome === 'gerar_curriculo' && resultado.ok) {
+      const acompanhamento = await this.acompanharGeracao(res, conversa, authHeader, resultado.valor);
+      if (acompanhamento === 'orcamento_esgotado') {
+        const texto = 'A geração ainda está em andamento e o acompanhamento deste turno atingiu o limite. Não há monitoramento automático além daqui; pergunte novamente ou reabra esta conversa para conferir.';
+        this.streamTokens(res, texto);
+        await this.registrar(conversa, { papel: 'assistant', conteudo: texto });
+      }
+    }
     if (resultado.ok) {
       await this.conversas.definirPendencia(conversa._id, null);
       await this.conversas.registrarConfirmacao(conversa._id, { callId: pend.callId, tool: pend.tool, decisao: 'confirmar', resultado: resultado.valor, concluidaEm: new Date() });
@@ -292,10 +302,49 @@ export class ChatService {
         args,
         exigeConfirmacao: false,
       });
-      await this.executarTool(res, conversa, authHeader, tool, callId, args);
+      const execucao = await this.executarTool(res, conversa, authHeader, tool, callId, args);
+      if (tool.nome === 'gerar_curriculo' && execucao.ok) {
+        const acompanhamento = await this.acompanharGeracao(
+          res, conversa, authHeader, execucao.valor,
+        );
+        if (acompanhamento === 'orcamento_esgotado') {
+          const texto = 'A geração ainda está em andamento e o acompanhamento deste turno atingiu o limite. Não há monitoramento automático além daqui; pergunte novamente ou reabra esta conversa para conferir.';
+          this.streamTokens(res, texto);
+          await this.registrar(conversa, { papel: 'assistant', conteudo: texto });
+          this.finalizar(res, conversa._id, 'completo');
+          return;
+        }
+      }
     }
 
     this.finalizar(res, conversa._id, 'completo');
+  }
+
+  private async acompanharGeracao(
+    res: Response,
+    conversa: ConversaCopilotoDoc,
+    authHeader: string,
+    inicio: unknown,
+  ): Promise<'terminal' | 'orcamento_esgotado' | 'nao_iniciado'> {
+    if (!inicio || typeof inicio !== 'object') return 'nao_iniciado';
+    const jobId = (inicio as Record<string, unknown>).jobId;
+    const statusInicial = String((inicio as Record<string, unknown>).status ?? 'GERANDO');
+    if (typeof jobId !== 'string' || ['CONCLUIDA', 'ERRO'].includes(statusInicial)) return 'terminal';
+    const tool = TOOLS_POR_NOME.get('status_geracao');
+    if (!tool) return 'nao_iniciado';
+    const limite = Date.now() + ORCAMENTO_ACOMPANHAMENTO_MS;
+    while (Date.now() < limite) {
+      await new Promise((resolve) => setTimeout(resolve, INTERVALO_ACOMPANHAMENTO_MS));
+      const callId = randomUUID();
+      const args = { jobId };
+      this.enviar(res, 'tool_call', { callId, tool: tool.nome, efeito: tool.efeito, args, exigeConfirmacao: false });
+      const resultado = await this.executarTool(res, conversa, authHeader, tool, callId, args);
+      const status = resultado.valor && typeof resultado.valor === 'object'
+        ? String((resultado.valor as Record<string, unknown>).status ?? '')
+        : '';
+      if (!resultado.ok || status === 'CONCLUIDA' || status === 'ERRO') return 'terminal';
+    }
+    return 'orcamento_esgotado';
   }
 
   private async executarTool(

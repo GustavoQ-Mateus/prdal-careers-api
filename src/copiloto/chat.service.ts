@@ -15,7 +15,7 @@ import { CATALOGO_TOOLS, ToolDef, TOOLS_POR_NOME } from './tools';
 
 const MAX_PASSOS = 8;
 const LIMITE_HISTORICO = 2000;
-const ORCAMENTO_ACOMPANHAMENTO_MS = 20_000;
+const ORCAMENTO_ACOMPANHAMENTO_MS = 90_000;
 const INTERVALO_ACOMPANHAMENTO_MS = 1_500;
 @Injectable()
 export class ChatService {
@@ -329,7 +329,11 @@ export class ChatService {
     if (!inicio || typeof inicio !== 'object') return 'nao_iniciado';
     const jobId = (inicio as Record<string, unknown>).jobId;
     const statusInicial = String((inicio as Record<string, unknown>).status ?? 'GERANDO');
-    if (typeof jobId !== 'string' || ['CONCLUIDA', 'ERRO'].includes(statusInicial)) return 'terminal';
+    if (typeof jobId !== 'string') return 'nao_iniciado';
+    if (['CONCLUIDA', 'ERRO'].includes(statusInicial)) {
+      if (statusInicial === 'CONCLUIDA') await this.lerCurriculoFinal(res, conversa, authHeader, inicio);
+      return 'terminal';
+    }
     const tool = TOOLS_POR_NOME.get('status_geracao');
     if (!tool) return 'nao_iniciado';
     const limite = Date.now() + ORCAMENTO_ACOMPANHAMENTO_MS;
@@ -342,9 +346,29 @@ export class ChatService {
       const status = resultado.valor && typeof resultado.valor === 'object'
         ? String((resultado.valor as Record<string, unknown>).status ?? '')
         : '';
-      if (!resultado.ok || status === 'CONCLUIDA' || status === 'ERRO') return 'terminal';
+      if (!resultado.ok || status === 'ERRO') return 'terminal';
+      if (status === 'CONCLUIDA') {
+        await this.lerCurriculoFinal(res, conversa, authHeader, resultado.valor);
+        return 'terminal';
+      }
     }
     return 'orcamento_esgotado';
+  }
+
+  private async lerCurriculoFinal(
+    res: Response,
+    conversa: ConversaCopilotoDoc,
+    authHeader: string,
+    status: unknown,
+  ) {
+    if (!status || typeof status !== 'object') return;
+    const curriculoId = (status as Record<string, unknown>).curriculoId;
+    const tool = TOOLS_POR_NOME.get('buscar_curriculo');
+    if (typeof curriculoId !== 'string' || !tool) return;
+    const callId = randomUUID();
+    const args = { curriculoId };
+    this.enviar(res, 'tool_call', { callId, tool: tool.nome, efeito: tool.efeito, args, exigeConfirmacao: false });
+    await this.executarTool(res, conversa, authHeader, tool, callId, args);
   }
 
   private async executarTool(

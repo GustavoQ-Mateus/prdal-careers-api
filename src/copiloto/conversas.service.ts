@@ -11,6 +11,50 @@ import {
 export class ConversasService {
   constructor(private readonly mongo: MongoService) {}
 
+  async listar(usuarioId: string, oportunidadeId?: string) {
+    const filtro = {
+      usuarioId,
+      ...(oportunidadeId ? { oportunidadeId } : {}),
+    };
+    const conversas = await this.mongo
+      .conversasCopiloto()
+      .find(filtro)
+      .sort({ atualizadoEm: -1 })
+      .limit(30)
+      .toArray();
+
+    return conversas.map((conversa) => {
+      const ultima = [...conversa.mensagens].reverse().find((m) => m.conteudo.trim());
+      const primeiraUser = conversa.mensagens.find((m) => m.papel === 'user');
+      return {
+        id: conversa._id,
+        modo: conversa.modo,
+        oportunidadeId: conversa.oportunidadeId,
+        titulo: this.tituloConversa(primeiraUser?.conteudo ?? ultima?.conteudo),
+        ultimaMensagem: this.tituloConversa(ultima?.conteudo),
+        totalMensagens: conversa.mensagens.length,
+        criadoEm: conversa.criadoEm,
+        atualizadoEm: conversa.atualizadoEm,
+      };
+    });
+  }
+
+  async buscar(usuarioId: string, conversaId: string) {
+    const conversa = await this.mongo
+      .conversasCopiloto()
+      .findOne({ _id: conversaId, usuarioId });
+    if (!conversa) throw new NotFoundException('conversa nao encontrada');
+    return {
+      id: conversa._id,
+      modo: conversa.modo,
+      oportunidadeId: conversa.oportunidadeId,
+      mensagens: conversa.mensagens,
+      pendencia: conversa.pendencia,
+      criadoEm: conversa.criadoEm,
+      atualizadoEm: conversa.atualizadoEm,
+    };
+  }
+
   async abrir(
     usuarioId: string,
     conversaId: string | undefined,
@@ -98,5 +142,12 @@ export class ConversasService {
   async buscarConfirmacao(conversaId: string, callId: string) {
     const conversa = await this.mongo.conversasCopiloto().findOne({ _id: conversaId });
     return conversa?.confirmacoes?.find((item) => item.callId === callId) ?? null;
+  }
+
+  private tituloConversa(texto?: string): string {
+    const limpo = String(texto ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return limpo ? limpo.slice(0, 96) : 'Conversa sem título';
   }
 }

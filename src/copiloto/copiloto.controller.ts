@@ -1,8 +1,11 @@
 import {
   Body,
   Controller,
+  Get,
   Headers,
+  Param,
   Post,
+  Query,
   Res,
   UseGuards,
 } from '@nestjs/common';
@@ -11,6 +14,7 @@ import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CapacidadesService } from './capacidades.service';
 import { ChatService } from './chat.service';
+import { ConversasService } from './conversas.service';
 import {
   ChatDto,
   KeywordsPreviaDto,
@@ -26,7 +30,21 @@ export class CopilotoController {
   constructor(
     private readonly chat: ChatService,
     private readonly capacidades: CapacidadesService,
+    private readonly conversas: ConversasService,
   ) {}
+
+  @Get('conversas')
+  listarConversas(
+    @CurrentUser() user: AuthUser,
+    @Query('oportunidadeId') oportunidadeId?: string,
+  ) {
+    return this.conversas.listar(user.userId, oportunidadeId);
+  }
+
+  @Get('conversas/:id')
+  buscarConversa(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.conversas.buscar(user.userId, id);
+  }
 
   @Post('chat')
   async chatSse(

@@ -9,19 +9,23 @@ export class DocClient {
 
   constructor(private readonly http: HttpService) {}
 
-  async renderDocx(markdown: string): Promise<Buffer> {
-    return this.render('docx', markdown);
+  async renderDocx(markdown: string, template?: string): Promise<Buffer> {
+    return this.render('docx', markdown, template);
   }
 
-  async renderPdf(markdown: string): Promise<Buffer> {
-    return this.render('pdf', markdown);
+  async renderPdf(markdown: string, template?: string): Promise<Buffer> {
+    return this.render('pdf', markdown, template);
   }
 
-  private async render(formato: 'docx' | 'pdf', markdown: string): Promise<Buffer> {
+  private async render(
+    formato: 'docx' | 'pdf',
+    markdown: string,
+    template?: string,
+  ): Promise<Buffer> {
     const { data } = await firstValueFrom(
       this.http.post<ArrayBuffer>(
         `${this.baseUrl}/render/${formato}`,
-        { markdown },
+        { markdown, template },
         { responseType: 'arraybuffer' },
       ),
     );

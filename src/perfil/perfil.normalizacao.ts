@@ -33,6 +33,8 @@ type PerfilComJson = {
   resumo?: unknown;
   experiencias?: unknown;
   formacao?: unknown;
+  certificacoes?: unknown;
+  idiomas?: unknown;
   skills?: unknown;
 };
 
@@ -126,6 +128,16 @@ export function normalizarExperiencias(valor: unknown): ExperienciaPerfil[] {
   const experiencias = valor.flatMap((item, indice) => {
     if (typeof item === 'string') {
       const descricao = texto(item);
+      const partes = descricao.split('|').map((parte) => parte.trim());
+      if (partes.length >= 4) {
+        return [{
+          id: `experiencia-legado-${indice + 1}`,
+          empresa: partes[0],
+          cargo: partes[1],
+          periodo: partes[2],
+          descricao: partes.slice(3).join(' | '),
+        }];
+      }
       return descricao
         ? [{
             id: `experiencia-legado-${indice + 1}`,
@@ -155,6 +167,18 @@ export function normalizarExperiencias(valor: unknown): ExperienciaPerfil[] {
   return idsUnicos(experiencias);
 }
 
+export function extrairRealizacoes(descricao: string): string[] {
+  const linhas = descricao
+    .split(/\r?\n/)
+    .map((linha) => linha.trim())
+    .filter(Boolean);
+  const bullets = linhas
+    .filter((linha) => /^[-*•]\s+/.test(linha))
+    .map((linha) => linha.replace(/^[-*•]\s+/, '').trim())
+    .filter(Boolean);
+  return bullets.length ? bullets : descricao.trim() ? [descricao.trim()] : [];
+}
+
 export function tituloExperiencia(experiencia: ExperienciaPerfil): string {
   if (experiencia.cargo && experiencia.empresa) {
     return `${experiencia.cargo} na ${experiencia.empresa}`;
@@ -163,16 +187,19 @@ export function tituloExperiencia(experiencia: ExperienciaPerfil): string {
 }
 
 export function textoExperiencia(experiencia: ExperienciaPerfil): string {
-  return [
+  const cabecalho = [
     experiencia.cargo && `Cargo: ${experiencia.cargo}`,
     experiencia.empresa && `Empresa: ${experiencia.empresa}`,
     experiencia.periodo && `Período: ${experiencia.periodo}`,
     experiencia.local && `Local: ${experiencia.local}`,
-    experiencia.descricao && `Descrição: ${experiencia.descricao}`,
     experiencia.tecnologias?.length && `Tecnologias e competências: ${experiencia.tecnologias.join(', ')}`,
   ]
     .filter(Boolean)
     .join('\n');
+  const realizacoes = extrairRealizacoes(experiencia.descricao)
+    .map((realizacao) => `- ${realizacao}`)
+    .join('\n');
+  return [cabecalho, realizacoes].filter(Boolean).join('\n');
 }
 
 export function contatosParaObjeto(contatos: ContatoPerfil[]): Record<string, string> {
@@ -193,11 +220,15 @@ export function contatosParaObjeto(contatos: ContatoPerfil[]): Record<string, st
 export function normalizarPerfil<T extends PerfilComJson>(perfil: T): Omit<T, 'contato' | 'experiencias'> & {
   contato: ContatoPerfil[];
   experiencias: ExperienciaPerfil[];
+  certificacoes: string[];
+  idiomas: string[];
 } {
   return {
     ...perfil,
     contato: normalizarContato(perfil.contato),
     experiencias: normalizarExperiencias(perfil.experiencias),
+    certificacoes: listaTexto(perfil.certificacoes),
+    idiomas: listaTexto(perfil.idiomas),
   };
 }
 
@@ -209,9 +240,12 @@ export function perfilParaIa(perfil: PerfilComJson) {
     resumo: texto(perfil.resumo),
     experiencias: experiencias.map((experiencia) => ({
       ...experiencia,
+      realizacoes: extrairRealizacoes(experiencia.descricao),
       texto: textoExperiencia(experiencia),
     })),
     formacao: listaTexto(perfil.formacao),
+    certificacoes: listaTexto(perfil.certificacoes),
+    idiomas: listaTexto(perfil.idiomas),
     skills: listaTexto(perfil.skills),
   };
 }

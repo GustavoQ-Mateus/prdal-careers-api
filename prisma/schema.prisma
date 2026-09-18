@@ -33,6 +33,8 @@ model PerfilMestre {
   resumo       String
   experiencias Json
   formacao     Json
+  certificacoes Json    @default("[]")
+  idiomas       Json    @default("[]")
   skills       Json
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
 

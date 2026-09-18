@@ -480,10 +480,16 @@ export class CurriculosService implements OnModuleInit {
     let docxPath: string | null = null;
     let pdfPath: string | null = null;
     try {
-      const docx = await this.docClient.renderDocx(markdown);
+      let template: string | undefined;
+      let pdf = await this.docClient.renderPdf(markdown);
+      let paginas = this.contarPaginasPdf(pdf);
+      if (paginas > 1) {
+        template = 'compact';
+        pdf = await this.docClient.renderPdf(markdown, template);
+        paginas = this.contarPaginasPdf(pdf);
+      }
+      const docx = await this.docClient.renderDocx(markdown, template);
       docxPath = await salvarArquivo(`${curriculoId}.docx`, docx);
-      const pdf = await this.docClient.renderPdf(markdown);
-      const paginas = this.contarPaginasPdf(pdf);
       if (paginas > 1) {
         this.logger.warn(`curriculo ${curriculoId} gerou PDF com ${paginas} paginas`);
       }

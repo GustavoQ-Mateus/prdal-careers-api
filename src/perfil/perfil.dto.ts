@@ -77,6 +77,16 @@ export class PerfilMestreDto {
   @IsString({ each: true })
   formacao!: string[];
 
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  certificacoes?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  idiomas?: string[];
+
   @IsArray()
   @IsString({ each: true })
   skills!: string[];

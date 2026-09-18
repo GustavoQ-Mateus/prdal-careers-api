@@ -1,3 +1,5 @@
+import { TIPOS_ACAO_OPORTUNIDADE } from './tool-args';
+
 export type EfeitoTool = 'leitura' | 'escrita' | 'entrega_externa';
 
 export type Metodo = 'GET' | 'POST' | 'PUT' | 'PATCH';
@@ -134,7 +136,8 @@ export const TOOLS: ToolDef[] = [
   {
     nome: 'buscar_curriculo',
     efeito: 'leitura',
-    descricao: 'Detalha um curriculo com score e breakdown',
+    descricao:
+      'Etapa 3 obrigatoria: le o curriculo concluido e seu score/breakdown ATS deterministico antes de qualquer acao externa',
     parametros: { curriculoId: 'id do curriculo' },
     requisicao: (a) => ({
       metodo: 'GET',
@@ -144,7 +147,8 @@ export const TOOLS: ToolDef[] = [
   {
     nome: 'status_geracao',
     efeito: 'leitura',
-    descricao: 'Consulta o status de uma geracao de curriculo',
+    descricao:
+      'Consulta exclusivamente uma geracao em andamento; quando status for CONCLUIDA, chame buscar_curriculo com o curriculoId retornado',
     parametros: { jobId: 'id da geracao' },
     requisicao: (a) => ({
       metodo: 'GET',
@@ -213,7 +217,8 @@ export const TOOLS: ToolDef[] = [
   {
     nome: 'gerar_curriculo',
     efeito: 'escrita',
-    descricao: 'Gera o curriculo tailored para a oportunidade',
+    descricao:
+      'Inicia a pipeline ATS deterministica (analise inicial e curriculo tailored); depois acompanhe somente com status_geracao',
     parametros: { oportunidadeId: 'id da oportunidade' },
     resumo: () => 'Gerar o curriculo tailored para a oportunidade',
     requisicao: (a) => ({
@@ -240,11 +245,12 @@ export const TOOLS: ToolDef[] = [
   {
     nome: 'definir_proximo_passo',
     efeito: 'escrita',
-    descricao: 'Cria uma acao de proximo passo na oportunidade',
+    descricao:
+      'Cria uma acao de agenda, nao redige mensagens nem consulta geracao; a API normaliza tipo e exige Etapa 3 para acoes externas',
     parametros: {
       oportunidadeId: 'id da oportunidade',
       titulo: 'texto',
-      tipo: 'tipo de acao',
+      tipo: `enum obrigatorio; use exatamente um valor literal: ${TIPOS_ACAO_OPORTUNIDADE.join(' | ')}`,
       venceEm: 'data ISO opcional',
       lembrarEm: 'data ISO opcional',
       principal: 'true | false',
@@ -330,7 +336,7 @@ export const TOOLS: ToolDef[] = [
     nome: 'redigir_mensagem_recrutador',
     efeito: 'entrega_externa',
     descricao:
-      'Redige a mensagem ao recrutador; entrega o texto para o candidato enviar',
+      'Depois da Etapa 3, redige a mensagem ao recrutador e entrega o texto para o candidato revisar; nao use definir_proximo_passo para redigir',
     parametros: {
       oportunidadeId: 'id da oportunidade',
       contexto: 'contexto opcional do candidato',

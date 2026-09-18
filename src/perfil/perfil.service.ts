@@ -20,6 +20,8 @@ export class PerfilService {
       resumo: dto.resumo,
       experiencias: normalizarExperiencias(dto.experiencias) as unknown as Prisma.InputJsonValue,
       formacao: dto.formacao as Prisma.InputJsonValue,
+      certificacoes: (dto.certificacoes ?? []) as Prisma.InputJsonValue,
+      idiomas: (dto.idiomas ?? []) as Prisma.InputJsonValue,
       skills: dto.skills as Prisma.InputJsonValue,
     };
     const perfil = await this.prisma.perfilMestre.upsert({

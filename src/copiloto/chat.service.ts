@@ -10,11 +10,11 @@ import { AiClient } from '../clients/ai.client';
 import { ConversaCopilotoDoc, MensagemCopiloto } from '../mongo/mongo.service';
 import { ConversasService } from './conversas.service';
 import { ChatDto } from './copiloto.dto';
+import { prepararArgsTool } from './tool-args';
 import { CATALOGO_TOOLS, ToolDef, TOOLS_POR_NOME } from './tools';
 
 const MAX_PASSOS = 8;
 const LIMITE_HISTORICO = 2000;
-
 @Injectable()
 export class ChatService {
   private readonly selfUrl =
@@ -118,7 +118,36 @@ export class ChatService {
 
     const tool = TOOLS_POR_NOME.get(pend.tool);
     if (!tool) return true;
-    const args = { ...pend.args, ...(confirmacao.ajustes ?? {}) };
+    const preparados = prepararArgsTool({
+      tool: tool.nome,
+      args: { ...pend.args, ...(confirmacao.ajustes ?? {}) },
+      oportunidadeId: conversa.oportunidadeId,
+      mensagens: conversa.mensagens,
+    });
+    if (preparados.erro) {
+      await this.conversas.definirPendencia(conversa._id, null);
+      await this.conversas.registrarConfirmacao(conversa._id, {
+        callId: pend.callId,
+        tool: pend.tool,
+        decisao: 'confirmar',
+        erro: preparados.erro,
+        concluidaEm: new Date(),
+      });
+      this.enviar(res, 'tool_resultado', {
+        callId: pend.callId,
+        tool: tool.nome,
+        ok: false,
+        resultado: null,
+        erro: { mensagem: preparados.erro, recuperavel: true },
+      });
+      await this.registrar(conversa, {
+        papel: 'tool',
+        tool: tool.nome,
+        conteudo: `falha: ${preparados.erro}`,
+      });
+      return true;
+    }
+    const args = preparados.args;
     this.enviar(res, 'tool_call', {
       callId: pend.callId,
       tool: tool.nome,
@@ -185,8 +214,29 @@ export class ChatService {
         return;
       }
 
-      const args = turno.args ?? {};
+      const preparados = prepararArgsTool({
+        tool: tool.nome,
+        args: turno.args ?? {},
+        oportunidadeId: conversa.oportunidadeId,
+        mensagens: conversa.mensagens,
+      });
+      const args = preparados.args;
       const callId = randomUUID();
+      if (preparados.erro) {
+        this.enviar(res, 'tool_resultado', {
+          callId,
+          tool: tool.nome,
+          ok: false,
+          resultado: null,
+          erro: { mensagem: preparados.erro, recuperavel: true },
+        });
+        await this.registrar(conversa, {
+          papel: 'tool',
+          tool: tool.nome,
+          conteudo: `falha: ${preparados.erro}`,
+        });
+        continue;
+      }
 
       if (tool.efeito === 'escrita' && modo === 'assistido') {
         this.enviar(res, 'tool_call', {
@@ -268,7 +318,7 @@ export class ChatService {
       await this.registrar(conversa, {
         papel: 'tool',
         tool: tool.nome,
-        conteudo: this.resumirResultado(resultado),
+        conteudo: this.resumirResultado(resultado, tool.nome),
       });
       return { ok: true, valor: resultado };
     } catch (err) {
@@ -380,7 +430,25 @@ export class ChatService {
     await this.conversas.anexar(conversa._id, mensagem);
   }
 
-  private resumirResultado(resultado: unknown): string {
+  private resumirResultado(resultado: unknown, tool: string): string {
+    if (tool === 'buscar_curriculo' && resultado && typeof resultado === 'object') {
+      const curriculo = resultado as Record<string, unknown>;
+      const markdown = String(curriculo.markdown ?? '');
+      return JSON.stringify({
+        id: curriculo.id,
+        vagaId: curriculo.vagaId,
+        rotulo: curriculo.rotulo,
+        score: curriculo.score,
+        breakdown: curriculo.breakdown,
+        analiseInicial: curriculo.analiseInicial,
+        analiseFinal: curriculo.analiseFinal,
+        degradacao: curriculo.degradacao,
+        markdown:
+          markdown.length > LIMITE_HISTORICO
+            ? `${markdown.slice(0, LIMITE_HISTORICO)}...`
+            : markdown,
+      });
+    }
     const texto = JSON.stringify(resultado ?? null);
     return texto.length > LIMITE_HISTORICO
       ? `${texto.slice(0, LIMITE_HISTORICO)}...`

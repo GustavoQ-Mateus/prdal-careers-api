@@ -5,6 +5,7 @@
   "scripts": {
     "build": "nest build",
     "typecheck": "tsc --noEmit",
+    "test:copiloto": "npm run build && node --test test/copiloto-chat.test.js",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",

@@ -47,6 +47,15 @@ export class ContextoService {
       (perfil.formacao as string[]).forEach((f, i) => {
         if (String(f).trim()) novos.push(doc('perfil', `formacao-${i}`, 'Formacao', String(f)));
       });
+      (perfil.certificacoes as string[]).forEach((certificacao, i) => {
+        if (String(certificacao).trim()) {
+          novos.push(doc('perfil', `certificacao-${i}`, 'Certificacao', String(certificacao)));
+        }
+      });
+      const idiomas = perfil.idiomas as string[];
+      if (idiomas?.length) {
+        novos.push(doc('perfil', 'idiomas', 'Idiomas', idiomas.join(', ')));
+      }
       const skills = perfil.skills as string[];
       if (skills?.length) {
         novos.push(doc('perfil', 'skills', 'Skills', skills.join(', ')));

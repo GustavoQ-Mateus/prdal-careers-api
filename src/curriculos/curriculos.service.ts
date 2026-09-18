@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
+import archiver from 'archiver';
 import { AiClient, AtsAnalysis, Keyword } from '../clients/ai.client';
 import { DocClient } from '../clients/doc.client';
 import { EventosService } from '../eventos/eventos.service';
@@ -47,6 +48,10 @@ function normalizarKeywords(valor: Prisma.JsonValue): Keyword[] {
     }
     return [];
   });
+}
+
+function nomeArquivo(valor: string) {
+  return valor.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim() || 'Curriculo';
 }
 
 @Injectable()
@@ -350,6 +355,30 @@ export class CurriculosService implements OnModuleInit {
     const caminho = formato === 'docx' ? curriculo.docxPath : curriculo.pdfPath;
     if (!caminho) throw new NotFoundException('arquivo indisponivel');
     return lerArquivo(caminho);
+  }
+
+  async pacote(usuarioId: string, id: string) {
+    const curriculo = await this.prisma.curriculo.findFirst({
+      where: { id, vaga: { usuarioId } },
+      include: { vaga: { select: { titulo: true, empresa: true } } },
+    });
+    if (!curriculo) throw new NotFoundException('curriculo nao encontrado');
+
+    const pasta = nomeArquivo(`${curriculo.vaga.titulo} - ${curriculo.vaga.empresa}`);
+    const rotulo = nomeArquivo(curriculo.rotulo);
+    const buffer = await new Promise<Buffer>((resolve, reject) => {
+      const zip = archiver('zip', { zlib: { level: 9 } });
+      const partes: Buffer[] = [];
+      zip.on('data', (parte: Buffer) => partes.push(parte));
+      zip.on('error', reject);
+      zip.on('end', () => resolve(Buffer.concat(partes)));
+      zip.append(curriculo.markdown, { name: `${pasta}/Curriculo_${rotulo}.md` });
+      void Promise.all([
+        curriculo.docxPath ? lerArquivo(curriculo.docxPath).then((arquivo) => zip.append(arquivo, { name: `${pasta}/Curriculo_${rotulo}.docx` })) : null,
+        curriculo.pdfPath ? lerArquivo(curriculo.pdfPath).then((arquivo) => zip.append(arquivo, { name: `${pasta}/Curriculo_${rotulo}.pdf` })) : null,
+      ]).then(() => void zip.finalize(), reject);
+    });
+    return { buffer, nome: `${pasta}.zip` };
   }
 
   private async processar(id: string) {

@@ -103,4 +103,16 @@ export class CurriculosController {
     res.setHeader('Content-Disposition', 'attachment; filename="curriculo.pdf"');
     res.send(buffer);
   }
+
+  @Get('curriculos/:id/pacote')
+  async pacote(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const pacote = await this.curriculos.pacote(user.userId, id);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${pacote.nome}"`);
+    res.send(pacote.buffer);
+  }
 }

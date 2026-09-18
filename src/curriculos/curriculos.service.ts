@@ -89,7 +89,23 @@ export class CurriculosService implements OnModuleInit {
       where: { usuarioId, vagaId },
       orderBy: { criadoEm: 'desc' },
     });
-    if (existente) return { jobId: existente.id, status: existente.status, curriculoId: existente.curriculoId };
+    if (existente) {
+      if (existente.status === 'ERRO') {
+        const reinicio = await this.prisma.geracaoCurriculo.updateMany({
+          where: { id: existente.id, usuarioId, status: 'ERRO' },
+          data: {
+            status: 'PENDENTE',
+            erro: null,
+            analiseInicial: Prisma.DbNull,
+            analiseFinal: Prisma.DbNull,
+            degradacao: null,
+          },
+        });
+        if (reinicio.count > 0) void this.processar(existente.id);
+        return { jobId: existente.id, status: 'GERANDO', curriculoId: null };
+      }
+      return { jobId: existente.id, status: existente.status, curriculoId: existente.curriculoId };
+    }
 
     const geracao = await this.prisma.geracaoCurriculo.create({
       data: { usuarioId, vagaId },

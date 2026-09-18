@@ -2,6 +2,13 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 
+const DEFAULT_GENERATE_TIMEOUT_MS = 300000;
+
+function envMs(nome: string, fallback: number): number {
+  const valor = Number(process.env[nome]);
+  return Number.isFinite(valor) && valor > 0 ? valor : fallback;
+}
+
 export interface Keyword {
   termo: string;
   peso: number;
@@ -39,6 +46,10 @@ export interface GeneratePipelineResult {
 export class AiClient {
   private readonly baseUrl =
     process.env.AI_SERVICE_URL ?? 'http://localhost:8000';
+  private readonly generateTimeoutMs = envMs(
+    'AI_GENERATE_TIMEOUT_MS',
+    DEFAULT_GENERATE_TIMEOUT_MS,
+  );
 
   constructor(private readonly http: HttpService) {}
 
@@ -76,6 +87,7 @@ export class AiClient {
       this.http.post<GeneratePipelineResult>(
         `${this.baseUrl}/generate-cv-pipeline`,
         payload,
+        { timeout: this.generateTimeoutMs },
       ),
     );
     return data;

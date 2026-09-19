@@ -12,6 +12,7 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
     "backfill:taxonomia": "nest build && node dist/scripts/backfill-taxonomia.js",
+    "reprocessar:keywords": "nest build && node dist/scripts/reprocessar-keywords.js",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate"
   },

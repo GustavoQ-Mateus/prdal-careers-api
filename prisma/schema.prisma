@@ -52,6 +52,11 @@ enum OrigemOportunidade {
   IMPORTACAO
 }
 
+enum StatusKeywords {
+  VALIDAS
+  PENDENTE
+}
+
 model Vaga {
   id                 String                 @id @default(uuid())
   usuarioId          String                 @map("usuario_id")
@@ -61,6 +66,7 @@ model Vaga {
   descricao          String
   fonte              String?
   keywords           Json
+  keywordsStatus     StatusKeywords       @default(PENDENTE) @map("keywords_status")
   categoria          String?
   nivel              String?
   prioridade         PrioridadeOportunidade @default(MEDIA)

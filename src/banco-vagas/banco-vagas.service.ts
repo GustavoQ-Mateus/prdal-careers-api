@@ -28,6 +28,7 @@ export class BancoVagasService {
       categoria: null,
       nivel: null,
       keywords: null,
+      keywordsStatus: 'PENDENTE',
       criadoEm: new Date(),
     }));
     await this.mongo.bancoVagas().insertMany(docs);
@@ -54,6 +55,7 @@ export class BancoVagasService {
       categoria: d.categoria,
       nivel: d.nivel,
       keywords: d.keywords,
+      keywordsStatus: d.keywordsStatus ?? 'PENDENTE',
       status: d.status,
       criadoEm: d.criadoEm,
     }));

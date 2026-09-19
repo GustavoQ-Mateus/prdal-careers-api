@@ -14,13 +14,14 @@ export class VagasService {
   ) {}
 
   async criar(usuarioId: string, dto: CriarVagaDto) {
-    const keywords = await this.aiClient.keywords(dto.descricao);
+    const extracao = await this.aiClient.keywords(dto.descricao);
     return this.prisma.$transaction(async (tx) => {
       const vaga = await tx.vaga.create({
         data: {
           ...dto,
           usuarioId,
-          keywords: keywords as unknown as Prisma.InputJsonValue,
+          keywords: extracao.keywords as unknown as Prisma.InputJsonValue,
+          keywordsStatus: extracao.status,
         },
       });
       await this.eventos.registrar(tx, {
@@ -50,14 +51,19 @@ export class VagasService {
 
   async atualizar(usuarioId: string, id: string, dto: AtualizarVagaDto) {
     await this.buscar(usuarioId, id);
-    const keywords = dto.descricao
+    const extracao = dto.descricao !== undefined
       ? await this.aiClient.keywords(dto.descricao)
       : undefined;
     return this.prisma.vaga.update({
       where: { id },
       data: {
         ...dto,
-        ...(keywords ? { keywords: keywords as unknown as Prisma.InputJsonValue } : {}),
+        ...(extracao
+          ? {
+              keywords: extracao.keywords as unknown as Prisma.InputJsonValue,
+              keywordsStatus: extracao.status,
+            }
+          : {}),
       },
     });
   }

@@ -137,11 +137,14 @@ export class LotesService implements OnModuleInit {
   private async processarBancoVaga(bancoVagaId: string) {
     const doc = await this.mongo.bancoVagas().findOne({ _id: bancoVagaId });
     if (!doc) throw new Error('postagem nao encontrada no banco de vagas');
-    const keywords = await this.ai.keywords(doc.descricao);
+    const extracao = await this.ai.keywords(doc.descricao);
     const { categoria, nivel } = await this.ai.classify(doc.titulo, doc.descricao);
     await this.mongo
       .bancoVagas()
-      .updateOne({ _id: bancoVagaId }, { $set: { keywords, categoria, nivel } });
+      .updateOne(
+        { _id: bancoVagaId },
+        { $set: { keywords: extracao.keywords, keywordsStatus: extracao.status, categoria, nivel } },
+      );
   }
 
   private async indexarDocumento(documentoId: string) {

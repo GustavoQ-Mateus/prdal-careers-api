@@ -13,8 +13,7 @@ export class CapacidadesService {
   ) {}
 
   async keywordsPrevia(descricao: string) {
-    const keywords = await this.ai.keywords(descricao);
-    return { keywords };
+    return this.ai.keywords(descricao);
   }
 
   async consultarRag(usuarioId: string, query: string, k = 5) {
@@ -78,6 +77,11 @@ export class CapacidadesService {
     if (keywords && keywords.length > 0) return keywords;
     if (!oportunidadeId) return [];
     const vaga = await this.oportunidades.buscar(usuarioId, oportunidadeId);
+    if (vaga.keywordsStatus !== 'VALIDAS') {
+      throw new BadRequestException(
+        'a extracao de keywords da oportunidade esta pendente; tente novamente',
+      );
+    }
     const brutas = (vaga as { keywords?: unknown }).keywords;
     return Array.isArray(brutas) ? (brutas as Keyword[]) : [];
   }

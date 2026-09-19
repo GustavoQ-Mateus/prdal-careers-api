@@ -77,7 +77,7 @@ export class OportunidadesService {
     );
     if (equivalente) return equivalente;
 
-    const keywords = await this.ai.keywords(dto.descricao);
+    const extracao = await this.ai.keywords(dto.descricao);
     const taxonomia = await this.classificar(dto.titulo, dto.descricao);
     return this.prisma.$transaction(async (tx) => {
       const vaga = await tx.vaga.create({
@@ -85,7 +85,8 @@ export class OportunidadesService {
           ...dto,
           usuarioId,
           origem: 'MANUAL',
-          keywords: keywords as unknown as Prisma.InputJsonValue,
+          keywords: extracao.keywords as unknown as Prisma.InputJsonValue,
+          keywordsStatus: extracao.status,
           ...(taxonomia
             ? { categoria: taxonomia.categoria, nivel: taxonomia.nivel }
             : {}),
@@ -318,9 +319,36 @@ export class OportunidadesService {
     return this.detalhe(vaga);
   }
 
+  async reprocessarKeywords(usuarioId: string) {
+    const vagas = await this.prisma.vaga.findMany({
+      where: { usuarioId, keywordsStatus: 'PENDENTE' },
+      select: { id: true, descricao: true },
+    });
+    let reprocessadas = 0;
+    let pendentes = 0;
+    for (const vaga of vagas) {
+      try {
+        const extracao = await this.ai.keywords(vaga.descricao);
+        await this.prisma.vaga.update({
+          where: { id: vaga.id },
+          data: {
+            keywords: extracao.keywords as unknown as Prisma.InputJsonValue,
+            keywordsStatus: extracao.status,
+          },
+        });
+        if (extracao.status === 'VALIDAS') reprocessadas += 1;
+        else pendentes += 1;
+      } catch (err) {
+        pendentes += 1;
+        this.logger.warn(`keywords da vaga ${vaga.id} pendentes: ${(err as Error).message}`);
+      }
+    }
+    return { total: vagas.length, reprocessadas, pendentes };
+  }
+
   async atualizar(usuarioId: string, id: string, dto: AtualizarOportunidadeDto) {
     const atual = await this.garantirVaga(usuarioId, id);
-    const keywords = dto.descricao
+    const extracao = dto.descricao !== undefined
       ? await this.ai.keywords(dto.descricao)
       : undefined;
     const mudouTexto =
@@ -345,8 +373,11 @@ export class OportunidadesService {
           ...(dto.descricao !== undefined ? { descricao: dto.descricao } : {}),
           ...(dto.fonte !== undefined ? { fonte: dto.fonte } : {}),
           ...(dto.prioridade !== undefined ? { prioridade: dto.prioridade } : {}),
-          ...(keywords
-            ? { keywords: keywords as unknown as Prisma.InputJsonValue }
+          ...(extracao
+            ? {
+                keywords: extracao.keywords as unknown as Prisma.InputJsonValue,
+                keywordsStatus: extracao.status,
+              }
             : {}),
           ...(taxonomia
             ? { categoria: taxonomia.categoria, nivel: taxonomia.nivel }
@@ -425,6 +456,7 @@ export class OportunidadesService {
           descricao: doc.descricao,
           fonte: doc.fonte,
           keywords: (doc.keywords ?? []) as unknown as Prisma.InputJsonValue,
+          keywordsStatus: doc.keywordsStatus ?? 'PENDENTE',
           categoria: doc.categoria,
           nivel: doc.nivel,
           origem: 'IMPORTACAO',
@@ -725,6 +757,7 @@ export class OportunidadesService {
         ultimaAtividade: d.criadoEm,
         origem: 'IMPORTACAO' as const,
         keywords: d.keywords ?? [],
+        keywordsStatus: d.keywordsStatus ?? 'PENDENTE',
       }));
     return {
       itens,
@@ -764,6 +797,7 @@ export class OportunidadesService {
       ultimaAtividade: vaga.eventos[0]?.ocorridoEm ?? vaga.atualizadoEm,
       origem: vaga.origem,
       keywords: vaga.keywords,
+      keywordsStatus: vaga.keywordsStatus,
       statusCandidatura: candidatura?.status ?? null,
       arquivadaEm: vaga.arquivadaEm,
     };

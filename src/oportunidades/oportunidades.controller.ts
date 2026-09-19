@@ -71,6 +71,11 @@ export class OportunidadesController {
     return this.oportunidades.criar(user.userId, dto);
   }
 
+  @Post('reprocessar-keywords')
+  reprocessarKeywords(@CurrentUser() user: AuthUser) {
+    return this.oportunidades.reprocessarKeywords(user.userId);
+  }
+
   @Post('importar')
   importar(@CurrentUser() user: AuthUser, @Body() dto: ImportarOportunidadesDto) {
     return this.banco.importar(user.userId, dto);

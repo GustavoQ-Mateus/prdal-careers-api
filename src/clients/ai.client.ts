@@ -14,6 +14,14 @@ export interface Keyword {
   peso: number;
 }
 
+export type KeywordStatus = 'VALIDAS' | 'PENDENTE';
+
+export interface KeywordExtraction {
+  keywords: Keyword[];
+  status: KeywordStatus;
+  degradacao: string | null;
+}
+
 export interface ScoreBreakdown {
   keywordMatch: number;
   densidade: number;
@@ -53,13 +61,25 @@ export class AiClient {
 
   constructor(private readonly http: HttpService) {}
 
-  async keywords(descricao: string): Promise<Keyword[]> {
-    const { data } = await firstValueFrom(
-      this.http.post<{ keywords: Keyword[] }>(`${this.baseUrl}/keywords`, {
-        descricao,
-      }),
-    );
-    return data.keywords;
+  async keywords(descricao: string): Promise<KeywordExtraction> {
+    try {
+      const { data } = await firstValueFrom(
+        this.http.post<KeywordExtraction>(`${this.baseUrl}/keywords`, {
+          descricao,
+        }),
+      );
+      return {
+        keywords: data.keywords ?? [],
+        status: data.status === 'VALIDAS' && data.keywords?.length ? 'VALIDAS' : 'PENDENTE',
+        degradacao: data.degradacao ?? null,
+      };
+    } catch (err) {
+      return {
+        keywords: [],
+        status: 'PENDENTE',
+        degradacao: `Extracao de keywords indisponivel: ${(err as Error).message}`,
+      };
+    }
   }
 
   async generateCv(payload: {

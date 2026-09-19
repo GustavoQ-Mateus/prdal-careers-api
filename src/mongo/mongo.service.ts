@@ -14,6 +14,7 @@ export interface BancoVagaDoc {
   categoria: string | null;
   nivel: string | null;
   keywords: Keyword[] | null;
+  keywordsStatus?: 'VALIDAS' | 'PENDENTE';
   origemRelacionalId?: string | null;
   criadoEm: Date;
 }

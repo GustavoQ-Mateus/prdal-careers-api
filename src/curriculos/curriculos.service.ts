@@ -128,6 +128,11 @@ export class CurriculosService implements OnModuleInit {
         'cadastre o perfil-mestre antes de gerar um curriculo',
       );
     }
+    if (vaga.keywordsStatus !== 'VALIDAS' || !normalizarKeywords(vaga.keywords).length) {
+      throw new BadRequestException(
+        'a extracao de keywords da oportunidade esta pendente; tente novamente antes de gerar',
+      );
+    }
 
     const existente = await this.prisma.geracaoCurriculo.findFirst({
       where: { usuarioId, vagaId },
@@ -315,6 +320,11 @@ export class CurriculosService implements OnModuleInit {
     });
     if (!curriculo) throw new NotFoundException('curriculo nao encontrado');
 
+    if (curriculo.vaga.keywordsStatus !== 'VALIDAS') {
+      throw new BadRequestException(
+        'a extracao de keywords da oportunidade esta pendente; nao e possivel pontuar',
+      );
+    }
     const keywords = normalizarKeywords(curriculo.vaga.keywords);
     const { score, breakdown } = await this.aiClient.score(dto.markdown, {
       keywords,
@@ -438,6 +448,14 @@ export class CurriculosService implements OnModuleInit {
         where: { usuarioId: geracao.usuarioId },
       });
       if (!perfil) throw new Error('perfil-mestre ausente');
+      if (
+        geracao.vaga.keywordsStatus !== 'VALIDAS' ||
+        !normalizarKeywords(geracao.vaga.keywords).length
+      ) {
+        throw new Error(
+          'extracao de keywords pendente; tente novamente antes de gerar o curriculo',
+        );
+      }
 
       const keywords = normalizarKeywords(geracao.vaga.keywords);
       const contexto = await this.recuperarContexto(

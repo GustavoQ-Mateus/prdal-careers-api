@@ -56,6 +56,10 @@ export class PipelineFiltrosDto {
   @IsOptional()
   @IsString()
   ordenarPor?: string;
+
+  @IsOptional()
+  @IsString()
+  ordenarDirecao?: string;
 }
 
 export class PosicaoCanvasDto {

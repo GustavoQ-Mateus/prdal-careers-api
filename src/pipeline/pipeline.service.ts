@@ -38,6 +38,7 @@ export class PipelineService {
     return this.ordenar(
       itens.map((vaga) => this.resumo(vaga)),
       filtros.ordenarPor,
+      filtros.ordenarDirecao,
     );
   }
 
@@ -105,6 +106,12 @@ export class PipelineService {
 
   async grafo(usuarioId: string, filtros: PipelineFiltrosDto) {
     const vagas = await this.conjunto(usuarioId, filtros);
+    const porId = new Map(vagas.map((vaga) => [vaga.id, vaga]));
+    const vagasOrdenadas = this.ordenar(
+      vagas.map((vaga) => this.resumo(vaga)),
+      filtros.ordenarPor,
+      filtros.ordenarDirecao,
+    ).map((resumo) => porId.get(resumo.id)).filter((vaga): vaga is NonNullable<typeof vaga> => Boolean(vaga));
     const perfil = await this.prisma.perfilMestre.findUnique({
       where: { usuarioId },
     });
@@ -144,7 +151,7 @@ export class PipelineService {
       }
     }
 
-    for (const vaga of vagas) {
+    for (const vaga of vagasOrdenadas) {
       const oppId = `oportunidade:${vaga.id}`;
       addNode(oppId, 'oportunidade', `${vaga.titulo} · ${vaga.empresa}`);
       const empChave = normalizar(vaga.empresa);
@@ -331,18 +338,25 @@ export class PipelineService {
   private ordenar(
     itens: ReturnType<PipelineService['resumo']>[],
     ordenarPor?: string,
+    ordenarDirecao?: string,
   ) {
     const peso = { BAIXA: 1, MEDIA: 2, ALTA: 3 };
     const copia = [...itens];
+    const multiplicador = ordenarDirecao
+      ? ordenarDirecao === 'asc' ? 1 : -1
+      : ordenarPor === 'etapa' || ordenarPor === 'prazo' ? 1 : -1;
     switch (ordenarPor) {
       case 'prioridade':
-        copia.sort((a, b) => (peso[b.prioridade] ?? 0) - (peso[a.prioridade] ?? 0));
+        copia.sort((a, b) => multiplicador * ((peso[b.prioridade] ?? 0) - (peso[a.prioridade] ?? 0)));
         break;
       case 'score':
-        copia.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+        copia.sort((a, b) => multiplicador * ((b.score ?? -1) - (a.score ?? -1)));
+        break;
+      case 'keywords':
+        copia.sort((a, b) => multiplicador * ((Array.isArray(b.keywords) ? b.keywords.length : 0) - (Array.isArray(a.keywords) ? a.keywords.length : 0)));
         break;
       case 'etapa':
-        copia.sort((a, b) => a.etapa.localeCompare(b.etapa));
+        copia.sort((a, b) => multiplicador * a.etapa.localeCompare(b.etapa));
         break;
       case 'prazo':
         copia.sort((a, b) => {
@@ -352,14 +366,15 @@ export class PipelineService {
           const tb = b.proximoPasso?.venceEm
             ? new Date(b.proximoPasso.venceEm).getTime()
             : Number.MAX_SAFE_INTEGER;
-          return ta - tb;
+          return multiplicador * (ta - tb);
         });
         break;
       default:
         copia.sort(
-          (a, b) =>
+          (a, b) => multiplicador * (
             new Date(b.ultimaAtividade).getTime() -
-            new Date(a.ultimaAtividade).getTime(),
+            new Date(a.ultimaAtividade).getTime()
+          ),
         );
     }
     return copia;

@@ -113,6 +113,7 @@ export class OportunidadesService {
       nivel?: string;
       prioridade?: string;
       ordenarPor?: string;
+      ordenarDirecao?: string;
       limit?: number;
       offset?: number;
     },
@@ -167,7 +168,7 @@ export class OportunidadesService {
 
     const itens = vagas.map((vaga) => this.resumo(vaga));
 
-    const ordenados = this.ordenar(itens, query.ordenarPor);
+    const ordenados = this.ordenar(itens, query.ordenarPor, query.ordenarDirecao);
     return { itens: ordenados, total: ordenados.length, limit: null, offset: 0 };
   }
 
@@ -236,6 +237,7 @@ export class OportunidadesService {
       nivel?: string;
       prioridade?: string;
       ordenarPor?: string;
+      ordenarDirecao?: string;
     },
     limit: number,
     offset: number,
@@ -260,17 +262,21 @@ export class OportunidadesService {
       filtros.push(Prisma.sql`(v.titulo ILIKE ${busca} OR v.empresa ILIKE ${busca})`);
     }
 
-    let ordem = Prisma.sql`COALESCE(evento.ocorrido_em, v.atualizado_em) DESC`;
+    const ascendente = query.ordenarDirecao
+      ? query.ordenarDirecao === 'asc'
+      : query.ordenarPor === 'etapa' || query.ordenarPor === 'prazo';
+    const direcao = ascendente ? Prisma.raw('ASC') : Prisma.raw('DESC');
+    let ordem = Prisma.sql`COALESCE(evento.ocorrido_em, v.atualizado_em) ${direcao}`;
     if (query.ordenarPor === 'prioridade') {
-      ordem = Prisma.sql`CASE v.prioridade::text WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 ELSE 1 END DESC, COALESCE(evento.ocorrido_em, v.atualizado_em) DESC`;
+      ordem = Prisma.sql`CASE v.prioridade::text WHEN 'ALTA' THEN 3 WHEN 'MEDIA' THEN 2 ELSE 1 END ${direcao}, COALESCE(evento.ocorrido_em, v.atualizado_em) ${direcao}`;
     } else if (query.ordenarPor === 'score') {
-      ordem = Prisma.sql`curriculo.score DESC NULLS LAST, COALESCE(evento.ocorrido_em, v.atualizado_em) DESC`;
+      ordem = Prisma.sql`curriculo.score ${direcao} NULLS LAST, COALESCE(evento.ocorrido_em, v.atualizado_em) ${direcao}`;
     } else if (query.ordenarPor === 'keywords') {
-      ordem = Prisma.sql`CASE WHEN jsonb_typeof(v.keywords) = 'array' THEN jsonb_array_length(v.keywords) ELSE 0 END DESC, COALESCE(evento.ocorrido_em, v.atualizado_em) DESC`;
+      ordem = Prisma.sql`CASE WHEN jsonb_typeof(v.keywords) = 'array' THEN jsonb_array_length(v.keywords) ELSE 0 END ${direcao}, COALESCE(evento.ocorrido_em, v.atualizado_em) ${direcao}`;
     } else if (query.ordenarPor === 'etapa') {
-      ordem = Prisma.sql`CASE WHEN principal.status IS NULL OR principal.status::text = 'RASCUNHO' THEN 'PREPARACAO' ELSE principal.status::text END ASC, COALESCE(evento.ocorrido_em, v.atualizado_em) DESC`;
+      ordem = Prisma.sql`CASE WHEN principal.status IS NULL OR principal.status::text = 'RASCUNHO' THEN 'PREPARACAO' ELSE principal.status::text END ${direcao}, COALESCE(evento.ocorrido_em, v.atualizado_em) ${direcao}`;
     } else if (query.ordenarPor === 'prazo') {
-      ordem = Prisma.sql`acao.vence_em ASC NULLS LAST, COALESCE(evento.ocorrido_em, v.atualizado_em) DESC`;
+      ordem = Prisma.sql`acao.vence_em ${direcao} NULLS LAST, COALESCE(evento.ocorrido_em, v.atualizado_em) ${direcao}`;
     }
 
     const linhas = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
@@ -842,25 +848,28 @@ export class OportunidadesService {
   private ordenar(
     itens: ReturnType<OportunidadesService['resumo']>[],
     ordenarPor?: string,
+    ordenarDirecao?: string,
   ) {
     const peso = { BAIXA: 1, MEDIA: 2, ALTA: 3 };
     const copia = [...itens];
+    const multiplicador = ordenarDirecao
+      ? ordenarDirecao === 'asc' ? 1 : -1
+      : ordenarPor === 'etapa' || ordenarPor === 'prazo' ? 1 : -1;
     switch (ordenarPor) {
       case 'prioridade':
-        copia.sort((a, b) => (peso[b.prioridade] ?? 0) - (peso[a.prioridade] ?? 0));
+        copia.sort((a, b) => multiplicador * ((peso[b.prioridade] ?? 0) - (peso[a.prioridade] ?? 0)));
         break;
       case 'score':
-        copia.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+        copia.sort((a, b) => multiplicador * ((b.score ?? -1) - (a.score ?? -1)));
         break;
       case 'keywords':
-        copia.sort(
-          (a, b) =>
-            (Array.isArray(b.keywords) ? b.keywords.length : 0) -
-            (Array.isArray(a.keywords) ? a.keywords.length : 0),
-        );
+        copia.sort((a, b) => multiplicador * (
+          (Array.isArray(b.keywords) ? b.keywords.length : 0) -
+          (Array.isArray(a.keywords) ? a.keywords.length : 0)
+        ));
         break;
       case 'etapa':
-        copia.sort((a, b) => (a.etapa ?? '').localeCompare(b.etapa ?? ''));
+        copia.sort((a, b) => multiplicador * (a.etapa ?? '').localeCompare(b.etapa ?? ''));
         break;
       case 'prazo':
         copia.sort((a, b) => {
@@ -870,14 +879,15 @@ export class OportunidadesService {
           const tb = b.proximoPasso?.venceEm
             ? new Date(b.proximoPasso.venceEm).getTime()
             : Number.MAX_SAFE_INTEGER;
-          return ta - tb;
+          return multiplicador * (ta - tb);
         });
         break;
       default:
         copia.sort(
-          (a, b) =>
+          (a, b) => multiplicador * (
             new Date(b.ultimaAtividade).getTime() -
-            new Date(a.ultimaAtividade).getTime(),
+            new Date(a.ultimaAtividade).getTime()
+          ),
         );
     }
     return copia;

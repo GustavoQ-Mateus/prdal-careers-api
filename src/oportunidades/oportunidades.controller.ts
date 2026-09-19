@@ -51,6 +51,7 @@ export class OportunidadesController {
     @Query('nivel') nivel?: string,
     @Query('prioridade') prioridade?: string,
     @Query('ordenarPor') ordenarPor?: string,
+    @Query('ordenarDirecao') ordenarDirecao?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
@@ -61,6 +62,7 @@ export class OportunidadesController {
       nivel,
       prioridade,
       ordenarPor,
+      ordenarDirecao,
       limit: numeroPaginacao(limit, 'limit'),
       offset: numeroPaginacao(offset, 'offset'),
     });

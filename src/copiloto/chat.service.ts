@@ -64,6 +64,7 @@ export class ChatService {
 
       await this.laco(res, conversa, authHeader, modo);
     } catch (err) {
+      await this.registrarErro(conversa, 'interno', this.mensagemErro(err));
       this.enviar(res, 'erro', {
         escopo: 'interno',
         mensagem: this.mensagemErro(err),
@@ -82,6 +83,7 @@ export class ChatService {
     const pend = conversa.pendencia;
     const confirmacao = dto.confirmacao!;
     if (!pend || pend.callId !== confirmacao.callId) {
+      await this.registrarErro(conversa, 'interno', 'nao ha confirmacao pendente para este passo');
       this.enviar(res, 'erro', {
         escopo: 'interno',
         mensagem: 'nao ha confirmacao pendente para este passo',
@@ -124,6 +126,7 @@ export class ChatService {
       oportunidadeId: conversa.oportunidadeId,
       mensagens: conversa.mensagens,
     });
+    const args = preparados.args;
     if (preparados.erro) {
       await this.conversas.definirPendencia(conversa._id, null);
       await this.conversas.registrarConfirmacao(conversa._id, {
@@ -144,10 +147,16 @@ export class ChatService {
         papel: 'tool',
         tool: tool.nome,
         conteudo: `falha: ${preparados.erro}`,
+        dados: {
+          callId: pend.callId,
+          efeito: tool.efeito,
+          args,
+          ok: false,
+          erro: preparados.erro,
+        },
       });
       return true;
     }
-    const args = preparados.args;
     this.enviar(res, 'tool_call', {
       callId: pend.callId,
       tool: tool.nome,
@@ -163,9 +172,7 @@ export class ChatService {
       await this.conversas.definirPendencia(conversa._id, null);
       await this.conversas.registrarConfirmacao(conversa._id, { callId: pend.callId, tool: pend.tool, decisao: 'confirmar', resultado: resultado.valor, concluidaEm: new Date() });
       if (tool.nome === 'registrar_oportunidade' && resultado.valor && typeof resultado.valor === 'object' && 'id' in resultado.valor) {
-        const oportunidadeId = String((resultado.valor as { id: unknown }).id);
-        conversa.oportunidadeId = oportunidadeId;
-        await this.conversas.atualizarOportunidade(conversa._id, oportunidadeId);
+        await this.aplicarResultadoTool(conversa, tool.nome, resultado.valor);
       }
     } else {
       await this.conversas.definirPendencia(conversa._id, { ...pend, executando: false });
@@ -193,6 +200,7 @@ export class ChatService {
           tools: CATALOGO_TOOLS,
         });
       } catch (err) {
+        await this.registrarErro(conversa, 'ai-service', this.mensagemErro(err));
         this.enviar(res, 'erro', {
           escopo: 'ai-service',
           mensagem: this.mensagemErro(err),
@@ -212,6 +220,7 @@ export class ChatService {
 
       const tool = TOOLS_POR_NOME.get(turno.tool);
       if (!tool) {
+        await this.registrarErro(conversa, 'tool', `tool desconhecida: ${turno.tool}`);
         this.enviar(res, 'erro', {
           escopo: 'tool',
           mensagem: `tool desconhecida: ${turno.tool}`,
@@ -241,6 +250,13 @@ export class ChatService {
           papel: 'tool',
           tool: tool.nome,
           conteudo: `falha: ${preparados.erro}`,
+          dados: {
+            callId,
+            efeito: tool.efeito,
+            args,
+            ok: false,
+            erro: preparados.erro,
+          },
         });
         continue;
       }
@@ -264,6 +280,7 @@ export class ChatService {
           tool: tool.nome,
           efeito: 'escrita',
           args,
+          resumo: tool.resumo ? tool.resumo(args) : `Executar ${tool.nome}`,
         });
         this.finalizar(res, conversa._id, 'aguardando_confirmacao');
         return;
@@ -300,13 +317,22 @@ export class ChatService {
         exigeConfirmacao: false,
       });
       const execucao = await this.executarTool(res, conversa, authHeader, tool, callId, args);
+      if (execucao.ok) {
+        await this.aplicarResultadoTool(conversa, tool.nome, execucao.valor);
+      }
       if (tool.nome === 'gerar_curriculo' && execucao.ok && this.geracaoEmAndamento(execucao.valor)) {
         this.finalizar(res, conversa._id, 'completo');
         return;
       }
     }
 
-    this.finalizar(res, conversa._id, 'completo');
+    await this.registrarErro(conversa, 'orquestracao', 'o turno excedeu o limite de passos e foi interrompido');
+    this.enviar(res, 'erro', {
+      escopo: 'orquestracao',
+      mensagem: 'O turno foi interrompido antes de concluir. Repita para continuar.',
+      recuperavel: true,
+    });
+    this.finalizar(res, conversa._id, 'erro');
   }
 
   private geracaoEmAndamento(inicio: unknown): boolean {
@@ -325,7 +351,17 @@ export class ChatService {
     args: Record<string, unknown>,
   ): Promise<{ ok: boolean; valor?: unknown }> {
     try {
-      const resultado = await this.requisitar(tool, args, authHeader);
+      const resultado =
+        tool.nome === 'registrar_oportunidade' && conversa.oportunidadeId
+          ? {
+              ...((await this.requisitar(
+                TOOLS_POR_NOME.get('buscar_oportunidade')!,
+                { oportunidadeId: conversa.oportunidadeId },
+                authHeader,
+              )) as Record<string, unknown>),
+              reaproveitada: true,
+            }
+          : await this.requisitar(tool, args, authHeader);
       this.enviar(res, 'tool_resultado', {
         callId,
         tool: tool.nome,
@@ -337,6 +373,13 @@ export class ChatService {
         papel: 'tool',
         tool: tool.nome,
         conteudo: this.resumirResultado(resultado, tool.nome),
+        dados: {
+          callId,
+          efeito: tool.efeito,
+          args,
+          ok: true,
+          resultado: this.resultadoHistorico(resultado, tool.nome),
+        },
       });
       return { ok: true, valor: resultado };
     } catch (err) {
@@ -352,6 +395,13 @@ export class ChatService {
         papel: 'tool',
         tool: tool.nome,
         conteudo: `falha: ${mensagem}`,
+        dados: {
+          callId,
+          efeito: tool.efeito,
+          args,
+          ok: false,
+          erro: mensagem,
+        },
       });
       return { ok: false };
     }
@@ -381,9 +431,15 @@ export class ChatService {
         papel: 'tool',
         tool: tool.nome,
         conteudo: `texto entregue ao candidato: ${r.titulo}`,
+        dados: {
+          efeito: 'entrega_externa',
+          ok: true,
+          entrega: r,
+        },
       });
       return true;
     } catch (err) {
+      await this.registrarErro(conversa, 'ai-service', this.mensagemErro(err));
       this.enviar(res, 'erro', {
         escopo: 'ai-service',
         mensagem: this.mensagemErro(err),
@@ -448,6 +504,36 @@ export class ChatService {
     await this.conversas.anexar(conversa._id, mensagem);
   }
 
+  private async registrarErro(
+    conversa: ConversaCopilotoDoc,
+    escopo: string,
+    mensagem: string,
+  ): Promise<void> {
+    await this.registrar(conversa, {
+      papel: 'evento',
+      conteudo: mensagem,
+      dados: { evento: 'erro', escopo, erro: mensagem },
+    });
+  }
+
+  private async aplicarResultadoTool(
+    conversa: ConversaCopilotoDoc,
+    tool: string,
+    resultado: unknown,
+  ): Promise<void> {
+    if (
+      tool !== 'registrar_oportunidade' ||
+      !resultado ||
+      typeof resultado !== 'object' ||
+      !('id' in resultado)
+    ) {
+      return;
+    }
+    const oportunidadeId = String((resultado as { id: unknown }).id);
+    conversa.oportunidadeId = oportunidadeId;
+    await this.conversas.atualizarOportunidade(conversa._id, oportunidadeId);
+  }
+
   private resumirResultado(resultado: unknown, tool: string): string {
     if (tool === 'buscar_curriculo' && resultado && typeof resultado === 'object') {
       const curriculo = resultado as Record<string, unknown>;
@@ -473,10 +559,20 @@ export class ChatService {
       : texto;
   }
 
+  private resultadoHistorico(resultado: unknown, tool: string): unknown {
+    const resumo = this.resumirResultado(resultado, tool);
+    try {
+      return JSON.parse(resumo);
+    } catch {
+      return resultado;
+    }
+  }
+
   private mensagemErro(err: unknown): string {
     if (err instanceof AxiosError) {
-      const data = err.response?.data as { message?: string } | undefined;
+      const data = err.response?.data as { message?: string; detail?: string } | undefined;
       if (data?.message) return String(data.message);
+      if (data?.detail) return String(data.detail);
       if (err.code === 'ECONNREFUSED') return 'servico indisponivel';
       return err.message;
     }

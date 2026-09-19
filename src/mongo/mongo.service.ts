@@ -36,9 +36,20 @@ export interface NotaObsidianDoc {
 }
 
 export interface MensagemCopiloto {
-  papel: 'user' | 'assistant' | 'tool';
+  papel: 'user' | 'assistant' | 'tool' | 'evento';
   conteudo: string;
   tool?: string | null;
+  dados?: {
+    callId?: string;
+    efeito?: 'leitura' | 'escrita' | 'entrega_externa';
+    args?: Record<string, unknown>;
+    ok?: boolean;
+    resultado?: unknown;
+    erro?: string;
+    entrega?: { tipo: string; titulo: string; texto: string; destino?: string };
+    evento?: 'erro';
+    escopo?: string;
+  };
 }
 
 export interface PendenciaCopiloto {
@@ -46,6 +57,7 @@ export interface PendenciaCopiloto {
   tool: string;
   efeito: 'escrita';
   args: Record<string, unknown>;
+  resumo?: string;
   executando?: boolean;
 }
 

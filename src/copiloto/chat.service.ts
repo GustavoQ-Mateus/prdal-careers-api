@@ -286,6 +286,11 @@ export class ChatService {
         return;
       }
 
+      if (tool.nome === 'gerar_curriculo') {
+        await this.solicitarConfirmacaoEtapa2(res, conversa, callId, args);
+        return;
+      }
+
       if (tool.efeito === 'entrega_externa') {
         this.enviar(res, 'tool_call', {
           callId,
@@ -320,6 +325,12 @@ export class ChatService {
       if (execucao.ok) {
         await this.aplicarResultadoTool(conversa, tool.nome, execucao.valor);
       }
+      if (tool.nome === 'analisar_ats' && execucao.ok) {
+        await this.solicitarConfirmacaoEtapa2(res, conversa, randomUUID(), {
+          oportunidadeId: args.oportunidadeId ?? conversa.oportunidadeId ?? '',
+        });
+        return;
+      }
       if (tool.nome === 'gerar_curriculo' && execucao.ok && this.geracaoEmAndamento(execucao.valor)) {
         this.finalizar(res, conversa._id, 'completo');
         return;
@@ -333,6 +344,32 @@ export class ChatService {
       recuperavel: true,
     });
     this.finalizar(res, conversa._id, 'erro');
+  }
+
+  private async solicitarConfirmacaoEtapa2(
+    res: Response,
+    conversa: ConversaCopilotoDoc,
+    callId: string,
+    args: Record<string, unknown>,
+  ): Promise<void> {
+    const tool = TOOLS_POR_NOME.get('gerar_curriculo')!;
+    const resumo = 'Etapa 1 - Análise ATS concluída. Podemos prosseguir para a Etapa 2 - Reescrita otimizada?';
+    this.enviar(res, 'tool_call', {
+      callId,
+      tool: tool.nome,
+      efeito: 'escrita',
+      args,
+      exigeConfirmacao: true,
+    });
+    this.enviar(res, 'confirmacao', { callId, tool: tool.nome, resumo, args });
+    await this.conversas.definirPendencia(conversa._id, {
+      callId,
+      tool: tool.nome,
+      efeito: 'escrita',
+      args,
+      resumo,
+    });
+    this.finalizar(res, conversa._id, 'aguardando_confirmacao');
   }
 
   private geracaoEmAndamento(inicio: unknown): boolean {

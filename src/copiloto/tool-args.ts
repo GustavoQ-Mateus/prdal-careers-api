@@ -152,6 +152,32 @@ function leuCurriculoFinal(
   });
 }
 
+function leuAnaliseEtapa1(
+  mensagens: MensagemCopiloto[],
+  oportunidadeId: string | null,
+): boolean {
+  if (!oportunidadeId) return false;
+  let ultimaGeracao = -1;
+  for (let indice = mensagens.length - 1; indice >= 0; indice--) {
+    const mensagem = mensagens[indice];
+    if (mensagem.papel === 'tool' && mensagem.tool === 'gerar_curriculo') {
+      ultimaGeracao = indice;
+      break;
+    }
+  }
+  return mensagens.some((mensagem, indice) => {
+    if (indice <= ultimaGeracao || mensagem.papel !== 'tool' || mensagem.tool !== 'analisar_ats') {
+      return false;
+    }
+    try {
+      const analise = JSON.parse(mensagem.conteudo) as Record<string, unknown>;
+      return typeof analise.score === 'number' && typeof analise.veredicto === 'string';
+    } catch {
+      return false;
+    }
+  });
+}
+
 export function prepararArgsTool({
   tool,
   args,
@@ -166,6 +192,14 @@ export function prepararArgsTool({
   }
   if (tool === 'registrar_candidatura' && oportunidade && preparados.vagaId == null) {
     preparados.vagaId = oportunidade;
+  }
+
+  if (tool === 'gerar_curriculo' && !leuAnaliseEtapa1(mensagens, oportunidade || null)) {
+    return {
+      args: preparados,
+      erro:
+        'Etapa 1 pendente: analise a vaga com analisar_ats e aguarde a confirmacao do candidato antes de iniciar a reescrita otimizada',
+    };
   }
 
   if (tool === 'definir_proximo_passo') {

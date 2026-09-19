@@ -96,6 +96,28 @@ test('uma nova geracao invalida a leitura final de um ciclo anterior', () => {
   assert.match(resultado.erro, /buscar_curriculo/);
 });
 
+test('exige a analise ATS antes de iniciar a reescrita', () => {
+  const semAnalise = prepararArgsTool({
+    tool: 'gerar_curriculo',
+    args: {},
+    oportunidadeId: 'vaga-1',
+    mensagens: [],
+  });
+  assert.match(semAnalise.erro, /Etapa 1/);
+
+  const comAnalise = prepararArgsTool({
+    tool: 'gerar_curriculo',
+    args: {},
+    oportunidadeId: 'vaga-1',
+    mensagens: [{
+      papel: 'tool',
+      tool: 'analisar_ats',
+      conteudo: JSON.stringify({ score: 67, veredicto: 'Prosseguir com ajustes.' }),
+    }],
+  });
+  assert.equal(comAnalise.erro, null);
+});
+
 test('direciona preparacao de mensagem para a tool de redacao', () => {
   const resultado = prepararArgsTool({
     tool: 'definir_proximo_passo',

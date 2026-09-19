@@ -113,6 +113,23 @@ export class AiClient {
     return data;
   }
 
+  async reduzirCurriculo(payload: {
+    perfilMestre: unknown;
+    vaga: unknown;
+    keywords: Keyword[];
+    contexto: string[];
+    markdownAtual: string;
+  }): Promise<GeneratePipelineResult> {
+    const { data } = await firstValueFrom(
+      this.http.post<GeneratePipelineResult>(
+        `${this.baseUrl}/reduzir-curriculo`,
+        payload,
+        { timeout: this.generateTimeoutMs },
+      ),
+    );
+    return data;
+  }
+
   async analisarAts(payload: {
     perfilMestre: unknown;
     vaga: unknown;

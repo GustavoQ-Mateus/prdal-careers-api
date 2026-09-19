@@ -51,6 +51,14 @@ function normalizarKeywords(valor: Prisma.JsonValue): Keyword[] {
   });
 }
 
+function mesclarDegradacao(
+  atual: string | null,
+  nova: string | null,
+): string | null {
+  const partes = [atual, nova].filter((parte): parte is string => !!parte);
+  return partes.length ? partes.join('; ') : null;
+}
+
 function nomeArquivo(valor: string) {
   return valor.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim() || 'Curriculo';
 }
@@ -521,8 +529,6 @@ export class CurriculosService implements OnModuleInit {
           degradacao: pipeline.degradacao,
         },
       });
-      const markdown = pipeline.markdown;
-
       await this.prisma.geracaoCurriculo.update({
         where: { id },
         data: {
@@ -530,12 +536,63 @@ export class CurriculosService implements OnModuleInit {
           analiseFinal: pipeline.analiseFinal as unknown as Prisma.InputJsonValue,
         },
       });
-      const { score, breakdown } = this.scoreDaAnalise(pipeline.analiseFinal);
       const versoes = await this.prisma.curriculo.count({
         where: { vagaId: geracao.vagaId },
       });
       const curriculoId = randomUUID();
-      const { docxPath, pdfPath } = await this.renderizar(curriculoId, markdown);
+
+      let markdown = pipeline.markdown;
+      let analiseFinal = pipeline.analiseFinal;
+      let degradacao = pipeline.degradacao;
+      let { docxPath, pdfPath, paginas } = await this.renderizar(
+        curriculoId,
+        markdown,
+      );
+
+      let rodadas = 0;
+      while (paginas > 1 && rodadas < 2) {
+        rodadas += 1;
+        this.logger.warn(
+          `curriculo ${curriculoId} com ${paginas} paginas; rodada ${rodadas} de corte de conteudo`,
+        );
+        try {
+          const reducao = await this.aiClient.reduzirCurriculo({
+            perfilMestre: perfilParaIa(perfil),
+            vaga: {
+              titulo: geracao.vaga.titulo,
+              empresa: geracao.vaga.empresa,
+              descricao: geracao.vaga.descricao,
+              keywords,
+            },
+            keywords,
+            contexto,
+            markdownAtual: markdown,
+          });
+          if (reducao.degradacao || reducao.markdown === markdown) {
+            degradacao = mesclarDegradacao(degradacao, reducao.degradacao);
+            break;
+          }
+          markdown = reducao.markdown;
+          analiseFinal = reducao.analiseFinal;
+          ({ docxPath, pdfPath, paginas } = await this.renderizar(
+            curriculoId,
+            markdown,
+          ));
+        } catch (err) {
+          this.logger.warn(
+            `corte de conteudo indisponivel para ${curriculoId}: ${(err as Error).message}`,
+          );
+          break;
+        }
+      }
+      if (paginas > 1) {
+        degradacao = mesclarDegradacao(
+          degradacao,
+          `Curriculo mantido com ${paginas} paginas apos ${rodadas} rodada(s) de corte de conteudo`,
+        );
+      }
+
+      const { score, breakdown } = this.scoreDaAnalise(analiseFinal);
 
       await this.prisma.$transaction(async (tx) => {
         await tx.curriculo.create({
@@ -550,13 +607,18 @@ export class CurriculosService implements OnModuleInit {
             scoreBreakdown: breakdown as unknown as Prisma.InputJsonValue,
             analiseInicial:
               pipeline.analiseInicial as unknown as Prisma.InputJsonValue,
-            analiseFinal: pipeline.analiseFinal as unknown as Prisma.InputJsonValue,
-            degradacao: pipeline.degradacao,
+            analiseFinal: analiseFinal as unknown as Prisma.InputJsonValue,
+            degradacao,
           },
         });
         await tx.geracaoCurriculo.update({
           where: { id },
-          data: { status: 'CONCLUIDA', curriculoId },
+          data: {
+            status: 'CONCLUIDA',
+            curriculoId,
+            analiseFinal: analiseFinal as unknown as Prisma.InputJsonValue,
+            degradacao,
+          },
         });
         await this.eventos.registrar(tx, {
           usuarioId: geracao.usuarioId,
@@ -569,7 +631,7 @@ export class CurriculosService implements OnModuleInit {
             curriculoId,
             scoreInicial: pipeline.analiseInicial.score,
             scoreFinal: score,
-            degradacao: pipeline.degradacao,
+            degradacao,
           },
         });
       });
@@ -641,10 +703,11 @@ export class CurriculosService implements OnModuleInit {
   private async renderizar(curriculoId: string, markdown: string) {
     let docxPath: string | null = null;
     let pdfPath: string | null = null;
+    let paginas = 0;
     try {
       let template: string | undefined;
       let pdf = await this.docClient.renderPdf(markdown);
-      let paginas = this.contarPaginasPdf(pdf);
+      paginas = this.contarPaginasPdf(pdf);
       if (paginas > 1) {
         template = 'compact';
         pdf = await this.docClient.renderPdf(markdown, template);
@@ -659,7 +722,7 @@ export class CurriculosService implements OnModuleInit {
     } catch (err) {
       this.logger.warn(`doc-service indisponivel: ${(err as Error).message}`);
     }
-    return { docxPath, pdfPath };
+    return { docxPath, pdfPath, paginas };
   }
 
   private scoreDaAnalise(analise: AtsAnalysis) {

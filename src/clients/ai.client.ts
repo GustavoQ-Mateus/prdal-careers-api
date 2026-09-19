@@ -113,6 +113,18 @@ export class AiClient {
     return data;
   }
 
+  async analisarAts(payload: {
+    perfilMestre: unknown;
+    vaga: unknown;
+    keywords: Keyword[];
+    contexto: string[];
+  }): Promise<AtsAnalysis> {
+    const { data } = await firstValueFrom(
+      this.http.post<AtsAnalysis>(`${this.baseUrl}/analisar-ats`, payload),
+    );
+    return data;
+  }
+
   async score(markdown: string, vaga: {
     keywords: Keyword[];
   }): Promise<ScoreResult> {

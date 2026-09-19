@@ -142,6 +142,11 @@ export class OportunidadesController {
     return this.curriculos.gerar(user.userId, id);
   }
 
+  @Post(':id/analisar-ats')
+  analisarAts(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.curriculos.analisarAts(user.userId, id);
+  }
+
   @Get(':id')
   buscar(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.oportunidades.buscar(user.userId, id);

@@ -215,10 +215,21 @@ export const TOOLS: ToolDef[] = [
     }),
   },
   {
+    nome: 'analisar_ats',
+    efeito: 'leitura',
+    descricao:
+      'Etapa 1 do pipeline ATS: analisa o perfil-mestre contra a vaga e devolve score, keywords encontradas, ausentes, pontos eliminatorios e veredicto antes da geracao',
+    parametros: { oportunidadeId: 'id da oportunidade' },
+    requisicao: (a) => ({
+      metodo: 'POST',
+      caminho: `/oportunidades/${s(a.oportunidadeId)}/analisar-ats`,
+    }),
+  },
+  {
     nome: 'gerar_curriculo',
     efeito: 'escrita',
     descricao:
-      'Inicia a pipeline ATS deterministica (analise inicial e curriculo tailored); depois acompanhe somente com status_geracao',
+      'Etapa 2 do pipeline ATS: inicia a reescrita otimizada depois da confirmacao explicita do candidato; depois acompanhe somente com status_geracao',
     parametros: { oportunidadeId: 'id da oportunidade' },
     resumo: () => 'Gerar o curriculo tailored para a oportunidade',
     requisicao: (a) => ({

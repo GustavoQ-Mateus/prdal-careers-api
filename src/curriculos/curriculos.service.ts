@@ -183,6 +183,42 @@ export class CurriculosService implements OnModuleInit {
     };
   }
 
+  async analisarAts(usuarioId: string, vagaId: string): Promise<AtsAnalysis> {
+    const vaga = await this.prisma.vaga.findFirst({
+      where: { id: vagaId, usuarioId },
+    });
+    if (!vaga) throw new NotFoundException('vaga nao encontrada');
+
+    const perfil = await this.prisma.perfilMestre.findUnique({
+      where: { usuarioId },
+    });
+    if (!perfil) {
+      throw new BadRequestException(
+        'cadastre o perfil-mestre antes de analisar a vaga',
+      );
+    }
+
+    const keywords = normalizarKeywords(vaga.keywords);
+    if (vaga.keywordsStatus !== 'VALIDAS' || !keywords.length) {
+      throw new BadRequestException(
+        'a extracao de keywords da oportunidade esta pendente; tente novamente antes de analisar',
+      );
+    }
+
+    const contexto = await this.recuperarContexto(usuarioId, vaga);
+    return this.aiClient.analisarAts({
+      perfilMestre: perfilParaIa(perfil),
+      vaga: {
+        titulo: vaga.titulo,
+        empresa: vaga.empresa,
+        descricao: vaga.descricao,
+        keywords,
+      },
+      keywords,
+      contexto,
+    });
+  }
+
   async listar(usuarioId: string, query: {
     vagaId?: string;
     scoreMinimo?: number;

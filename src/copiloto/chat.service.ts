@@ -37,7 +37,7 @@ export class ChatService {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
-    const modo = dto.modo ?? 'assistido';
+    const modo = dto.modo ?? 'autopiloto';
     const conversa = await this.conversas.abrir(
       user.userId,
       dto.conversaId,

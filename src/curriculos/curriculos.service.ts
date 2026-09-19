@@ -11,6 +11,7 @@ import archiver from 'archiver';
 import { AiClient, AtsAnalysis, Keyword } from '../clients/ai.client';
 import { DocClient } from '../clients/doc.client';
 import { EventosService } from '../eventos/eventos.service';
+import { MongoService } from '../mongo/mongo.service';
 import { perfilParaIa } from '../perfil/perfil.normalizacao';
 import { PrismaService } from '../prisma/prisma.service';
 import { EditarCurriculoDto } from './curriculo.dto';
@@ -54,6 +55,40 @@ function nomeArquivo(valor: string) {
   return valor.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim() || 'Curriculo';
 }
 
+function listaAnalise(analise: Record<string, unknown>, campo: string): string {
+  const valores = analise[campo];
+  if (!Array.isArray(valores)) return 'Nenhuma';
+  const itens = valores.map((valor) => String(valor).trim()).filter(Boolean);
+  return itens.length ? itens.join(', ') : 'Nenhuma';
+}
+
+function narracaoAts(inicial: unknown, final: unknown): string | null {
+  if (!inicial || typeof inicial !== 'object' || !final || typeof final !== 'object') return null;
+  const base = inicial as Record<string, unknown>;
+  const pos = final as Record<string, unknown>;
+  if (typeof base.score !== 'number' || typeof pos.score !== 'number') return null;
+  const pontos = listaAnalise(base, 'pontosEliminatorios');
+  const diferenca = pos.score - base.score;
+  const comparacao = diferenca > 0
+    ? `aumentou ${diferenca} ponto(s)`
+    : diferenca < 0
+      ? `reduziu ${Math.abs(diferenca)} ponto(s)`
+      : 'permaneceu igual';
+  return [
+    'Etapa 1 — Análise ATS',
+    `Score: ${base.score}`,
+    `Keywords encontradas: ${listaAnalise(base, 'keywordsEncontradas')}`,
+    `Keywords críticas ausentes: ${listaAnalise(base, 'keywordsCriticasAusentes')}`,
+    ...(pontos === 'Nenhuma' ? [] : [`Pontos eliminatórios: ${pontos}`]),
+    `Veredicto: ${String(base.veredicto ?? 'Sem veredicto informado.')}`,
+    '',
+    '[[NARRACAO_ATS_ETAPA_3]]',
+    '',
+    'Etapa 3 — Score pós-geração',
+    `Score final: ${pos.score}, comparado ao inicial de ${base.score}: ${comparacao}.`,
+  ].join('\n');
+}
+
 @Injectable()
 export class CurriculosService implements OnModuleInit {
   private readonly logger = new Logger(CurriculosService.name);
@@ -63,6 +98,7 @@ export class CurriculosService implements OnModuleInit {
     private readonly aiClient: AiClient,
     private readonly docClient: DocClient,
     private readonly eventos: EventosService,
+    private readonly mongo: MongoService,
   ) {}
 
   async onModuleInit() {
@@ -73,6 +109,9 @@ export class CurriculosService implements OnModuleInit {
     for (const geracao of pendentes) {
       void this.processar(geracao.id);
     }
+    void this.reidratarConcluidas().catch((err) => {
+      this.logger.warn(`reidratação de conclusões adiada: ${(err as Error).message}`);
+    });
   }
 
   async gerar(usuarioId: string, vagaId: string) {
@@ -480,12 +519,52 @@ export class CurriculosService implements OnModuleInit {
           },
         });
       });
+      await this.persistirConclusaoCopiloto(geracao.usuarioId, id, curriculoId);
     } catch (err) {
       this.logger.warn(`geracao ${id} falhou: ${(err as Error).message}`);
       await this.prisma.geracaoCurriculo.update({
         where: { id },
         data: { status: 'ERRO', erro: (err as Error).message },
       });
+    }
+  }
+
+  private async reidratarConcluidas(): Promise<void> {
+    const concluidas = await this.prisma.geracaoCurriculo.findMany({
+      where: { status: 'CONCLUIDA', curriculoId: { not: null } },
+      select: { id: true, usuarioId: true, curriculoId: true },
+      orderBy: { atualizadoEm: 'desc' },
+      take: 100,
+    });
+    await Promise.all(
+      concluidas.map((geracao) =>
+        this.persistirConclusaoCopiloto(geracao.usuarioId, geracao.id, geracao.curriculoId!),
+      ),
+    );
+  }
+
+  private async persistirConclusaoCopiloto(
+    usuarioId: string,
+    jobId: string,
+    curriculoId: string,
+  ): Promise<void> {
+    try {
+      const curriculo = await this.buscar(usuarioId, curriculoId);
+      const narracao = narracaoAts(curriculo.analiseInicial, curriculo.analiseFinal);
+      if (!narracao) return;
+      const persistido = {
+        id: curriculo.id,
+        vagaId: curriculo.vagaId,
+        rotulo: curriculo.rotulo,
+        score: curriculo.score,
+        breakdown: curriculo.breakdown,
+        analiseInicial: curriculo.analiseInicial,
+        analiseFinal: curriculo.analiseFinal,
+        degradacao: curriculo.degradacao,
+      };
+      await this.mongo.anexarConclusaoGeracao(usuarioId, jobId, persistido, narracao);
+    } catch (err) {
+      this.logger.warn(`narracao da geracao ${jobId} adiada: ${(err as Error).message}`);
     }
   }
 

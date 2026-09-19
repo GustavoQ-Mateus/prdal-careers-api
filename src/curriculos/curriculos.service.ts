@@ -506,7 +506,7 @@ export class CurriculosService implements OnModuleInit {
           data: {
             id: curriculoId,
             vagaId: geracao.vagaId,
-            rotulo: `Versao ${versoes + 1}`,
+            rotulo: `${geracao.vaga.empresa} · ${geracao.vaga.titulo}${versoes > 0 ? ` (regeração ${versoes + 1})` : ''}`,
             markdown,
             docxPath,
             pdfPath,

@@ -52,6 +52,7 @@ export interface GeneratePipelineResult {
   analiseInicial: AtsAnalysis;
   analiseFinal: AtsAnalysis;
   degradacao: string | null;
+  promptVersion?: string | null;
 }
 
 @Injectable()

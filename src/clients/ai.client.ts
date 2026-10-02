@@ -31,11 +31,13 @@ export interface ScoreBreakdown {
 
 export interface ScoreResult {
   score: number;
+  scoreVersao?: number;
   breakdown: ScoreBreakdown;
 }
 
 export interface AtsAnalysis {
   score: number;
+  scoreVersao?: number;
   keywordsEncontradas: string[];
   keywordsCriticasAusentes: string[];
   pontosEliminatorios: string[];

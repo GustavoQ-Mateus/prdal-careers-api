@@ -5,7 +5,7 @@ import {
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, StatusGeracaoCurriculo } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import archiver from 'archiver';
 import { AiClient, AtsAnalysis, Keyword } from '../clients/ai.client';
@@ -16,6 +16,8 @@ import { perfilParaIa } from '../perfil/perfil.normalizacao';
 import { PrismaService } from '../prisma/prisma.service';
 import { EditarCurriculoDto } from './curriculo.dto';
 import { lerArquivo, salvarArquivo } from './storage';
+
+const GERACAO_EM_ANDAMENTO: StatusGeracaoCurriculo[] = ['PENDENTE', 'ANALISANDO', 'GERANDO', 'VALIDANDO'];
 
 function ordemCurriculo(
   ordenarPor?: string,
@@ -138,26 +140,12 @@ export class CurriculosService implements OnModuleInit {
       );
     }
 
-    const existente = await this.prisma.geracaoCurriculo.findFirst({
-      where: { usuarioId, vagaId },
+    const emAndamento = await this.prisma.geracaoCurriculo.findFirst({
+      where: { usuarioId, vagaId, status: { in: GERACAO_EM_ANDAMENTO } },
       orderBy: { criadoEm: 'desc' },
     });
-    if (existente) {
-      if (existente.status === 'ERRO') {
-        const reinicio = await this.prisma.geracaoCurriculo.updateMany({
-          where: { id: existente.id, usuarioId, status: 'ERRO' },
-          data: {
-            status: 'PENDENTE',
-            erro: null,
-            analiseInicial: Prisma.DbNull,
-            analiseFinal: Prisma.DbNull,
-            degradacao: null,
-          },
-        });
-        if (reinicio.count > 0) void this.processar(existente.id);
-        return { jobId: existente.id, status: 'GERANDO', curriculoId: null };
-      }
-      return { jobId: existente.id, status: existente.status, curriculoId: existente.curriculoId };
+    if (emAndamento) {
+      return { jobId: emAndamento.id, status: emAndamento.status, curriculoId: emAndamento.curriculoId };
     }
 
     const geracao = await this.prisma.geracaoCurriculo.create({

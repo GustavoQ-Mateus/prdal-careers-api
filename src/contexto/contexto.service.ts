@@ -2,7 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { LotesService } from '../lotes/lotes.service';
 import { DocumentoRagDoc, MongoService } from '../mongo/mongo.service';
-import { normalizarExperiencias, textoExperiencia, tituloExperiencia } from '../perfil/perfil.normalizacao';
+import {
+  listaCertificacoes,
+  listaFormacao,
+  listaTexto,
+  normalizarExperiencias,
+  textoExperiencia,
+  tituloExperiencia,
+} from '../perfil/perfil.normalizacao';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -44,20 +51,18 @@ export class ContextoService {
           novos.push(doc('perfil', `experiencia-${experiencia.id}`, tituloExperiencia(experiencia), texto));
         }
       });
-      (perfil.formacao as string[]).forEach((f, i) => {
-        if (String(f).trim()) novos.push(doc('perfil', `formacao-${i}`, 'Formacao', String(f)));
+      listaFormacao(perfil.formacao).forEach((formacao, i) => {
+        novos.push(doc('perfil', `formacao-${i}`, 'Formacao', formacao));
       });
-      (perfil.certificacoes as string[]).forEach((certificacao, i) => {
-        if (String(certificacao).trim()) {
-          novos.push(doc('perfil', `certificacao-${i}`, 'Certificacao', String(certificacao)));
-        }
+      listaCertificacoes(perfil.certificacoes).forEach((certificacao, i) => {
+        novos.push(doc('perfil', `certificacao-${i}`, 'Certificacao', certificacao));
       });
-      const idiomas = perfil.idiomas as string[];
-      if (idiomas?.length) {
+      const idiomas = listaTexto(perfil.idiomas);
+      if (idiomas.length) {
         novos.push(doc('perfil', 'idiomas', 'Idiomas', idiomas.join(', ')));
       }
-      const skills = perfil.skills as string[];
-      if (skills?.length) {
+      const skills = listaTexto(perfil.skills);
+      if (skills.length) {
         novos.push(doc('perfil', 'skills', 'Skills', skills.join(', ')));
       }
     }

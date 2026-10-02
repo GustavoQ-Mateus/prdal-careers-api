@@ -48,10 +48,56 @@ function texto(valor: unknown): string {
   return typeof valor === 'string' ? valor.trim() : '';
 }
 
-function listaTexto(valor: unknown): string[] {
+export function listaTexto(valor: unknown): string[] {
   return Array.isArray(valor)
     ? valor.map(texto).filter(Boolean)
     : [];
+}
+
+const STATUS_FORMACAO: Record<string, string> = {
+  concluido: 'concluído',
+  em_andamento: 'em andamento',
+  trancado: 'trancado',
+};
+
+function textoOuNumero(valor: unknown): string {
+  return typeof valor === 'number' && Number.isFinite(valor) ? String(valor) : texto(valor);
+}
+
+function mesAno(mes: unknown, ano: unknown): string {
+  const anoTexto = textoOuNumero(ano);
+  if (!anoTexto) return '';
+  const mesTexto = textoOuNumero(mes);
+  return mesTexto ? `${mesTexto.padStart(2, '0')}/${anoTexto}` : anoTexto;
+}
+
+export function textoFormacao(item: unknown): string {
+  if (typeof item === 'string') return texto(item);
+  const dado = registro(item);
+  if (!dado) return '';
+  const grau = texto(dado.grau);
+  const curso = texto(dado.curso);
+  const titulo = grau && curso ? `${grau} em ${curso}` : grau || curso;
+  const status = STATUS_FORMACAO[texto(dado.status)] ?? texto(dado.status);
+  const inicio = mesAno(dado.inicioMes, dado.inicioAno);
+  const fim = mesAno(dado.fimMes, dado.fimAno);
+  const periodo = inicio && fim ? `${inicio} - ${fim}` : inicio ? `${inicio} - atual` : fim;
+  return [texto(dado.instituicao), titulo, periodo, status].filter(Boolean).join(' | ');
+}
+
+export function textoCertificacao(item: unknown): string {
+  if (typeof item === 'string') return texto(item);
+  const dado = registro(item);
+  if (!dado) return '';
+  return [texto(dado.titulo), texto(dado.descricao)].filter(Boolean).join(', ');
+}
+
+export function listaFormacao(valor: unknown): string[] {
+  return Array.isArray(valor) ? valor.map(textoFormacao).filter(Boolean) : [];
+}
+
+export function listaCertificacoes(valor: unknown): string[] {
+  return Array.isArray(valor) ? valor.map(textoCertificacao).filter(Boolean) : [];
 }
 
 function tipoContato(valor: unknown): TipoContato {
@@ -243,8 +289,8 @@ export function perfilParaIa(perfil: PerfilComJson) {
       realizacoes: extrairRealizacoes(experiencia.descricao),
       texto: textoExperiencia(experiencia),
     })),
-    formacao: listaTexto(perfil.formacao),
-    certificacoes: listaTexto(perfil.certificacoes),
+    formacao: listaFormacao(perfil.formacao),
+    certificacoes: listaCertificacoes(perfil.certificacoes),
     idiomas: listaTexto(perfil.idiomas),
     skills: listaTexto(perfil.skills),
   };

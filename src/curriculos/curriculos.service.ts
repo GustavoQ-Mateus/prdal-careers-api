@@ -70,30 +70,26 @@ function listaAnalise(analise: Record<string, unknown>, campo: string): string {
   return itens.length ? itens.join(', ') : 'Nenhuma';
 }
 
-function narracaoAts(inicial: unknown, final: unknown): string | null {
+export function narracaoAts(inicial: unknown, final: unknown): string | null {
   if (!inicial || typeof inicial !== 'object' || !final || typeof final !== 'object') return null;
   const base = inicial as Record<string, unknown>;
   const pos = final as Record<string, unknown>;
   if (typeof base.score !== 'number' || typeof pos.score !== 'number') return null;
   const pontos = listaAnalise(base, 'pontosEliminatorios');
-  const diferenca = pos.score - base.score;
-  const comparacao = diferenca > 0
-    ? `aumentou ${diferenca} ponto(s)`
-    : diferenca < 0
-      ? `reduziu ${Math.abs(diferenca)} ponto(s)`
-      : 'permaneceu igual';
+  const ausentesFinais = listaAnalise(pos, 'keywordsCriticasAusentes');
   return [
-    'Etapa 1 — Análise ATS',
+    'Etapa 1: Aderência do perfil-mestre',
     `Score: ${base.score}`,
     `Keywords encontradas: ${listaAnalise(base, 'keywordsEncontradas')}`,
     `Keywords críticas ausentes: ${listaAnalise(base, 'keywordsCriticasAusentes')}`,
-    ...(pontos === 'Nenhuma' ? [] : [`Pontos eliminatórios: ${pontos}`]),
+    ...(pontos === 'Nenhuma' ? [] : [`Pontos de atenção: ${pontos}`]),
     `Veredicto: ${String(base.veredicto ?? 'Sem veredicto informado.')}`,
     '',
     '[[NARRACAO_ATS_ETAPA_3]]',
     '',
-    'Etapa 3 — Score pós-geração',
-    `Score final: ${pos.score}, comparado ao inicial de ${base.score}: ${comparacao}.`,
+    'Etapa 3: Aderência do currículo gerado',
+    `Score: ${pos.score}. Para referência, a aderência do perfil-mestre foi ${base.score}.`,
+    ...(ausentesFinais === 'Nenhuma' ? [] : [`Keywords ainda ausentes: ${ausentesFinais}`]),
   ].join('\n');
 }
 

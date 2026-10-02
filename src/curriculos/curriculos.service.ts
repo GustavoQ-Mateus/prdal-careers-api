@@ -4,6 +4,7 @@ import {
   Logger,
   NotFoundException,
   OnModuleInit,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { Prisma, StatusGeracaoCurriculo } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
@@ -59,6 +60,20 @@ function mesclarDegradacao(
 ): string | null {
   const partes = [atual, nova].filter((parte): parte is string => !!parte);
   return partes.length ? partes.join('; ') : null;
+}
+
+export const DEGRADACAO_RENDERIZACAO =
+  'Os arquivos PDF e DOCX não puderam ser gerados agora. O texto do currículo está salvo e você pode gerar os arquivos novamente.';
+
+function semDegradacaoRenderizacao(atual: string | null): string | null {
+  if (!atual) return null;
+  const partes = atual.split('; ').filter((parte) => parte !== DEGRADACAO_RENDERIZACAO);
+  return partes.length ? partes.join('; ') : null;
+}
+
+function degradacaoComRenderizacao(atual: string | null, falhou: boolean): string | null {
+  const base = semDegradacaoRenderizacao(atual);
+  return falhou ? mesclarDegradacao(base, DEGRADACAO_RENDERIZACAO) : base;
 }
 
 function nomeArquivo(valor: string) {
@@ -358,7 +373,7 @@ export class CurriculosService implements OnModuleInit {
       keywords,
     });
 
-    const { docxPath, pdfPath } = await this.renderizar(
+    const { docxPath, pdfPath, falhou } = await this.renderizar(
       curriculo.id,
       dto.markdown,
     );
@@ -372,6 +387,7 @@ export class CurriculosService implements OnModuleInit {
           scoreBreakdown: breakdown as unknown as Prisma.InputJsonValue,
           docxPath,
           pdfPath,
+          degradacao: degradacaoComRenderizacao(curriculo.degradacao, falhou),
           ...(dto.rotulo ? { rotulo: dto.rotulo } : {}),
         },
       });
@@ -422,6 +438,25 @@ export class CurriculosService implements OnModuleInit {
         ? `/curriculos/${curriculo.id}/pdf`
         : null,
     };
+  }
+
+  async gerarArquivos(usuarioId: string, id: string) {
+    const curriculo = await this.prisma.curriculo.findFirst({
+      where: { id, vaga: { usuarioId } },
+    });
+    if (!curriculo) throw new NotFoundException('curriculo nao encontrado');
+
+    const { docxPath, pdfPath, falhou } = await this.renderizar(curriculo.id, curriculo.markdown);
+    await this.prisma.curriculo.update({
+      where: { id: curriculo.id },
+      data: {
+        docxPath,
+        pdfPath,
+        degradacao: degradacaoComRenderizacao(curriculo.degradacao, falhou),
+      },
+    });
+    if (falhou) throw new ServiceUnavailableException(DEGRADACAO_RENDERIZACAO);
+    return this.buscar(usuarioId, curriculo.id);
   }
 
   async arquivo(usuarioId: string, id: string, formato: 'docx' | 'pdf') {
@@ -528,7 +563,7 @@ export class CurriculosService implements OnModuleInit {
       let markdown = pipeline.markdown;
       let analiseFinal = pipeline.analiseFinal;
       let degradacao = pipeline.degradacao;
-      let { docxPath, pdfPath, paginas } = await this.renderizar(
+      let { docxPath, pdfPath, paginas, falhou } = await this.renderizar(
         curriculoId,
         markdown,
       );
@@ -558,7 +593,7 @@ export class CurriculosService implements OnModuleInit {
           }
           markdown = reducao.markdown;
           analiseFinal = reducao.analiseFinal;
-          ({ docxPath, pdfPath, paginas } = await this.renderizar(
+          ({ docxPath, pdfPath, paginas, falhou } = await this.renderizar(
             curriculoId,
             markdown,
           ));
@@ -575,6 +610,7 @@ export class CurriculosService implements OnModuleInit {
           `Curriculo mantido com ${paginas} paginas apos ${rodadas} rodada(s) de corte de conteudo`,
         );
       }
+      degradacao = degradacaoComRenderizacao(degradacao, falhou);
 
       const { score, breakdown } = this.scoreDaAnalise(analiseFinal);
 
@@ -688,6 +724,7 @@ export class CurriculosService implements OnModuleInit {
     let docxPath: string | null = null;
     let pdfPath: string | null = null;
     let paginas = 0;
+    let falhou = false;
     try {
       let template: string | undefined;
       let pdf = await this.docClient.renderPdf(markdown);
@@ -704,9 +741,15 @@ export class CurriculosService implements OnModuleInit {
       }
       pdfPath = await salvarArquivo(`${curriculoId}.pdf`, pdf);
     } catch (err) {
-      this.logger.warn(`doc-service indisponivel: ${(err as Error).message}`);
+      falhou = true;
+      docxPath = null;
+      pdfPath = null;
+      paginas = 0;
+      this.logger.warn(
+        `degradacao codigo=renderizacao_doc_service_indisponivel curriculo=${curriculoId} causa=${(err as Error).message}`,
+      );
     }
-    return { docxPath, pdfPath, paginas };
+    return { docxPath, pdfPath, paginas, falhou };
   }
 
   private scoreDaAnalise(analise: AtsAnalysis) {

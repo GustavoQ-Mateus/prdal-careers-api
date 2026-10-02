@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Param,
+  Post,
   Put,
   Query,
   Res,
@@ -75,6 +76,11 @@ export class CurriculosController {
     @Body() dto: EditarCurriculoDto,
   ) {
     return this.curriculos.editar(user.userId, id, dto);
+  }
+
+  @Post('curriculos/:id/arquivos')
+  gerarArquivos(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.curriculos.gerarArquivos(user.userId, id);
   }
 
   @Get('curriculos/:id/docx')

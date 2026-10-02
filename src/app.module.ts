@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { validarAmbiente } from './config/ambiente';
+import { cabecalhoServico } from './config/servico';
 import { BancoVagasModule } from './banco-vagas/banco-vagas.module';
 import { CandidaturasModule } from './candidaturas/candidaturas.module';
 import { ContextoModule } from './contexto/contexto.module';
@@ -25,7 +26,9 @@ import { VagasModule } from './vagas/vagas.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true, validate: validarAmbiente }),
-    HttpModule.register({ timeout: 5000 }),
+    HttpModule.registerAsync({
+      useFactory: () => ({ timeout: 5000, headers: cabecalhoServico() }),
+    }),
     PrismaModule,
     MongoModule,
     AuthModule,

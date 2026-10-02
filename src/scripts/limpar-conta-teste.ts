@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { MongoClient } from 'mongodb';
 import { randomUUID } from 'node:crypto';
+import { cabecalhoServico } from '../config/servico';
 import {
   normalizarExperiencias,
   textoExperiencia,
@@ -115,7 +116,7 @@ async function reindexarConhecimento(
   const aiUrl = process.env.AI_SERVICE_URL ?? 'http://localhost:8000';
   const resposta = await fetch(aiUrl + '/context/replace', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...cabecalhoServico() },
     body: JSON.stringify({
       usuarioId,
       documentos: documentos.map(({ usuarioId: id, origem, origemId, titulo, texto }) => ({

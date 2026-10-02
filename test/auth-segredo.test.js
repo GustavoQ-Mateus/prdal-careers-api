@@ -11,12 +11,19 @@ const { JwtStrategy } = require('../dist/auth/jwt.strategy');
 const { JwtAuthGuard } = require('../dist/auth/jwt-auth.guard');
 
 const SEGREDO = 'segredo-de-teste-com-mais-de-32-bytes-0123456789';
+const SERVICE_TOKEN = 'token-de-servico-de-teste-com-mais-de-32-bytes';
 
 test('fora de development a api nao sobe sem JWT_SECRET', () => {
-  assert.throws(() => validarAmbiente({ NODE_ENV: 'production' }), /JWT_SECRET/);
-  assert.throws(() => validarAmbiente({}), /JWT_SECRET/);
-  assert.throws(() => validarAmbiente({ NODE_ENV: 'production', JWT_SECRET: 'dev-secret' }), /32 bytes/);
-  assert.equal(validarAmbiente({ NODE_ENV: 'production', JWT_SECRET: SEGREDO }).JWT_SECRET, SEGREDO);
+  assert.throws(() => validarAmbiente({ NODE_ENV: 'production', SERVICE_TOKEN }), /JWT_SECRET/);
+  assert.throws(() => validarAmbiente({ SERVICE_TOKEN }), /JWT_SECRET/);
+  assert.throws(() => validarAmbiente({ NODE_ENV: 'production', SERVICE_TOKEN, JWT_SECRET: 'dev-secret' }), /32 bytes/);
+  assert.equal(validarAmbiente({ NODE_ENV: 'production', SERVICE_TOKEN, JWT_SECRET: SEGREDO }).JWT_SECRET, SEGREDO);
+});
+
+test('fora de development a api nao sobe sem SERVICE_TOKEN', () => {
+  assert.throws(() => validarAmbiente({ NODE_ENV: 'production', JWT_SECRET: SEGREDO }), /SERVICE_TOKEN/);
+  assert.throws(() => validarAmbiente({ NODE_ENV: 'production', JWT_SECRET: SEGREDO, SERVICE_TOKEN: 'curto' }), /SERVICE_TOKEN/);
+  assert.equal(validarAmbiente({ NODE_ENV: 'development' }).SERVICE_TOKEN, undefined);
 });
 
 test('em development sem segredo usa um segredo aleatorio, nunca dev-secret', () => {
@@ -41,7 +48,7 @@ test('token assinado com dev-secret retorna 401 quando o segredo configurado e o
   class ModuloTeste {}
   Module({
     imports: [
-      ConfigModule.forRoot({ ignoreEnvFile: true, validate: () => validarAmbiente({ NODE_ENV: 'production', JWT_SECRET: SEGREDO }) }),
+      ConfigModule.forRoot({ ignoreEnvFile: true, validate: () => validarAmbiente({ NODE_ENV: 'production', JWT_SECRET: SEGREDO, SERVICE_TOKEN }) }),
       PassportModule,
     ],
     controllers: [Protegido],

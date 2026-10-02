@@ -15,6 +15,14 @@ import { CATALOGO_TOOLS, ToolDef, TOOLS_POR_NOME } from './tools';
 
 const MAX_PASSOS = 8;
 const LIMITE_HISTORICO = 2000;
+const ESCRITAS_SEM_CONFIRMACAO_NO_AUTOPILOTO = new Set(['registrar_nota']);
+
+export function exigeConfirmacao(tool: ToolDef, modo: 'assistido' | 'autopiloto'): boolean {
+  if (tool.efeito !== 'escrita') return false;
+  if (modo === 'assistido') return true;
+  return !ESCRITAS_SEM_CONFIRMACAO_NO_AUTOPILOTO.has(tool.nome);
+}
+
 @Injectable()
 export class ChatService {
   private readonly selfUrl =
@@ -37,7 +45,7 @@ export class ChatService {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
-    const modo = dto.modo ?? 'autopiloto';
+    const modo = dto.modo ?? 'assistido';
     const conversa = await this.conversas.abrir(
       user.userId,
       dto.conversaId,
@@ -261,7 +269,12 @@ export class ChatService {
         continue;
       }
 
-      if (tool.efeito === 'escrita' && modo === 'assistido') {
+      if (tool.nome === 'gerar_curriculo') {
+        await this.solicitarConfirmacaoEtapa2(res, conversa, callId, args);
+        return;
+      }
+
+      if (exigeConfirmacao(tool, modo)) {
         this.enviar(res, 'tool_call', {
           callId,
           tool: tool.nome,
@@ -283,11 +296,6 @@ export class ChatService {
           resumo: tool.resumo ? tool.resumo(args) : `Executar ${tool.nome}`,
         });
         this.finalizar(res, conversa._id, 'aguardando_confirmacao');
-        return;
-      }
-
-      if (tool.nome === 'gerar_curriculo') {
-        await this.solicitarConfirmacaoEtapa2(res, conversa, callId, args);
         return;
       }
 

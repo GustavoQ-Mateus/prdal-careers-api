@@ -1,8 +1,10 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 
 const DEFAULT_GENERATE_TIMEOUT_MS = 300000;
+export const DEGRADACAO_KEYWORDS_INDISPONIVEIS =
+  'A extração de keywords da vaga está indisponível no momento. Tente novamente em instantes.';
 
 function envMs(nome: string, fallback: number): number {
   const valor = Number(process.env[nome]);
@@ -54,6 +56,7 @@ export interface GeneratePipelineResult {
 
 @Injectable()
 export class AiClient {
+  private readonly logger = new Logger(AiClient.name);
   private readonly baseUrl =
     process.env.AI_SERVICE_URL ?? 'http://localhost:8000';
   private readonly generateTimeoutMs = envMs(
@@ -76,10 +79,13 @@ export class AiClient {
         degradacao: data.degradacao ?? null,
       };
     } catch (err) {
+      this.logger.warn(
+        `degradacao codigo=keywords_ai_service_indisponivel causa=${(err as Error).message}`,
+      );
       return {
         keywords: [],
         status: 'PENDENTE',
-        degradacao: `Extracao de keywords indisponivel: ${(err as Error).message}`,
+        degradacao: DEGRADACAO_KEYWORDS_INDISPONIVEIS,
       };
     }
   }

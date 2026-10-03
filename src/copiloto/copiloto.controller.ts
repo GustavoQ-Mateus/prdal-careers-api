@@ -60,16 +60,19 @@ export class CopilotoController {
   }
 
   @Post('keywords-previa')
+  @LimitarRequisicoes(LIMITES.ia)
   keywordsPrevia(@Body() dto: KeywordsPreviaDto) {
     return this.capacidades.keywordsPrevia(dto.descricao);
   }
 
   @Post('rag/consulta')
+  @LimitarRequisicoes(LIMITES.consulta)
   ragConsulta(@CurrentUser() user: AuthUser, @Body() dto: RagConsultaDto) {
     return this.capacidades.consultarRag(user.userId, dto.query, dto.k);
   }
 
   @Post('score')
+  @LimitarRequisicoes(LIMITES.consulta)
   score(@CurrentUser() user: AuthUser, @Body() dto: ScoreAvulsoDto) {
     return this.capacidades.score(
       user.userId,
@@ -80,6 +83,7 @@ export class CopilotoController {
   }
 
   @Post('mensagem-recrutador')
+  @LimitarRequisicoes(LIMITES.ia)
   mensagemRecrutador(
     @CurrentUser() user: AuthUser,
     @Body() dto: MensagemRecrutadorDto,
@@ -92,6 +96,7 @@ export class CopilotoController {
   }
 
   @Post('respostas-formulario')
+  @LimitarRequisicoes(LIMITES.ia)
   respostasFormulario(
     @CurrentUser() user: AuthUser,
     @Body() dto: RespostasFormularioDto,

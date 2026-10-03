@@ -22,6 +22,9 @@ export const LIMITES = {
   chat: { minuto: 30, hora: 300 },
   geracao: { minuto: 5, hora: 30 },
   criacao: { minuto: 20, hora: 200 },
+  ia: { minuto: 10, hora: 100 },
+  consulta: { minuto: 30, hora: 300 },
+  lote: { minuto: 2, hora: 10 },
 } as const;
 
 @Injectable()

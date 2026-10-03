@@ -6,9 +6,11 @@ import { configurarCabecalhos } from './config/cabecalhos';
 import { configurarCorpo } from './config/corpo';
 import { opcoesCors } from './config/cors';
 import { configurarCsrf } from './config/csrf';
+import { configurarProxy } from './config/proxy';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+  configurarProxy(app);
   configurarCabecalhos(app);
   app.enableCors(opcoesCors());
   configurarCorpo(app);

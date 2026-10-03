@@ -76,6 +76,7 @@ export class OportunidadesController {
   }
 
   @Post('reprocessar-keywords')
+  @LimitarRequisicoes(LIMITES.lote)
   reprocessarKeywords(@CurrentUser() user: AuthUser) {
     return this.oportunidades.reprocessarKeywords(user.userId);
   }
@@ -147,6 +148,7 @@ export class OportunidadesController {
   }
 
   @Post(':id/analisar-ats')
+  @LimitarRequisicoes(LIMITES.ia)
   analisarAts(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.curriculos.analisarAts(user.userId, id);
   }

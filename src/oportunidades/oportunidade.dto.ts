@@ -1,6 +1,7 @@
 import { PrioridadeOportunidade } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsBoolean,
@@ -8,45 +9,55 @@ import {
   IsIn,
   IsOptional,
   IsString,
+  MaxLength,
   MinLength,
   ValidateNested,
 } from 'class-validator';
 import { ItemImportacaoDto } from '../banco-vagas/banco-vaga.dto';
+import { LIMITE } from '../dominio/limites';
 import { DestinoTransicao } from '../dominio/transicoes';
 
 export class CriarOportunidadeDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(LIMITE.titulo)
   titulo!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(LIMITE.empresa)
   empresa!: string;
 
   @IsString()
   @MinLength(1)
+  @MaxLength(LIMITE.descricaoVaga)
   descricao!: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.url)
   fonte?: string;
 }
 
 export class AtualizarOportunidadeDto {
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.titulo)
   titulo?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.empresa)
   empresa?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.descricaoVaga)
   descricao?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.url)
   fonte?: string;
 
   @IsOptional()
@@ -61,6 +72,7 @@ export class AtualizarOportunidadeDto {
 export class ImportarOportunidadesDto {
   @IsArray()
   @ArrayMinSize(1)
+  @ArrayMaxSize(LIMITE.itens)
   @ValidateNested({ each: true })
   @Type(() => ItemImportacaoDto)
   itens!: ItemImportacaoDto[];
@@ -82,11 +94,13 @@ export class TransicaoDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.itemLista)
   motivo?: string;
 }
 
 export class NotaTimelineDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(LIMITE.nota)
   descricao!: string;
 }

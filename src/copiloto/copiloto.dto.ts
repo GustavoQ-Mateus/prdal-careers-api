@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsIn,
   IsInt,
@@ -7,13 +8,16 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { LIMITE } from '../dominio/limites';
 
 export class ConfirmacaoDto {
   @IsString()
+  @MaxLength(LIMITE.id)
   callId!: string;
 
   @IsIn(['confirmar', 'recusar'])
@@ -27,6 +31,7 @@ export class ConfirmacaoDto {
 export class ChatDto {
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.id)
   conversaId?: string;
 
   @IsOptional()
@@ -35,10 +40,12 @@ export class ChatDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.id)
   oportunidadeId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.mensagemChat)
   mensagem?: string;
 
   @IsOptional()
@@ -50,12 +57,14 @@ export class ChatDto {
 export class KeywordsPreviaDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(LIMITE.descricaoVaga)
   descricao!: string;
 }
 
 export class RagConsultaDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(LIMITE.consulta)
   query!: string;
 
   @IsOptional()
@@ -67,6 +76,7 @@ export class RagConsultaDto {
 
 export class KeywordDto {
   @IsString()
+  @MaxLength(LIMITE.termo)
   termo!: string;
 
   @Type(() => Number)
@@ -76,14 +86,17 @@ export class KeywordDto {
 export class ScoreAvulsoDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(LIMITE.markdownCurriculo)
   markdown!: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.id)
   oportunidadeId?: string;
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(LIMITE.keywords)
   @ValidateNested({ each: true })
   @Type(() => KeywordDto)
   keywords?: KeywordDto[];
@@ -91,18 +104,23 @@ export class ScoreAvulsoDto {
 
 export class MensagemRecrutadorDto {
   @IsString()
+  @MaxLength(LIMITE.id)
   oportunidadeId!: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.mensagemChat)
   contexto?: string;
 }
 
 export class RespostasFormularioDto {
   @IsString()
+  @MaxLength(LIMITE.id)
   oportunidadeId!: string;
 
   @IsArray()
+  @ArrayMaxSize(LIMITE.itens)
   @IsString({ each: true })
+  @MaxLength(LIMITE.itemLista, { each: true })
   campos!: string[];
 }

@@ -7,7 +7,7 @@ const { PassportModule } = require('@nestjs/passport');
 
 const SEGREDO = 'segredo-de-teste-com-mais-de-32-bytes-0123456789';
 
-async function subirApp(t, { controllers = [], providers = [], imports = [], configurar } = {}) {
+async function subirApp(t, { controllers = [], providers = [], imports = [], configurar, bodyParser = true } = {}) {
   const { JwtStrategy } = require('../../dist/auth/jwt.strategy');
   class ModuloTeste {}
   Module({
@@ -19,7 +19,7 @@ async function subirApp(t, { controllers = [], providers = [], imports = [], con
     controllers,
     providers: [JwtStrategy, ...providers],
   })(ModuloTeste);
-  const app = await NestFactory.create(ModuloTeste, { logger: false });
+  const app = await NestFactory.create(ModuloTeste, { logger: false, bodyParser });
   if (configurar) configurar(app);
   await app.listen(0, '127.0.0.1');
   t.after(() => app.close());

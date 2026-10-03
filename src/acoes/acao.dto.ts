@@ -6,12 +6,15 @@ import {
   IsEnum,
   IsOptional,
   IsString,
+  MaxLength,
   MinLength,
 } from 'class-validator';
+import { LIMITE } from '../dominio/limites';
 
 export class CriarAcaoDto {
   @IsString()
   @MinLength(1)
+  @MaxLength(LIMITE.titulo)
   titulo!: string;
 
   @IsEnum(TipoAcaoOportunidade)
@@ -31,12 +34,14 @@ export class CriarAcaoDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.id)
   candidaturaId?: string;
 }
 
 export class AtualizarAcaoDto {
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.titulo)
   titulo?: string;
 
   @IsOptional()
@@ -63,5 +68,6 @@ export class QueryTimelineDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(LIMITE.textoCurto)
   cursor?: string;
 }

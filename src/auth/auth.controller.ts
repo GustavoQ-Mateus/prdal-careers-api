@@ -1,6 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CredenciaisDto } from './dto';
+import { CadastroDto, LoginDto } from './dto';
 import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
 
 @Controller('auth')
@@ -9,13 +9,13 @@ export class AuthController {
 
   @Post('register')
   @LimitarRequisicoes(LIMITES.cadastro)
-  register(@Body() dto: CredenciaisDto) {
+  register(@Body() dto: CadastroDto) {
     return this.authService.register(dto);
   }
 
   @Post('login')
   @LimitarRequisicoes(LIMITES.login)
-  login(@Body() dto: CredenciaisDto) {
+  login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
 }

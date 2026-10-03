@@ -8,7 +8,40 @@ import {
   tituloExperiencia,
 } from '../perfil/perfil.normalizacao';
 
-const EMAIL_ALVO = 'gustavoq.mateusgithub@gmail.com';
+const AMBIENTES_PERMITIDOS = ['teste', 'desenvolvimento'];
+
+export interface OpcoesLimpeza {
+  email: string;
+  executar: boolean;
+}
+
+export function lerOpcoes(argv: string[], env: Record<string, string | undefined>): OpcoesLimpeza {
+  const ambiente = env.PRDAL_AMBIENTE?.trim().toLowerCase() ?? '';
+  if (!AMBIENTES_PERMITIDOS.includes(ambiente)) {
+    throw new Error(
+      'limpeza recusada: defina PRDAL_AMBIENTE como teste ou desenvolvimento (atual: ' + (ambiente || 'ausente') + ')',
+    );
+  }
+
+  let email = '';
+  let executar = false;
+  let simular = false;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--executar') executar = true;
+    else if (arg === '--dry-run') simular = true;
+    else if (arg === '--email') email = argv[++i] ?? '';
+    else if (arg.startsWith('--email=')) email = arg.slice('--email='.length);
+    else throw new Error('argumento desconhecido: ' + arg);
+  }
+
+  email = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+$/.test(email)) {
+    throw new Error('informe a conta alvo com --email <email>');
+  }
+  if (executar && simular) throw new Error('use --dry-run ou --executar, nao os dois');
+  return { email, executar };
+}
 
 type DocumentoRag = {
   _id: string;
@@ -134,12 +167,50 @@ async function reindexarConhecimento(
   return { removidos: removidos.deletedCount, inseridos: perfilDocs.length, total: documentos.length };
 }
 
+async function simular(prisma: PrismaClient, mongoDb: ReturnType<MongoClient['db']>, usuarioId: string) {
+  const [candidaturas, acoes, layouts, eventos, geracoes, curriculos, vagas, conversas, rag] = await Promise.all([
+    prisma.candidatura.count({ where: { vaga: { usuarioId } } }),
+    prisma.acaoOportunidade.count({ where: { usuarioId } }),
+    prisma.pipelineLayout.count({ where: { usuarioId } }),
+    prisma.eventoOportunidade.count({ where: { usuarioId } }),
+    prisma.geracaoCurriculo.count({ where: { usuarioId } }),
+    prisma.curriculo.count({ where: { vaga: { usuarioId } } }),
+    prisma.vaga.count({ where: { usuarioId } }),
+    mongoDb.collection('copiloto_conversas').countDocuments({ usuarioId }),
+    mongoDb.collection('documentos_rag').countDocuments({ usuarioId, origem: { $in: ['perfil', 'candidatura'] } }),
+  ]);
+  return {
+    candidaturas,
+    acoes,
+    pipeline_layouts: layouts,
+    eventos_oportunidade: eventos,
+    geracoes_curriculo: geracoes,
+    curriculos,
+    vagas,
+    copiloto_conversas: conversas,
+    documentos_rag_perfil_ou_candidatura: rag,
+  };
+}
+
 async function main() {
+  const opcoes = lerOpcoes(process.argv.slice(2), process.env);
   const prisma = new PrismaClient();
   const mongo = new MongoClient(process.env.MONGO_URL ?? 'mongodb://localhost:27017');
   try {
-    const usuario = await prisma.usuario.findUnique({ where: { email: EMAIL_ALVO } });
-    if (!usuario) throw new Error('conta nao encontrada: ' + EMAIL_ALVO);
+    const usuario = await prisma.usuario.findUnique({ where: { email: opcoes.email } });
+    if (!usuario) throw new Error('conta nao encontrada: ' + opcoes.email);
+
+    if (!opcoes.executar) {
+      const mongoDb = mongo.db(process.env.MONGO_DB ?? 'prdal_careers');
+      console.log(JSON.stringify({
+        modo: 'dry-run',
+        usuarioId: usuario.id.slice(0, 8) + '...',
+        apagaria: await simular(prisma, mongoDb, usuario.id),
+        preservaria: ['perfil-mestre', 'notas enviadas', 'conta'],
+        executar: 'repita com --executar para apagar',
+      }, null, 2));
+      return;
+    }
 
     const perfil = await prisma.perfilMestre.findUnique({ where: { usuarioId: usuario.id } });
     if (!perfil) throw new Error('perfil-mestre nao encontrado; limpeza abortada');
@@ -192,7 +263,9 @@ async function main() {
   }
 }
 
-main().catch((erro) => {
-  console.error(erro);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((erro) => {
+    console.error(erro instanceof Error ? erro.message : erro);
+    process.exitCode = 1;
+  });
+}

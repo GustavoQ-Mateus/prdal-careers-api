@@ -11,6 +11,7 @@ import {
   tituloExperiencia,
 } from '../perfil/perfil.normalizacao';
 import { PrismaService } from '../prisma/prisma.service';
+import { ArquivoTexto } from './upload-texto';
 
 @Injectable()
 export class ContextoService {
@@ -92,15 +93,10 @@ export class ContextoService {
     return { loteId: lote.id, total: ids.length };
   }
 
-  async upload(
-    usuarioId: string,
-    arquivos: { originalname: string; buffer: Buffer }[],
-  ) {
+  async upload(usuarioId: string, arquivos: ArquivoTexto[]) {
     const documentos: DocumentoRagDoc[] = [];
-    for (const arquivo of arquivos) {
+    for (const { titulo, corpo } of arquivos) {
       const notaId = randomUUID();
-      const titulo = arquivo.originalname.replace(/\.md$/i, '');
-      const corpo = arquivo.buffer.toString('utf8');
       await this.mongo.notasObsidian().insertOne({
         _id: notaId,
         usuarioId,

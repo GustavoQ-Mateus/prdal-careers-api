@@ -10,6 +10,12 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ContextoService } from './contexto.service';
+import {
+  ArquivoRecebido,
+  LimiteUploadInterceptor,
+  lerArquivosTexto,
+  opcoesMulter,
+} from './upload-texto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('contexto')
@@ -22,12 +28,12 @@ export class ContextoController {
   }
 
   @Post('upload')
-  @UseInterceptors(FilesInterceptor('arquivos'))
+  @UseInterceptors(LimiteUploadInterceptor, FilesInterceptor('arquivos', undefined, opcoesMulter()))
   upload(
     @CurrentUser() user: AuthUser,
-    @UploadedFiles() arquivos: { originalname: string; buffer: Buffer }[],
+    @UploadedFiles() arquivos: ArquivoRecebido[],
   ) {
-    return this.contexto.upload(user.userId, arquivos ?? []);
+    return this.contexto.upload(user.userId, lerArquivosTexto(arquivos ?? []));
   }
 
   @Get('status')

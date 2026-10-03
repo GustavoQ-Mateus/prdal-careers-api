@@ -2,10 +2,12 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { configurarCabecalhos } from './config/cabecalhos';
 import { configurarCorpo } from './config/corpo';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
+  configurarCabecalhos(app);
   app.enableCors();
   configurarCorpo(app);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));

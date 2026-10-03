@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { ValidationPipe } = require('@nestjs/common');
 const { ThrottlerModule } = require('@nestjs/throttler');
-const { subirApp, tokenDe } = require('./helpers/app-teste');
+const { subirApp, autenticado } = require('./helpers/app-teste');
 
 async function subir(t) {
   const { CopilotoController } = require('../dist/copiloto/copiloto.controller');
@@ -53,7 +53,7 @@ async function subir(t) {
   const enviar = (corpo) =>
     fetch(`${url}/copiloto/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenDe('atacante')}` },
+      headers: { 'Content-Type': 'application/json', ...autenticado('atacante') },
       body: JSON.stringify(corpo),
     });
   return { enviar, registro, conversaExistente };

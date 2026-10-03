@@ -32,3 +32,17 @@ export class CadastroDto {
   @MaxLength(LIMITE.senha)
   senha!: string;
 }
+
+export class TrocaSenhaDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(LIMITE.senha)
+  senhaAtual!: string;
+
+  @IsString()
+  @MinLength(TAMANHO_MINIMO_SENHA, {
+    message: `a senha precisa ter pelo menos ${TAMANHO_MINIMO_SENHA} caracteres`,
+  })
+  @MaxLength(LIMITE.senha)
+  novaSenha!: string;
+}

@@ -177,7 +177,7 @@ test('ChatService nao emite confirmacao para escrita invalida', async () => {
   await new ChatService(conversas, ai, http).chat(
     res,
     { userId: 'usuario-1' },
-    'Bearer teste',
+    {},
     { mensagem: 'acompanhe a geração', modo: 'assistido' },
   );
 

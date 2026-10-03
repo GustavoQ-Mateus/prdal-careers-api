@@ -6,9 +6,12 @@ const { JwtService } = require('@nestjs/jwt');
 const { PassportModule } = require('@nestjs/passport');
 
 const SEGREDO = 'segredo-de-teste-com-mais-de-32-bytes-0123456789';
+const CSRF = 'csrf-de-teste';
 
-async function subirApp(t, { controllers = [], providers = [], imports = [], configurar, bodyParser = true } = {}) {
+async function subirApp(t, { controllers = [], providers = [], imports = [], configurar, bodyParser = true, sessoes } = {}) {
   const { JwtStrategy } = require('../../dist/auth/jwt.strategy');
+  const { SessoesService } = require('../../dist/auth/sessoes.service');
+  const sessoesProvider = sessoes === false ? [] : [{ provide: SessoesService, useValue: sessoes ?? { familiaAtiva: async () => true } }];
   class ModuloTeste {}
   Module({
     imports: [
@@ -17,7 +20,7 @@ async function subirApp(t, { controllers = [], providers = [], imports = [], con
       ...imports,
     ],
     controllers,
-    providers: [JwtStrategy, ...providers],
+    providers: [JwtStrategy, ...sessoesProvider, ...providers],
   })(ModuloTeste);
   const app = await NestFactory.create(ModuloTeste, { logger: false, bodyParser });
   if (configurar) configurar(app);
@@ -26,8 +29,12 @@ async function subirApp(t, { controllers = [], providers = [], imports = [], con
   return { app, url: (await app.getUrl()).replace('[::1]', '127.0.0.1') };
 }
 
-function tokenDe(usuarioId) {
-  return new JwtService({ secret: SEGREDO }).sign({ sub: usuarioId, email: `${usuarioId}@teste.dev` });
+function tokenDe(usuarioId, sid = 'sessao-teste') {
+  return new JwtService({ secret: SEGREDO }).sign({ sub: usuarioId, email: `${usuarioId}@teste.dev`, sid });
 }
 
-module.exports = { subirApp, tokenDe, SEGREDO };
+function autenticado(usuarioId) {
+  return { Cookie: `prdal_access=${tokenDe(usuarioId)}; prdal_csrf=${CSRF}`, 'X-CSRF-Token': CSRF };
+}
+
+module.exports = { subirApp, tokenDe, autenticado, SEGREDO, CSRF };

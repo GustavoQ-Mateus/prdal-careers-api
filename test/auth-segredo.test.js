@@ -9,6 +9,7 @@ const { PassportModule } = require('@nestjs/passport');
 const { validarAmbiente } = require('../dist/config/ambiente');
 const { JwtStrategy } = require('../dist/auth/jwt.strategy');
 const { JwtAuthGuard } = require('../dist/auth/jwt-auth.guard');
+const { SessoesService } = require('../dist/auth/sessoes.service');
 
 const SEGREDO = 'segredo-de-teste-com-mais-de-32-bytes-0123456789';
 const SERVICE_TOKEN = 'token-de-servico-de-teste-com-mais-de-32-bytes';
@@ -35,7 +36,7 @@ test('em development sem segredo usa um segredo aleatorio, nunca dev-secret', ()
   assert.ok(Buffer.byteLength(primeiro) >= 32);
 });
 
-test('token assinado com dev-secret retorna 401 quando o segredo configurado e outro', async (t) => {
+test('token forjado, token no header Authorization e token sem sessao retornam 401', async (t) => {
   class Protegido {
     ler() {
       return { ok: true };
@@ -52,20 +53,27 @@ test('token assinado com dev-secret retorna 401 quando o segredo configurado e o
       PassportModule,
     ],
     controllers: [Protegido],
-    providers: [JwtStrategy],
+    providers: [JwtStrategy, { provide: SessoesService, useValue: { familiaAtiva: async () => true } }],
   })(ModuloTeste);
 
   const app = await NestFactory.create(ModuloTeste, { logger: false });
   await app.listen(0, '127.0.0.1');
   t.after(() => app.close());
   const url = `${await app.getUrl()}/protegido`.replace('[::1]', '127.0.0.1');
-  const payload = { sub: 'usuario-vitima', email: 'vitima@example.com' };
+  const payload = { sub: 'usuario-vitima', email: 'vitima@example.com', sid: 'sessao-1' };
 
   const forjado = new JwtService({ secret: 'dev-secret' }).sign(payload);
-  const negado = await fetch(url, { headers: { Authorization: `Bearer ${forjado}` } });
+  const negado = await fetch(url, { headers: { Cookie: `prdal_access=${forjado}` } });
   assert.equal(negado.status, 401);
 
   const valido = new JwtService({ secret: SEGREDO }).sign(payload);
-  const aceito = await fetch(url, { headers: { Authorization: `Bearer ${valido}` } });
+  const aceito = await fetch(url, { headers: { Cookie: `prdal_access=${valido}` } });
   assert.equal(aceito.status, 200);
+
+  const noHeader = await fetch(url, { headers: { Authorization: `Bearer ${valido}` } });
+  assert.equal(noHeader.status, 401);
+
+  const semSessao = new JwtService({ secret: SEGREDO }).sign({ sub: 'usuario-vitima', email: 'vitima@example.com' });
+  const legado = await fetch(url, { headers: { Cookie: `prdal_access=${semSessao}` } });
+  assert.equal(legado.status, 401);
 });

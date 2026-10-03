@@ -42,7 +42,7 @@ test('ler_perfil chega ao LLM sem o contato do candidato', async () => {
   const http = { request: () => of({ data: perfil }) };
   const res = { setHeader() {}, flushHeaders() {}, write() {}, end() {} };
 
-  await new ChatService(conversas, ai, http).chat(res, { userId: 'usuario-1' }, 'Bearer t', { mensagem: 'leia meu perfil' });
+  await new ChatService(conversas, ai, http).chat(res, { userId: 'usuario-1' }, {}, { mensagem: 'leia meu perfil' });
 
   assert.equal(enviadosAoLlm.length, 2);
   const segundoTurno = enviadosAoLlm[1];

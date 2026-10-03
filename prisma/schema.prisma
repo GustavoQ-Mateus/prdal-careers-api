@@ -20,8 +20,26 @@ model Usuario {
   layouts      PipelineLayout[]
   preferencia  PreferenciaUsuario?
   geracoes     GeracaoCurriculo[]
+  sessoes      Sessao[]
 
   @@map("usuarios")
+}
+
+model Sessao {
+  id            String    @id @default(uuid())
+  usuarioId     String    @map("usuario_id")
+  usuario       Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  familia       String
+  refreshHash   String    @unique @map("refresh_hash")
+  criadoEm      DateTime  @default(now()) @map("criado_em")
+  expiraEm      DateTime  @map("expira_em")
+  ultimoUsoEm   DateTime? @map("ultimo_uso_em")
+  substituidaEm DateTime? @map("substituida_em")
+  revogadaEm    DateTime? @map("revogada_em")
+
+  @@index([usuarioId])
+  @@index([familia])
+  @@map("sessoes")
 }
 
 model PerfilMestre {

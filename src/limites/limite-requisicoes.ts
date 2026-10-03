@@ -18,6 +18,7 @@ export const JANELAS: ThrottlerOptions[] = [
 export const LIMITES = {
   login: { minuto: 5, hora: 20 },
   cadastro: { minuto: 5, hora: 10 },
+  refresh: { minuto: 30, hora: 300 },
   chat: { minuto: 30, hora: 300 },
   geracao: { minuto: 5, hora: 30 },
   criacao: { minuto: 20, hora: 200 },

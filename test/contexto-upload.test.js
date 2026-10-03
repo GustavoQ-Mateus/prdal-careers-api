@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { subirApp, tokenDe } = require('./helpers/app-teste');
+const { subirApp, autenticado } = require('./helpers/app-teste');
 
 function falsos() {
   const gravados = { notas: [], rag: [], lotes: [] };
@@ -33,7 +33,7 @@ async function subir(t) {
     for (const [nome, conteudo] of arquivos) form.append('arquivos', new Blob([conteudo]), nome);
     return fetch(`${url}/contexto/upload`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${tokenDe('usuario-vitima')}` },
+      headers: { ...autenticado('usuario-vitima') },
       body: form,
     });
   };

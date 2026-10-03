@@ -54,7 +54,7 @@ test('chat sem modo roda em assistido e pede confirmacao antes de escrever', asy
   const http = { request: (request) => { chamadas.push(request); return of({ data: {} }); } };
   const res = response();
 
-  await new ChatService(conversasFalsas(conversa, modos), ai, http).chat(res, { userId: 'usuario-1' }, 'Bearer teste', { mensagem: 'Registre a vaga.' });
+  await new ChatService(conversasFalsas(conversa, modos), ai, http).chat(res, { userId: 'usuario-1' }, {}, { mensagem: 'Registre a vaga.' });
 
   assert.deepEqual(modos, ['assistido']);
   assert.equal(chamadas.length, 0);
@@ -80,11 +80,11 @@ test('reaproveita oportunidade na mesma conversa no segundo registro confirmado'
   const usuario = { userId: 'usuario-1' };
 
   const primeiro = response();
-  await service.chat(primeiro, usuario, 'Bearer teste', { mensagem: 'Registre duas vezes por engano.' });
+  await service.chat(primeiro, usuario, {}, { mensagem: 'Registre duas vezes por engano.' });
   const segundo = response();
-  await service.chat(segundo, usuario, 'Bearer teste', { conversaId: conversa._id, confirmacao: { callId: confirmacaoPendente(primeiro), decisao: 'confirmar' } });
+  await service.chat(segundo, usuario, {}, { conversaId: conversa._id, confirmacao: { callId: confirmacaoPendente(primeiro), decisao: 'confirmar' } });
   const terceiro = response();
-  await service.chat(terceiro, usuario, 'Bearer teste', { conversaId: conversa._id, confirmacao: { callId: confirmacaoPendente(segundo), decisao: 'confirmar' } });
+  await service.chat(terceiro, usuario, {}, { conversaId: conversa._id, confirmacao: { callId: confirmacaoPendente(segundo), decisao: 'confirmar' } });
 
   assert.equal(chamadas.filter((request) => request.method === 'POST').length, 1);
   assert.equal(chamadas.filter((request) => request.method === 'GET').length, 1);
@@ -112,7 +112,7 @@ test('gerar_curriculo pede confirmacao inclusive no autopiloto', async () => {
   const http = { request: (request) => { chamadas.push(request); return of({ data: {} }); } };
   const res = response();
 
-  await new ChatService(conversasFalsas(conversa, []), ai, http).chat(res, { userId: 'usuario-1' }, 'Bearer teste', { modo: 'autopiloto', mensagem: 'Gere o curriculo.' });
+  await new ChatService(conversasFalsas(conversa, []), ai, http).chat(res, { userId: 'usuario-1' }, {}, { modo: 'autopiloto', mensagem: 'Gere o curriculo.' });
 
   assert.equal(chamadas.length, 0);
   assert.ok(confirmacaoPendente(res));

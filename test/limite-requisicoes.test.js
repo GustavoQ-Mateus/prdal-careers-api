@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { ValidationPipe } = require('@nestjs/common');
 const { ThrottlerModule } = require('@nestjs/throttler');
-const { subirApp, tokenDe } = require('./helpers/app-teste');
+const { subirApp, autenticado } = require('./helpers/app-teste');
 
 async function subirAuth(t) {
   const { AuthController } = require('../dist/auth/auth.controller');
@@ -84,7 +84,7 @@ test('chat e limitado por usuario, nao por IP', async (t) => {
   const enviar = (usuario) =>
     fetch(`${url}/copiloto/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenDe(usuario)}` },
+      headers: { 'Content-Type': 'application/json', ...autenticado(usuario) },
       body: JSON.stringify({ mensagem: 'oi' }),
     });
 

@@ -39,7 +39,7 @@ export class ChatService {
   async chat(
     res: Response,
     user: AuthUser,
-    authHeader: string,
+    credencial: Record<string, string>,
     dto: ChatDto,
   ): Promise<void> {
     if (dto.oportunidadeId) {
@@ -63,7 +63,7 @@ export class ChatService {
         const seguir = await this.resolverConfirmacao(
           res,
           conversa,
-          authHeader,
+          credencial,
           dto,
         );
         if (!seguir) return;
@@ -75,7 +75,7 @@ export class ChatService {
         await this.registrar(conversa, { papel: 'user', conteudo: dto.mensagem });
       }
 
-      await this.laco(res, conversa, authHeader, modo);
+      await this.laco(res, conversa, credencial, modo);
     } catch (err) {
       await this.registrarErro(conversa, 'interno', this.mensagemErro(err));
       this.enviar(res, 'erro', {
@@ -90,7 +90,7 @@ export class ChatService {
   private async resolverConfirmacao(
     res: Response,
     conversa: ConversaCopilotoDoc,
-    authHeader: string,
+    credencial: Record<string, string>,
     dto: ChatDto,
   ): Promise<boolean> {
     const pend = conversa.pendencia;
@@ -177,7 +177,7 @@ export class ChatService {
       args,
       exigeConfirmacao: false,
     });
-    const resultado = await this.executarTool(res, conversa, authHeader, tool, pend.callId, args);
+    const resultado = await this.executarTool(res, conversa, credencial, tool, pend.callId, args);
     const geracaoEmAndamento = tool.nome === 'gerar_curriculo'
       && resultado.ok
       && this.geracaoEmAndamento(resultado.valor);
@@ -200,7 +200,7 @@ export class ChatService {
   private async laco(
     res: Response,
     conversa: ConversaCopilotoDoc,
-    authHeader: string,
+    credencial: Record<string, string>,
     modo: 'assistido' | 'autopiloto',
   ): Promise<void> {
     for (let passo = 0; passo < MAX_PASSOS; passo++) {
@@ -315,7 +315,7 @@ export class ChatService {
         const entregue = await this.entregar(
           res,
           conversa,
-          authHeader,
+          credencial,
           tool,
           args,
         );
@@ -334,7 +334,7 @@ export class ChatService {
         args,
         exigeConfirmacao: false,
       });
-      const execucao = await this.executarTool(res, conversa, authHeader, tool, callId, args);
+      const execucao = await this.executarTool(res, conversa, credencial, tool, callId, args);
       if (execucao.ok) {
         await this.aplicarResultadoTool(conversa, tool.nome, execucao.valor);
       }
@@ -395,7 +395,7 @@ export class ChatService {
   private async executarTool(
     res: Response,
     conversa: ConversaCopilotoDoc,
-    authHeader: string,
+    credencial: Record<string, string>,
     tool: ToolDef,
     callId: string,
     args: Record<string, unknown>,
@@ -407,11 +407,11 @@ export class ChatService {
               ...((await this.requisitar(
                 TOOLS_POR_NOME.get('buscar_oportunidade')!,
                 { oportunidadeId: conversa.oportunidadeId },
-                authHeader,
+                credencial,
               )) as Record<string, unknown>),
               reaproveitada: true,
             }
-          : await this.requisitar(tool, args, authHeader);
+          : await this.requisitar(tool, args, credencial);
       this.enviar(res, 'tool_resultado', {
         callId,
         tool: tool.nome,
@@ -460,12 +460,12 @@ export class ChatService {
   private async entregar(
     res: Response,
     conversa: ConversaCopilotoDoc,
-    authHeader: string,
+    credencial: Record<string, string>,
     tool: ToolDef,
     args: Record<string, unknown>,
   ): Promise<boolean> {
     try {
-      const r = (await this.requisitar(tool, args, authHeader)) as {
+      const r = (await this.requisitar(tool, args, credencial)) as {
         tipo: string;
         titulo: string;
         texto: string;
@@ -502,7 +502,7 @@ export class ChatService {
   private async requisitar(
     tool: ToolDef,
     args: Record<string, unknown>,
-    authHeader: string,
+    credencial: Record<string, string>,
   ): Promise<unknown> {
     const req = tool.requisicao(args);
     const { data } = await firstValueFrom(
@@ -511,7 +511,7 @@ export class ChatService {
         url: `${this.selfUrl}${req.caminho}`,
         params: req.query,
         data: req.corpo,
-        headers: { Authorization: authHeader },
+        headers: credencial,
         timeout: 120000,
       }),
     );

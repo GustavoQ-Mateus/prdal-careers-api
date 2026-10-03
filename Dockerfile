@@ -1,15 +1,15 @@
 FROM node:22-slim AS deps
 WORKDIR /repo/apps/api
-COPY apps/api/package.json ./package.json
+COPY apps/api/package.json apps/api/package-lock.json ./
 COPY apps/api/prisma ./prisma
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 FROM node:22-slim AS build
 WORKDIR /repo
-COPY apps/api/package.json ./apps/api/package.json
+COPY apps/api/package.json apps/api/package-lock.json ./apps/api/
 COPY apps/api/prisma ./apps/api/prisma
 WORKDIR /repo/apps/api
-RUN npm install
+RUN npm ci
 COPY packages/shared-types /repo/packages/shared-types
 RUN npx tsc -p /repo/packages/shared-types/tsconfig.json
 COPY apps/api ./

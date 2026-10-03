@@ -1,0 +1,53 @@
+const assert = require('node:assert/strict');
+const test = require('node:test');
+const { of } = require('rxjs');
+const { ChatService } = require('../dist/copiloto/chat.service');
+
+const EMAIL = 'pessoa.privada@exemplo.dev';
+const TELEFONE = '+55 85 99999-1234';
+
+test('ler_perfil chega ao LLM sem o contato do candidato', async () => {
+  const conversa = {
+    _id: 'conversa-1',
+    usuarioId: 'usuario-1',
+    modo: 'assistido',
+    oportunidadeId: null,
+    mensagens: [],
+    pendencia: null,
+    criadoEm: new Date(),
+    atualizadoEm: new Date(),
+  };
+  const conversas = {
+    abrir: async () => conversa,
+    anexar: async (_id, mensagem) => conversa.mensagens.push(mensagem),
+    definirPendencia: async () => {},
+  };
+  const enviadosAoLlm = [];
+  const turnos = [
+    { tipo: 'tool_call', tool: 'ler_perfil', args: {} },
+    { tipo: 'texto', texto: 'Li seu perfil.' },
+  ];
+  const ai = {
+    copilotoTurn: async (payload) => {
+      enviadosAoLlm.push(JSON.stringify(payload.mensagens));
+      return turnos.shift();
+    },
+  };
+  const perfil = {
+    nome: 'Pessoa Candidata',
+    contato: [{ id: 'c1', tipo: 'email', valor: EMAIL }, { id: 'c2', tipo: 'telefone', valor: TELEFONE }],
+    resumo: 'Back-end com Python.',
+    skills: ['Python'],
+  };
+  const http = { request: () => of({ data: perfil }) };
+  const res = { setHeader() {}, flushHeaders() {}, write() {}, end() {} };
+
+  await new ChatService(conversas, ai, http).chat(res, { userId: 'usuario-1' }, 'Bearer t', { mensagem: 'leia meu perfil' });
+
+  assert.equal(enviadosAoLlm.length, 2);
+  const segundoTurno = enviadosAoLlm[1];
+  assert.match(segundoTurno, /Pessoa Candidata/);
+  assert.match(segundoTurno, /Back-end com Python/);
+  assert.doesNotMatch(segundoTurno, /pessoa\.privada@exemplo\.dev/);
+  assert.doesNotMatch(segundoTurno, /99999-1234/);
+});

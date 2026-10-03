@@ -598,7 +598,11 @@ export class ChatService {
             : markdown,
       });
     }
-    const texto = JSON.stringify(resultado ?? null);
+    const semContato =
+      tool === 'ler_perfil' && resultado && typeof resultado === 'object'
+        ? { ...(resultado as Record<string, unknown>), contato: undefined }
+        : resultado;
+    const texto = JSON.stringify(semContato ?? null);
     return texto.length > LIMITE_HISTORICO
       ? `${texto.slice(0, LIMITE_HISTORICO)}...`
       : texto;

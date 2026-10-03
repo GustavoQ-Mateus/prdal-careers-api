@@ -1,6 +1,7 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -17,6 +18,7 @@ import { MongoModule } from './mongo/mongo.module';
 import { PerfilModule } from './perfil/perfil.module';
 import { EventosModule } from './eventos/eventos.module';
 import { HojeModule } from './hoje/hoje.module';
+import { JANELAS } from './limites/limite-requisicoes';
 import { OportunidadesModule } from './oportunidades/oportunidades.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -29,6 +31,7 @@ import { VagasModule } from './vagas/vagas.module';
     HttpModule.registerAsync({
       useFactory: () => ({ timeout: 5000, headers: cabecalhoServico() }),
     }),
+    ThrottlerModule.forRoot(JANELAS),
     PrismaModule,
     MongoModule,
     AuthModule,

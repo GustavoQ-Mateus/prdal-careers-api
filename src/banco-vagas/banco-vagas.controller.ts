@@ -3,6 +3,7 @@ import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ImportarBancoVagasDto } from './banco-vaga.dto';
 import { BancoVagasService } from './banco-vagas.service';
+import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
 
 @UseGuards(JwtAuthGuard)
 @Controller('banco-vagas')
@@ -10,6 +11,7 @@ export class BancoVagasController {
   constructor(private readonly bancoVagas: BancoVagasService) {}
 
   @Post('import')
+  @LimitarRequisicoes(LIMITES.criacao)
   importar(@CurrentUser() user: AuthUser, @Body() dto: ImportarBancoVagasDto) {
     return this.bancoVagas.importar(user.userId, dto);
   }

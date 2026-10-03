@@ -28,6 +28,7 @@
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.4.15",
+    "@nestjs/throttler": "^6.7.1",
     "@prisma/client": "^6.2.1",
     "archiver": "^7.0.1",
     "axios": "^1.7.9",

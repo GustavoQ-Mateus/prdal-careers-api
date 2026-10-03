@@ -23,6 +23,7 @@ import {
   RespostasFormularioDto,
   ScoreAvulsoDto,
 } from './copiloto.dto';
+import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
 
 @UseGuards(JwtAuthGuard)
 @Controller('copiloto')
@@ -47,6 +48,7 @@ export class CopilotoController {
   }
 
   @Post('chat')
+  @LimitarRequisicoes(LIMITES.chat)
   async chatSse(
     @CurrentUser() user: AuthUser,
     @Headers('authorization') authHeader: string,

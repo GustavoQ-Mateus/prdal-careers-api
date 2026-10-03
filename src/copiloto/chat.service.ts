@@ -8,6 +8,7 @@ import { AuthUser } from '../auth/current-user.decorator';
 import { CopilotoTurno } from '../clients/ai.client';
 import { AiClient } from '../clients/ai.client';
 import { ConversaCopilotoDoc, MensagemCopiloto } from '../mongo/mongo.service';
+import { OportunidadesService } from '../oportunidades/oportunidades.service';
 import { ConversasService } from './conversas.service';
 import { ChatDto } from './copiloto.dto';
 import { prepararArgsTool } from './tool-args';
@@ -32,6 +33,7 @@ export class ChatService {
     private readonly conversas: ConversasService,
     private readonly ai: AiClient,
     private readonly http: HttpService,
+    private readonly oportunidades: OportunidadesService,
   ) {}
 
   async chat(
@@ -40,11 +42,9 @@ export class ChatService {
     authHeader: string,
     dto: ChatDto,
   ): Promise<void> {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
-
+    if (dto.oportunidadeId) {
+      await this.oportunidades.garantirVaga(user.userId, dto.oportunidadeId);
+    }
     const modo = dto.modo ?? 'assistido';
     const conversa = await this.conversas.abrir(
       user.userId,
@@ -52,6 +52,11 @@ export class ChatService {
       modo,
       dto.oportunidadeId ?? null,
     );
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
 
     try {
       if (dto.confirmacao) {

@@ -294,6 +294,13 @@ test('dto aceita texto legado em periodo, local e endereco e limita o tamanho', 
   assert.notDeepEqual(validar({ ...CORPO_VALIDO, endereco: 42 }), []);
 });
 
+test('perfil antigo normalizado volta pela validacao do dto sem erro, inclusive experiencia sem descricao', () => {
+  for (const antigo of [...ANTIGOS, { ...PERFIL_MAPA, experiencias: [{ cargo: 'Dev', empresa: 'A', periodo: '2020' }] }]) {
+    const corpo = JSON.parse(JSON.stringify(normalizarPerfil(antigo)));
+    assert.deepEqual(validar(corpo), [], JSON.stringify(corpo.experiencias));
+  }
+});
+
 test('salvar normaliza na escrita e grava o contato tipado na coluna json', async () => {
   let gravado = null;
   const prisma = {

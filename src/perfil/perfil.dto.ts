@@ -288,7 +288,6 @@ export class ExperienciaPerfilDto extends RevisavelDto {
   local?: LocalPerfilDto | string | null;
 
   @IsString()
-  @MinLength(1)
   @MaxLength(LIMITE.descricaoExperiencia)
   descricao!: string;
 

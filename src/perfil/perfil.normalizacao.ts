@@ -181,10 +181,28 @@ function inteiro(valor: unknown, minimo: number, maximo: number): number | null 
 const mes = (valor: unknown) => inteiro(valor, 1, 12);
 const ano = (valor: unknown) => inteiro(valor, 1900, 2100);
 
+function linhas(valor: string): string[] {
+  return valor
+    .split(/\r?\n/)
+    .map((linha) => linha.trim())
+    .filter(Boolean);
+}
+
+function comoLista(valor: unknown): unknown[] {
+  if (Array.isArray(valor)) return valor;
+  return typeof valor === 'string' ? linhas(valor) : [];
+}
+
 export function listaTexto(valor: unknown): string[] {
-  return Array.isArray(valor)
-    ? valor.map(texto).filter(Boolean)
-    : [];
+  return comoLista(valor).map(texto).filter(Boolean);
+}
+
+function textoDosEscalares(dado: Record<string, unknown>, ignoradas: readonly string[]): string {
+  return Object.entries(dado)
+    .filter(([chave]) => !ignoradas.includes(chave))
+    .map(([, valor]) => textoOuNumero(valor))
+    .filter(Boolean)
+    .join(', ');
 }
 
 function motivos(valor: unknown, ...extras: MotivoRevisao[]): MotivoRevisao[] {
@@ -594,26 +612,31 @@ export function normalizarExperiencias(valor: unknown): ExperienciaPerfil[] {
   return idsUnicos(experiencias, 'experiencia');
 }
 
+const CHAVES_FORMACAO = [
+  'id', 'grau', 'status', 'instituicao', 'curso', 'inicioMes', 'inicioAno', 'fimMes', 'fimAno', 'revisao',
+] as const;
+
+function formacaoAntiga(curso: string, id: string): FormacaoPerfil[] {
+  return curso
+    ? [{
+        id,
+        grau: '',
+        status: '',
+        instituicao: '',
+        curso,
+        inicioMes: null,
+        inicioAno: null,
+        fimMes: null,
+        fimAno: null,
+        revisao: ['formato_antigo'],
+      }]
+    : [];
+}
+
 export function normalizarFormacao(valor: unknown): FormacaoPerfil[] {
-  if (!Array.isArray(valor)) return [];
-  const itens = valor.flatMap((item, indice): FormacaoPerfil[] => {
-    if (typeof item === 'string') {
-      const linha = texto(item);
-      return linha
-        ? [{
-            id: `formacao-legado-${indice + 1}`,
-            grau: '',
-            status: '',
-            instituicao: '',
-            curso: linha,
-            inicioMes: null,
-            inicioAno: null,
-            fimMes: null,
-            fimAno: null,
-            revisao: ['formato_antigo'],
-          }]
-        : [];
-    }
+  const itens = comoLista(valor).flatMap((item, indice): FormacaoPerfil[] => {
+    const idAntigo = `formacao-legado-${indice + 1}`;
+    if (typeof item === 'string') return formacaoAntiga(texto(item), idAntigo);
     const dado = registro(item);
     if (!dado) return [];
     const status = texto(dado.status);
@@ -631,27 +654,30 @@ export function normalizarFormacao(valor: unknown): FormacaoPerfil[] {
       },
       motivos(dado.revisao),
     );
-    return formacao.grau || formacao.instituicao || formacao.curso ? [formacao] : [];
+    if (formacao.grau || formacao.instituicao || formacao.curso) return [formacao];
+    return formacaoAntiga(textoDosEscalares(dado, CHAVES_FORMACAO), formacao.id || idAntigo);
   });
   return idsUnicos(itens, 'formacao');
 }
 
+const CHAVES_CERTIFICACAO = ['id', 'titulo', 'descricao', 'revisao'] as const;
+
+function certificacaoAntiga(titulo: string, id: string): CertificacaoPerfil[] {
+  return titulo ? [{ id, titulo, descricao: '', revisao: ['formato_antigo'] }] : [];
+}
+
 export function normalizarCertificacoes(valor: unknown): CertificacaoPerfil[] {
-  if (!Array.isArray(valor)) return [];
-  const itens = valor.flatMap((item, indice): CertificacaoPerfil[] => {
-    if (typeof item === 'string') {
-      const linha = texto(item);
-      return linha
-        ? [{ id: `certificacao-legado-${indice + 1}`, titulo: linha, descricao: '', revisao: ['formato_antigo'] }]
-        : [];
-    }
+  const itens = comoLista(valor).flatMap((item, indice): CertificacaoPerfil[] => {
+    const idAntigo = `certificacao-legado-${indice + 1}`;
+    if (typeof item === 'string') return certificacaoAntiga(texto(item), idAntigo);
     const dado = registro(item);
     if (!dado) return [];
     const certificacao = comRevisao(
       { id: texto(dado.id), titulo: texto(dado.titulo), descricao: texto(dado.descricao) },
       motivos(dado.revisao),
     );
-    return certificacao.titulo || certificacao.descricao ? [certificacao] : [];
+    if (certificacao.titulo || certificacao.descricao) return [certificacao];
+    return certificacaoAntiga(textoDosEscalares(dado, CHAVES_CERTIFICACAO), certificacao.id || idAntigo);
   });
   return idsUnicos(itens, 'certificacao');
 }

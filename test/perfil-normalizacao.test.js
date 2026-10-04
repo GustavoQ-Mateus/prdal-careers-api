@@ -326,3 +326,44 @@ test('salvar normaliza na escrita e grava o contato tipado na coluna json', asyn
   assert.deepEqual(salvo.endereco, gravado.contato.endereco);
   assert.equal(salvo.contato, undefined);
 });
+
+test('lista em texto ou item em formato desconhecido nao some na normalizacao', () => {
+  const perfil = normalizarPerfil({
+    nome: 'Pessoa',
+    certificacoes: 'AWS SAA',
+    skills: 'Java, Go',
+    idiomas: 'Inglês',
+    formacao: 'Bacharel X',
+  });
+  assert.deepEqual(
+    perfil.certificacoes,
+    [{ id: 'certificacao-legado-1', titulo: 'AWS SAA', descricao: '', revisao: ['formato_antigo'] }],
+  );
+  assert.deepEqual(perfil.skills, ['Java, Go']);
+  assert.deepEqual(perfil.idiomas, ['Inglês']);
+  assert.deepEqual(perfil.formacao.map(({ id, curso, revisao }) => ({ id, curso, revisao })), [
+    { id: 'formacao-legado-1', curso: 'Bacharel X', revisao: ['formato_antigo'] },
+  ]);
+
+  const emLinhas = normalizarPerfil({ skills: 'Java\nGo\n', idiomas: 'Inglês\r\nEspanhol', certificacoes: 'AWS\nCKA' });
+  assert.deepEqual(emLinhas.skills, ['Java', 'Go']);
+  assert.deepEqual(emLinhas.idiomas, ['Inglês', 'Espanhol']);
+  assert.deepEqual(emLinhas.certificacoes.map((item) => item.titulo), ['AWS', 'CKA']);
+
+  const objetos = normalizarPerfil({
+    certificacoes: [{ nome: 'AWS', ano: 2024, ativa: true }],
+    formacao: [{ escola: 'Universidade A', titulo: 'Bacharel X' }],
+  });
+  assert.deepEqual(
+    objetos.certificacoes,
+    [{ id: 'certificacao-legado-1', titulo: 'AWS, 2024', descricao: '', revisao: ['formato_antigo'] }],
+  );
+  assert.deepEqual(
+    objetos.formacao.map(({ curso, revisao }) => ({ curso, revisao })),
+    [{ curso: 'Universidade A, Bacharel X', revisao: ['formato_antigo'] }],
+  );
+
+  const salvo = JSON.parse(JSON.stringify(perfilParaPersistencia(objetos)));
+  assert.deepEqual(normalizarPerfil(salvo).certificacoes, objetos.certificacoes);
+  assert.deepEqual(normalizarPerfil(salvo).formacao, objetos.formacao);
+});

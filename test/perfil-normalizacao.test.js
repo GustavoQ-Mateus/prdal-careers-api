@@ -411,3 +411,32 @@ test('email com varios enderecos vira itens separados e valor sem forma de email
   assert.deepEqual(normalizarPerfil(salvo).emails, invalido.emails);
   assert.deepEqual(validar(JSON.parse(JSON.stringify(invalido))), []);
 });
+
+test('periodo com nome do mes e barra e periodo com mes invalido', () => {
+  const comBarra = lerPeriodoTexto('Março/2020 a Dez/2021');
+  assert.deepEqual(
+    [comBarra.inicio, comBarra.fim, comBarra.atual, comBarra.completo],
+    [{ mes: 3, ano: 2020 }, { mes: 12, ano: 2021 }, false, true],
+  );
+  assert.equal(lerPeriodoTexto('jan / 2022 - atual').completo, true);
+
+  const experiencia = (periodo) => normalizarPerfil({ experiencias: [{ cargo: 'Dev', empresa: 'A', periodo }] }).experiencias[0];
+  const valida = experiencia('Março/2020 a Dez/2021');
+  assert.deepEqual(
+    [valida.dataInicioMes, valida.dataInicioAno, valida.dataFimMes, valida.dataFimAno, valida.periodoLegado, valida.revisao],
+    [3, 2020, 12, 2021, undefined, undefined],
+  );
+
+  for (const periodo of ['13/2020 - 01/2021', '01/2020 - 00/2021', '13/2020 ate o momento']) {
+    const lido = lerPeriodoTexto(periodo);
+    assert.deepEqual([lido.inicio, lido.fim, lido.atual, lido.completo], [null, null, false, false], periodo);
+    const invalida = experiencia(periodo);
+    assert.deepEqual(
+      [invalida.dataInicioMes, invalida.dataInicioAno, invalida.dataFimMes, invalida.dataFimAno, invalida.atual],
+      [null, null, null, null, false],
+      periodo,
+    );
+    assert.equal(invalida.periodoLegado, periodo);
+    assert.deepEqual(invalida.revisao, ['periodo_texto']);
+  }
+});

@@ -480,7 +480,7 @@ const MESES: Record<string, number> = {
 
 const TERMO_ATUAL = /\b(?:atualmente|atual|presente|present|actual|hoje|o momento|current|now)\b/;
 const TERMO_ATUAL_RE = new RegExp(TERMO_ATUAL.source, 'g');
-const DATA_RE = /(\d{1,2})\s*\/\s*(\d{4})|\b([a-z]{3,})\.?\s+(?:de\s+)?(\d{4})\b|\b((?:19|20)\d{2})\b/g;
+const DATA_RE = /(\d{1,2})\s*\/\s*(\d{4})|\b([a-z]{3,})\.?(?:\s*\/\s*|\s+(?:de\s+)?)(\d{4})\b|\b((?:19|20)\d{2})\b/g;
 const SOBRA_PERIODO_RE = /\b(?:a|ate|to|hasta|de|desde|from|until|e)\b|[-\u2013\u2014.,/()]/g;
 
 interface DataLida {
@@ -498,10 +498,14 @@ interface PeriodoLido {
 export function lerPeriodoTexto(valor: string): PeriodoLido {
   const base = semAcentos(valor);
   const datas: DataLida[] = [];
+  let mesInvalido = false;
   let sobra = base.replace(DATA_RE, (_todo, mesNum, anoNum, mesNome, anoNome, anoSo) => {
     if (mesNum) {
       const lido = mes(mesNum);
-      if (lido === null) return _todo;
+      if (lido === null) {
+        mesInvalido = true;
+        return _todo;
+      }
       datas.push({ mes: lido, ano: Number(anoNum) });
       return ' ';
     }
@@ -514,6 +518,7 @@ export function lerPeriodoTexto(valor: string): PeriodoLido {
     datas.push({ mes: null, ano: Number(anoSo) });
     return ' ';
   });
+  if (mesInvalido) return { inicio: null, fim: null, atual: false, completo: false };
   const atual = TERMO_ATUAL.test(sobra);
   sobra = sobra.replace(TERMO_ATUAL_RE, ' ').replace(SOBRA_PERIODO_RE, ' ').trim();
   const inicio = datas[0] ?? null;

@@ -2,9 +2,11 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  avisoDaAcao,
   EventoAts,
   ForaDeOrdem,
-  mensagemForaDeOrdem,
+  mensagensForaDeOrdem,
+  MensagensForaDeOrdem,
   SituacaoAts,
   situacaoDeLegado,
   transicionar,
@@ -18,15 +20,29 @@ const TENTATIVAS_CONCORRENCIA = 3;
 const ESTADOS_SENSIVEIS_AO_PERFIL = ['ANALISADA', 'AGUARDANDO_CONFIRMACAO', 'GERANDO', 'CONCLUIDA'] as const;
 
 export class TransicaoRecusada extends ConflictException {
+  readonly paraModelo: string;
+
   constructor(
     readonly situacao: SituacaoAts,
     readonly fora: ForaDeOrdem,
     readonly evento: EventoAts['tipo'],
   ) {
-    super(
-      `Etapa fora de ordem: ${fora.motivo}. Próximo passo válido: ${fora.proximoPasso}.`,
-    );
+    super(`Etapa fora de ordem: ${fora.motivo}. Próximo passo: ${fora.proximoPassoCandidato}.`);
+    this.paraModelo = `Etapa fora de ordem: ${fora.motivo}. Próximo passo válido: ${fora.proximoPasso}.`;
   }
+}
+
+export interface ConferenciaAcao {
+  fora: MensagensForaDeOrdem | null;
+  aviso: string | null;
+}
+
+function foraDaTransicao(transicao: { motivo: string; proximoPasso: string; proximoPassoCandidato: string }): ForaDeOrdem {
+  return {
+    motivo: transicao.motivo,
+    proximoPasso: transicao.proximoPasso,
+    proximoPassoCandidato: transicao.proximoPassoCandidato,
+  };
 }
 
 class VersaoConcorrente extends Error {}
@@ -90,20 +106,23 @@ export class PipelineAtsService {
     const atual = await this.situacao(usuarioId, vagaId);
     const transicao = transicionar(atual, evento);
     if (!transicao.aceita) {
-      throw new TransicaoRecusada(atual, { motivo: transicao.motivo, proximoPasso: transicao.proximoPasso }, evento.tipo);
+      throw new TransicaoRecusada(atual, foraDaTransicao(transicao), evento.tipo);
     }
     return atual;
   }
 
-  async ordem(
+  async conferir(
     usuarioId: string,
     vagaId: string,
     tool: string,
     args: Record<string, unknown>,
-  ): Promise<string | null> {
+  ): Promise<ConferenciaAcao> {
     const atual = await this.situacao(usuarioId, vagaId);
     const fora = verificarOrdem(tool, args, atual);
-    return fora ? mensagemForaDeOrdem(tool, atual, fora) : null;
+    return {
+      fora: fora ? mensagensForaDeOrdem(tool, atual, fora) : null,
+      aviso: fora ? null : avisoDaAcao(tool, args, atual),
+    };
   }
 
   async aplicar(
@@ -183,7 +202,7 @@ export class PipelineAtsService {
     const atual = linha ? daLinha(linha) : await this.legado(db, usuarioId, vagaId);
     const transicao = transicionar(atual, evento);
     if (!transicao.aceita) {
-      throw new TransicaoRecusada(atual, { motivo: transicao.motivo, proximoPasso: transicao.proximoPasso }, evento.tipo);
+      throw new TransicaoRecusada(atual, foraDaTransicao(transicao), evento.tipo);
     }
     if (!transicao.registrar) return atual;
     const proxima = transicao.situacao;

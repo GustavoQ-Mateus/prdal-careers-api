@@ -3,11 +3,17 @@ const test = require('node:test');
 const {
   ESTADOS_ATS,
   SITUACAO_INICIAL,
+  avisoDaAcao,
   mensagemForaDeOrdem,
+  mensagemForaDeOrdemCandidato,
   situacaoDeLegado,
+  toolDependeDoPipeline,
   transicionar,
   verificarOrdem,
 } = require('../dist/pipeline-ats/maquina');
+const { TOOLS_NATIVAS } = require('../dist/copiloto/tools');
+
+const NOME_DE_TOOL = new RegExp(`\\b(${TOOLS_NATIVAS.map((t) => t.name).join('|')})\\b`);
 const { dadosDaNarracao, narrar } = require('../dist/pipeline-ats/narracao');
 const { TransicaoRecusada } = require('../dist/pipeline-ats/pipeline-ats.service');
 const { pipelineMemoria } = require('./helpers/pipeline-memoria');
@@ -86,11 +92,38 @@ test('tool fora de ordem diz qual e o proximo passo valido', () => {
     assert.match(mensagem, /^Etapa fora de ordem: /);
     assert.match(mensagem, passo);
     assert.ok(!mensagem.includes('\u2014'));
+    const candidato = mensagemForaDeOrdemCandidato(tool, situacao, fora);
+    assert.doesNotMatch(candidato, NOME_DE_TOOL, candidato);
+    assert.match(candidato, /^Ainda não dá para seguir com /);
+    assert.ok(candidato.includes(fora.motivo));
   }
   assert.equal(verificarOrdem('definir_proximo_passo', { tipo: 'REVISAR_VAGA' }, SITUACAO_INICIAL), null);
   assert.equal(verificarOrdem('ler_perfil', {}, SITUACAO_INICIAL), null);
   const concluida = situacaoDeLegado({ id: 'j', status: 'CONCLUIDA', curriculoId: 'cv' });
   assert.equal(verificarOrdem('registrar_candidatura', {}, concluida), null);
+});
+
+test('tarefa generica do tipo OUTRO nao depende do curriculo', () => {
+  assert.equal(toolDependeDoPipeline('definir_proximo_passo', { tipo: 'OUTRO' }), false);
+  assert.equal(verificarOrdem('definir_proximo_passo', { tipo: 'OUTRO', titulo: 'Estudar Docker' }, SITUACAO_INICIAL), null);
+  assert.equal(toolDependeDoPipeline('definir_proximo_passo', { tipo: 'ENVIAR_CANDIDATURA' }), true);
+});
+
+test('curriculo desatualizado libera a acao externa com aviso', () => {
+  const concluida = situacaoDeLegado({ id: 'j', status: 'CONCLUIDA', curriculoId: 'cv' });
+  const desatualizada = aplicar(concluida, { tipo: 'perfil_alterado' });
+  for (const [tool, args] of [
+    ['registrar_candidatura', {}],
+    ['redigir_mensagem_recrutador', {}],
+    ['redigir_respostas_formulario', {}],
+    ['definir_proximo_passo', { tipo: 'FAZER_FOLLOW_UP' }],
+  ]) {
+    assert.equal(verificarOrdem(tool, args, desatualizada), null, tool);
+    assert.match(avisoDaAcao(tool, args, desatualizada), /anterior à última mudança do seu perfil/);
+    assert.equal(avisoDaAcao(tool, args, concluida), null, tool);
+  }
+  assert.equal(avisoDaAcao('definir_proximo_passo', { tipo: 'OUTRO' }, desatualizada), null);
+  assert.equal(avisoDaAcao('ler_perfil', {}, desatualizada), null);
 });
 
 test('perfil alterado depois da geracao deixa o curriculo desatualizado', () => {
@@ -186,7 +219,9 @@ test('servico grava um evento estruturado por transicao e recusa fora de ordem',
   await assert.rejects(service.aplicar('u1', 'v1', { tipo: 'confirmacao_solicitada' }), (err) => {
     assert.ok(err instanceof TransicaoRecusada);
     assert.equal(err.getStatus(), 409);
-    assert.match(err.message, /Próximo passo válido: buscar_curriculo/);
+    assert.match(err.paraModelo, /Próximo passo válido: buscar_curriculo/);
+    assert.doesNotMatch(err.message, NOME_DE_TOOL);
+    assert.match(err.message, /Próximo passo: revisar o currículo gerado/);
     return true;
   });
   assert.equal(banco.eventos.length, 4);
@@ -207,7 +242,13 @@ test('servico materializa o legado e marca desatualizada ao salvar o perfil', as
     banco.eventos.filter((e) => e.tipo === 'perfil_alterado').map((e) => [e.vagaId, e.de, e.para]).sort(),
     [['v-legado', 'CONCLUIDA', 'DESATUALIZADA'], ['v-nova', 'ANALISADA', 'SEM_ANALISE']],
   );
-  assert.match(await service.ordem('u1', 'v-legado', 'gerar_curriculo', {}), /analisar_ats/);
+  const conferencia = await service.conferir('u1', 'v-legado', 'gerar_curriculo', {});
+  assert.match(conferencia.fora.modelo, /analisar_ats/);
+  assert.doesNotMatch(conferencia.fora.candidato, NOME_DE_TOOL);
+  assert.equal(conferencia.aviso, null);
+  const externa = await service.conferir('u1', 'v-legado', 'registrar_candidatura', {});
+  assert.equal(externa.fora, null);
+  assert.match(externa.aviso, /anterior à última mudança/);
 });
 
 test('servico repete a transicao quando a versao muda no meio', async () => {

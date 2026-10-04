@@ -43,7 +43,7 @@ export type TipoEventoAts = EventoAts['tipo'];
 
 export type Transicao =
   | { aceita: true; situacao: SituacaoAts; registrar: boolean }
-  | { aceita: false; motivo: string; proximoPasso: string };
+  | { aceita: false; motivo: string; proximoPasso: string; proximoPassoCandidato: string };
 
 export const SITUACAO_INICIAL: SituacaoAts = {
   estado: 'SEM_ANALISE',
@@ -73,11 +73,39 @@ export const PROXIMOS_PASSOS: Record<EstadoAts, string> = {
   DESATUALIZADA: 'analisar_ats, para refazer a análise com o perfil atual e depois gerar de novo',
 };
 
+export const PROXIMOS_PASSOS_CANDIDATO: Record<EstadoAts, string> = {
+  SEM_ANALISE: 'fazer a análise ATS do seu perfil contra a vaga',
+  ANALISADA: 'pedir a reescrita do currículo, que passa pela sua confirmação',
+  AGUARDANDO_CONFIRMACAO: 'confirmar ou recusar a reescrita do currículo',
+  GERANDO: 'aguardar a geração do currículo; a conclusão aparece aqui na conversa',
+  CONCLUIDA: 'revisar o currículo gerado ou seguir com a candidatura',
+  FALHOU: 'refazer a análise ATS para recomeçar',
+  DESATUALIZADA: 'refazer a análise ATS com o perfil atual e gerar o currículo de novo',
+};
+
+const ACOES_PARA_CANDIDATO: Record<string, string> = {
+  analisar_ats: 'a análise ATS',
+  gerar_curriculo: 'a reescrita do currículo',
+  redigir_mensagem_recrutador: 'a mensagem ao recrutador',
+  redigir_respostas_formulario: 'as respostas do formulário',
+  registrar_candidatura: 'o registro da candidatura',
+  definir_proximo_passo: 'este passo da candidatura',
+};
+
+export const AVISO_CURRICULO_DESATUALIZADO =
+  'O currículo desta vaga é anterior à última mudança do seu perfil. Se preferir, recuse e peça para gerar o currículo de novo com o perfil atual.';
+export const SUGESTAO_GERAR_DE_NOVO = 'Gere o currículo de novo com o meu perfil atual';
+
 const PODE_GERAR: ReadonlySet<EstadoAts> = new Set(['ANALISADA', 'AGUARDANDO_CONFIRMACAO']);
 const TEM_CURRICULO: ReadonlySet<EstadoAts> = new Set(['CONCLUIDA', 'DESATUALIZADA']);
 
 function recusa(atual: SituacaoAts, motivo: string): Transicao {
-  return { aceita: false, motivo, proximoPasso: PROXIMOS_PASSOS[atual.estado] };
+  return {
+    aceita: false,
+    motivo,
+    proximoPasso: PROXIMOS_PASSOS[atual.estado],
+    proximoPassoCandidato: PROXIMOS_PASSOS_CANDIDATO[atual.estado],
+  };
 }
 
 function vai(atual: SituacaoAts, parcial: Partial<SituacaoAts>, registrar = true): Transicao {
@@ -139,7 +167,6 @@ const TIPOS_ACAO_EXTERNOS: ReadonlySet<unknown> = new Set([
   TipoAcaoOportunidade.PREPARAR_ENTREVISTA,
   TipoAcaoOportunidade.PARTICIPAR_ENTREVISTA,
   TipoAcaoOportunidade.ENVIAR_MATERIAL,
-  TipoAcaoOportunidade.OUTRO,
 ]);
 
 const TOOLS_EXTERNAS = new Set([
@@ -148,18 +175,22 @@ const TOOLS_EXTERNAS = new Set([
   'registrar_candidatura',
 ]);
 
+export function acaoExterna(tool: string, args: Record<string, unknown>): boolean {
+  return TOOLS_EXTERNAS.has(tool) || (tool === 'definir_proximo_passo' && TIPOS_ACAO_EXTERNOS.has(args.tipo));
+}
+
 export function toolDependeDoPipeline(tool: string, args: Record<string, unknown>): boolean {
-  return (
-    tool === 'analisar_ats' ||
-    tool === 'gerar_curriculo' ||
-    TOOLS_EXTERNAS.has(tool) ||
-    (tool === 'definir_proximo_passo' && TIPOS_ACAO_EXTERNOS.has(args.tipo))
-  );
+  return tool === 'analisar_ats' || tool === 'gerar_curriculo' || acaoExterna(tool, args);
+}
+
+export function avisoDaAcao(tool: string, args: Record<string, unknown>, situacao: SituacaoAts): string | null {
+  return situacao.estado === 'DESATUALIZADA' && acaoExterna(tool, args) ? AVISO_CURRICULO_DESATUALIZADO : null;
 }
 
 export interface ForaDeOrdem {
   motivo: string;
   proximoPasso: string;
+  proximoPassoCandidato: string;
 }
 
 export function verificarOrdem(
@@ -169,16 +200,16 @@ export function verificarOrdem(
 ): ForaDeOrdem | null {
   if (!toolDependeDoPipeline(tool, args)) return null;
   const estado = situacao.estado;
-  const proximoPasso = PROXIMOS_PASSOS[estado];
+  const passos = { proximoPasso: PROXIMOS_PASSOS[estado], proximoPassoCandidato: PROXIMOS_PASSOS_CANDIDATO[estado] };
   if (tool === 'analisar_ats') {
-    return estado === 'GERANDO' ? { motivo: 'há uma geração em andamento', proximoPasso } : null;
+    return estado === 'GERANDO' ? { motivo: 'há uma geração em andamento', ...passos } : null;
   }
   if (tool === 'gerar_curriculo') {
-    return PODE_GERAR.has(estado) ? null : { motivo: 'a reescrita exige uma análise ATS atual', proximoPasso };
+    return PODE_GERAR.has(estado) ? null : { motivo: 'a reescrita exige uma análise ATS atual', ...passos };
   }
   return TEM_CURRICULO.has(estado)
     ? null
-    : { motivo: 'esta ação exige um currículo gerado e concluído para a vaga', proximoPasso };
+    : { motivo: 'esta ação exige um currículo gerado e concluído para a vaga', ...passos };
 }
 
 export function mensagemForaDeOrdem(tool: string, situacao: SituacaoAts, fora: ForaDeOrdem): string {
@@ -187,6 +218,27 @@ export function mensagemForaDeOrdem(tool: string, situacao: SituacaoAts, fora: F
     `Estado do pipeline ATS desta oportunidade: ${ROTULOS_ATS[situacao.estado]}. ` +
     `Próximo passo válido: ${fora.proximoPasso}.`
   );
+}
+
+export function mensagemForaDeOrdemCandidato(tool: string, situacao: SituacaoAts, fora: ForaDeOrdem): string {
+  const acao = ACOES_PARA_CANDIDATO[tool] ?? 'esta ação';
+  return (
+    `Ainda não dá para seguir com ${acao} porque ${fora.motivo}. ` +
+    `Situação desta vaga: ${ROTULOS_ATS[situacao.estado]}. ` +
+    `Próximo passo: ${fora.proximoPassoCandidato}.`
+  );
+}
+
+export interface MensagensForaDeOrdem {
+  modelo: string;
+  candidato: string;
+}
+
+export function mensagensForaDeOrdem(tool: string, situacao: SituacaoAts, fora: ForaDeOrdem): MensagensForaDeOrdem {
+  return {
+    modelo: mensagemForaDeOrdem(tool, situacao, fora),
+    candidato: mensagemForaDeOrdemCandidato(tool, situacao, fora),
+  };
 }
 
 export interface GeracaoLegada {

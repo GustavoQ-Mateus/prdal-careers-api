@@ -60,7 +60,8 @@ test('ChatService nao emite confirmacao para escrita invalida', async () => {
     }),
     turnoTexto('Vou consultar a geração pela tool correta.'),
   ];
-  const ai = { copilotoTurnStream: async () => turnos.shift() };
+  const payloads = [];
+  const ai = { copilotoTurnStream: async (payload) => { payloads.push(structuredClone(payload)); return turnos.shift(); } };
   const executor = {
     executar: () => {
       throw new Error('nao deve executar escrita invalida');
@@ -84,5 +85,10 @@ test('ChatService nao emite confirmacao para escrita invalida', async () => {
 
   const saida = eventos.join('');
   assert.doesNotMatch(saida, /event: confirmacao/);
-  assert.match(saida, /tipo: deve ser um destes valores/);
+  assert.match(saida, /vieram incompletos ou inválidos/);
+  const resultado = JSON.parse(saida.split('event: tool_resultado\ndata: ')[1].split('\n')[0]);
+  assert.doesNotMatch(resultado.erro.mensagem, /definir_proximo_passo/);
+  const paraModelo = payloads[1].trocas.flatMap((t) => t.mensagens).at(-1).content[0];
+  assert.equal(paraModelo.is_error, true);
+  assert.match(paraModelo.content, /argumentos inválidos para definir_proximo_passo: tipo: deve ser um destes valores/);
 });

@@ -7,19 +7,36 @@ import { CotaTokensEsgotada, MENSAGEM_COTA_ESGOTADA } from '../cota/cota-tokens.
 import { ConversaCopilotoDoc, MensagemCopiloto } from '../mongo/mongo.service';
 import { OportunidadesService } from '../oportunidades/oportunidades.service';
 import { semContato } from '../perfil/perfil.normalizacao';
-import { descreverParaAgente, toolDependeDoPipeline } from '../pipeline-ats/maquina';
-import { PipelineAtsService } from '../pipeline-ats/pipeline-ats.service';
+import { descreverParaAgente, SUGESTAO_GERAR_DE_NOVO, toolDependeDoPipeline } from '../pipeline-ats/maquina';
+import { PipelineAtsService, TransicaoRecusada } from '../pipeline-ats/pipeline-ats.service';
 import { ConversasService } from './conversas.service';
 import { ChatDto } from './copiloto.dto';
-import { BlocoNativo, paraTrocas, resultadoTool } from './historico';
+import { BlocoNativo, idDeTool, paraTrocas, resultadoTool } from './historico';
 import { oportunidadeDosArgs, prepararArgsTool } from './tool-args';
 import { ToolExecutor, validarArgs } from './tool-executor';
 import { ToolDef, TOOLS_NATIVAS, TOOLS_POR_NOME } from './tools';
 
 const MAX_PASSOS = 8;
 const ESCRITAS_SEM_CONFIRMACAO_NO_AUTOPILOTO = new Set(['registrar_nota']);
+const ARGS_INVALIDOS_CANDIDATO = 'os dados desta ação vieram incompletos ou inválidos; o copiloto vai ajustar e tentar de novo';
 
 type ToolUse = Extract<BlocoNativo, { type: 'tool_use' }>;
+
+interface Falha {
+  modelo: string;
+  candidato: string;
+}
+
+interface Conferencia {
+  falha: Falha | null;
+  aviso: string | null;
+}
+
+interface AvisoAcao {
+  tipo: 'curriculo_desatualizado';
+  mensagem: string;
+  sugestao: string;
+}
 
 interface ResultadoRegistrado {
   callId: string;
@@ -29,6 +46,19 @@ interface ResultadoRegistrado {
   ok: boolean;
   resultado?: unknown;
   erro?: string;
+  erroCandidato?: string;
+}
+
+function falhaUnica(mensagem: string): Falha {
+  return { modelo: mensagem, candidato: mensagem };
+}
+
+function avisoDesatualizado(mensagem: string | null): AvisoAcao | null {
+  return mensagem ? { tipo: 'curriculo_desatualizado', mensagem, sugestao: SUGESTAO_GERAR_DE_NOVO } : null;
+}
+
+function resumoComAviso(resumo: string, aviso: AvisoAcao | null): string {
+  return aviso ? `${resumo}. ${aviso.mensagem}` : resumo;
 }
 
 export function exigeConfirmacao(tool: ToolDef, modo: 'assistido' | 'autopiloto'): boolean {
@@ -145,31 +175,17 @@ export class ChatService {
       args: { ...pend.args, ...(confirmacao.ajustes ?? {}) },
       oportunidadeId: conversa.oportunidadeId,
     });
-    const erroArgs = (await validarArgs(tool, args)) ?? (await this.foraDeOrdem(conversa, tool, args));
-    if (erroArgs) {
+    const { falha } = await this.conferir(conversa, tool, args);
+    if (falha) {
       await this.conversas.definirPendencia(conversa._id, null);
       await this.conversas.registrarConfirmacao(conversa._id, {
         callId: pend.callId,
         tool: pend.tool,
         decisao: 'confirmar',
-        erro: erroArgs,
+        erro: falha.candidato,
         concluidaEm: new Date(),
       });
-      this.enviar(res, 'tool_resultado', {
-        callId: pend.callId,
-        tool: tool.nome,
-        ok: false,
-        resultado: null,
-        erro: { mensagem: erroArgs, recuperavel: true },
-      });
-      await this.registrarResultado(conversa, {
-        callId: pend.callId,
-        tool: tool.nome,
-        efeito: tool.efeito,
-        args,
-        ok: false,
-        erro: erroArgs,
-      });
+      await this.falharTool(res, conversa, tool, pend.callId, args, falha);
       return true;
     }
     this.enviar(res, 'tool_call', {
@@ -313,25 +329,12 @@ export class ChatService {
         args: chamada.input ?? {},
         oportunidadeId: conversa.oportunidadeId,
       });
-      const erroArgs = (await validarArgs(tool, args)) ?? (await this.foraDeOrdem(conversa, tool, args));
-      if (erroArgs) {
-        this.enviar(res, 'tool_resultado', {
-          callId,
-          tool: tool.nome,
-          ok: false,
-          resultado: null,
-          erro: { mensagem: erroArgs, recuperavel: true },
-        });
-        await this.registrarResultado(conversa, {
-          callId,
-          tool: tool.nome,
-          efeito: tool.efeito,
-          args,
-          ok: false,
-          erro: erroArgs,
-        });
+      const { falha, aviso: textoAviso } = await this.conferir(conversa, tool, args);
+      if (falha) {
+        await this.falharTool(res, conversa, tool, callId, args, falha);
         continue;
       }
+      const aviso = avisoDesatualizado(textoAviso);
 
       if (tool.nome === 'gerar_curriculo') {
         const pedida = await this.solicitarConfirmacaoGeracao(res, conversa, tool, callId, args);
@@ -340,6 +343,7 @@ export class ChatService {
       }
 
       if (exigeConfirmacao(tool, modo)) {
+        const resumo = resumoComAviso(tool.resumo ? tool.resumo(args) : `Executar ${tool.nome}`, aviso);
         this.enviar(res, 'tool_call', {
           callId,
           tool: tool.nome,
@@ -350,15 +354,17 @@ export class ChatService {
         this.enviar(res, 'confirmacao', {
           callId,
           tool: tool.nome,
-          resumo: tool.resumo ? tool.resumo(args) : `Executar ${tool.nome}`,
+          resumo,
           args,
+          ...(aviso ? { aviso } : {}),
         });
         await this.conversas.definirPendencia(conversa._id, {
           callId,
           tool: tool.nome,
           efeito: 'escrita',
           args,
-          resumo: tool.resumo ? tool.resumo(args) : `Executar ${tool.nome}`,
+          resumo,
+          ...(aviso ? { aviso } : {}),
         });
         this.finalizar(res, conversa._id, 'aguardando_confirmacao');
         return;
@@ -372,7 +378,7 @@ export class ChatService {
           args,
           exigeConfirmacao: false,
         });
-        const entregue = await this.entregar(res, conversa, tool, callId, args);
+        const entregue = await this.entregar(res, conversa, tool, callId, args, aviso);
         this.finalizar(
           res,
           conversa._id,
@@ -391,6 +397,7 @@ export class ChatService {
       const execucao = await this.executarTool(res, conversa, tool, callId, args);
       if (execucao.ok) {
         await this.aplicarResultadoTool(conversa, tool.nome, execucao.valor);
+        if (tool.nome === 'analisar_ats' && (await this.confirmarAposAnalise(res, conversa, callId, args))) return;
       }
     }
 
@@ -415,18 +422,72 @@ export class ChatService {
     }
   }
 
-  private async foraDeOrdem(
+  private async conferir(
     conversa: ConversaCopilotoDoc,
     tool: ToolDef,
     args: Record<string, unknown>,
-  ): Promise<string | null> {
+  ): Promise<Conferencia> {
+    const invalidos = await validarArgs(tool, args);
+    if (invalidos) return { falha: { modelo: invalidos, candidato: ARGS_INVALIDOS_CANDIDATO }, aviso: null };
     const alvo = oportunidadeDosArgs(args);
-    if (!alvo || !toolDependeDoPipeline(tool.nome, args)) return null;
+    if (!alvo || !toolDependeDoPipeline(tool.nome, args)) return { falha: null, aviso: null };
     try {
-      return await this.pipelineAts.ordem(conversa.usuarioId, alvo, tool.nome, args);
+      const { fora, aviso } = await this.pipelineAts.conferir(conversa.usuarioId, alvo, tool.nome, args);
+      return { falha: fora, aviso };
     } catch (err) {
-      return this.mensagemErro(err);
+      return { falha: this.falhaDoErro(err), aviso: null };
     }
+  }
+
+  private async falharTool(
+    res: Response,
+    conversa: ConversaCopilotoDoc,
+    tool: ToolDef,
+    callId: string,
+    args: Record<string, unknown>,
+    falha: Falha,
+  ): Promise<void> {
+    this.enviar(res, 'tool_resultado', {
+      callId,
+      tool: tool.nome,
+      ok: false,
+      resultado: null,
+      erro: { mensagem: falha.candidato, recuperavel: true },
+    });
+    await this.registrarResultado(conversa, {
+      callId,
+      tool: tool.nome,
+      efeito: tool.efeito,
+      args,
+      ok: false,
+      erro: falha.modelo,
+      erroCandidato: falha.candidato,
+    });
+  }
+
+  private async confirmarAposAnalise(
+    res: Response,
+    conversa: ConversaCopilotoDoc,
+    callIdAnalise: string,
+    argsAnalise: Record<string, unknown>,
+  ): Promise<boolean> {
+    const alvo = oportunidadeDosArgs(argsAnalise);
+    if (!alvo) return false;
+    try {
+      await this.pipelineAts.aplicar(conversa.usuarioId, alvo, { tipo: 'confirmacao_solicitada' });
+    } catch {
+      return false;
+    }
+    const tool = TOOLS_POR_NOME.get('gerar_curriculo')!;
+    const callId = idDeTool(`auto_${callIdAnalise}`);
+    const args = { oportunidadeId: alvo };
+    await this.registrar(conversa, {
+      papel: 'assistant',
+      conteudo: '',
+      blocos: [{ type: 'tool_use', id: callId, name: tool.nome, input: args }],
+    });
+    await this.pedirConfirmacaoGeracao(res, conversa, tool, callId, args);
+    return true;
   }
 
   private async estaGerando(conversa: ConversaCopilotoDoc, args: Record<string, unknown>): Promise<boolean> {
@@ -456,11 +517,20 @@ export class ChatService {
     try {
       await this.pipelineAts.aplicar(conversa.usuarioId, String(args.oportunidadeId), { tipo: 'confirmacao_solicitada' });
     } catch (err) {
-      const erro = this.mensagemErro(err);
-      this.enviar(res, 'tool_resultado', { callId, tool: tool.nome, ok: false, resultado: null, erro: { mensagem: erro, recuperavel: true } });
-      await this.registrarResultado(conversa, { callId, tool: tool.nome, efeito: tool.efeito, args, ok: false, erro });
+      await this.falharTool(res, conversa, tool, callId, args, this.falhaDoErro(err));
       return false;
     }
+    await this.pedirConfirmacaoGeracao(res, conversa, tool, callId, args);
+    return true;
+  }
+
+  private async pedirConfirmacaoGeracao(
+    res: Response,
+    conversa: ConversaCopilotoDoc,
+    tool: ToolDef,
+    callId: string,
+    args: Record<string, unknown>,
+  ): Promise<void> {
     const resumo = 'Etapa 1 (Análise ATS) concluída. Podemos prosseguir para a Etapa 2 (Reescrita otimizada)?';
     this.enviar(res, 'tool_call', {
       callId,
@@ -478,7 +548,6 @@ export class ChatService {
       resumo,
     });
     this.finalizar(res, conversa._id, 'aguardando_confirmacao');
-    return true;
   }
 
   private async executarTool(
@@ -517,22 +586,7 @@ export class ChatService {
       });
       return { ok: true, valor: resultado };
     } catch (err) {
-      const mensagem = this.mensagemErro(err);
-      this.enviar(res, 'tool_resultado', {
-        callId,
-        tool: tool.nome,
-        ok: false,
-        resultado: null,
-        erro: { mensagem, recuperavel: true },
-      });
-      await this.registrarResultado(conversa, {
-        callId,
-        tool: tool.nome,
-        efeito: tool.efeito,
-        args,
-        ok: false,
-        erro: mensagem,
-      });
+      await this.falharTool(res, conversa, tool, callId, args, this.falhaDoErro(err));
       return { ok: false };
     }
   }
@@ -543,6 +597,7 @@ export class ChatService {
     tool: ToolDef,
     callId: string,
     args: Record<string, unknown>,
+    aviso: AvisoAcao | null = null,
   ): Promise<boolean> {
     try {
       const r = (await this.executor.executar(conversa.usuarioId, tool, args)) as {
@@ -550,12 +605,15 @@ export class ChatService {
         titulo: string;
         texto: string;
         destino?: string;
+        aviso?: AvisoAcao;
       };
+      if (aviso) r.aviso = aviso;
       this.enviar(res, 'entrega_externa', {
         tipo: r.tipo,
         titulo: r.titulo,
         texto: r.texto,
         destino: r.destino ?? '',
+        ...(aviso ? { aviso } : {}),
       });
       const conteudo = `texto entregue ao candidato: ${r.titulo}`;
       await this.registrar(conversa, {
@@ -618,7 +676,7 @@ export class ChatService {
         ok: registro.ok,
         ...(registro.ok
           ? { resultado: this.resultadoHistorico(registro.resultado, registro.tool) }
-          : { erro: registro.erro }),
+          : { erro: registro.erroCandidato ?? registro.erro }),
       },
     });
   }
@@ -682,6 +740,11 @@ export class ChatService {
     } catch {
       return resultado;
     }
+  }
+
+  private falhaDoErro(err: unknown): Falha {
+    if (err instanceof TransicaoRecusada) return { modelo: err.paraModelo, candidato: err.message };
+    return falhaUnica(this.mensagemErro(err));
   }
 
   private mensagemErro(err: unknown): string {

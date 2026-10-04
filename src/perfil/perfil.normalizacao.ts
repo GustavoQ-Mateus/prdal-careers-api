@@ -35,6 +35,8 @@ export type MotivoRevisao = (typeof MOTIVOS_REVISAO)[number];
 
 export const PAIS_BRASIL = 'Brasil';
 
+export const PREFIXO_TECNOLOGIAS = 'Tecnologias: ';
+
 export const UFS_BRASIL = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',
   'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
@@ -540,7 +542,7 @@ function normalizarExperienciaObjeto(dado: Record<string, unknown>, indice: numb
 
   const tecnologias = listaTexto(dado.tecnologias);
   if (tecnologias.length) {
-    const linha = `Tecnologias: ${tecnologias.join(', ')}`;
+    const linha = `${PREFIXO_TECNOLOGIAS}${tecnologias.join(', ')}`;
     if (!descricao.split(/\r?\n/).some((existente) => existente.trim() === linha)) {
       descricao = descricao ? `${descricao}\n${linha}` : linha;
     }
@@ -675,16 +677,22 @@ export function localExperiencia(experiencia: ExperienciaPerfil): string {
   return textoLocal(experiencia.local) || experiencia.localLegado || '';
 }
 
-export function extrairRealizacoes(descricao: string): string[] {
-  const linhas = descricao
+const BULLET_RE = /^[-*•]\s+/;
+
+function linhasDescricao(descricao: string): string[] {
+  return descricao
     .split(/\r?\n/)
     .map((linha) => linha.trim())
     .filter(Boolean);
+}
+
+export function extrairRealizacoes(descricao: string): string[] {
+  const linhas = linhasDescricao(descricao).filter((linha) => !linha.startsWith(PREFIXO_TECNOLOGIAS));
   const bullets = linhas
-    .filter((linha) => /^[-*•]\s+/.test(linha))
-    .map((linha) => linha.replace(/^[-*•]\s+/, '').trim())
+    .filter((linha) => BULLET_RE.test(linha))
+    .map((linha) => linha.replace(BULLET_RE, '').trim())
     .filter(Boolean);
-  return bullets.length ? bullets : descricao.trim() ? [descricao.trim()] : [];
+  return bullets.length ? bullets : linhas.length ? [linhas.join('\n')] : [];
 }
 
 export function tituloExperiencia(experiencia: ExperienciaPerfil): string {
@@ -705,10 +713,10 @@ export function textoExperiencia(experiencia: ExperienciaPerfil): string {
   ]
     .filter(Boolean)
     .join('\n');
-  const realizacoes = extrairRealizacoes(experiencia.descricao)
-    .map((realizacao) => `- ${realizacao}`)
+  const descricao = linhasDescricao(experiencia.descricao)
+    .map((linha) => (BULLET_RE.test(linha) ? `- ${linha.replace(BULLET_RE, '').trim()}` : linha))
     .join('\n');
-  return [cabecalho, realizacoes].filter(Boolean).join('\n');
+  return [cabecalho, descricao].filter(Boolean).join('\n');
 }
 
 export function normalizarPerfil<T extends PerfilComJson>(
@@ -752,39 +760,37 @@ export function perfilParaPersistencia(perfil: PerfilNormalizado) {
   };
 }
 
-export function contatoPrincipal(contato: ContatoPerfil): Record<string, string> {
-  const resultado: Record<string, string> = {};
-  const email = contato.emails.find((item) => item.principal);
-  const telefone = contato.telefones.find((item) => item.principal);
-  if (telefone) resultado.telefone = [telefone.ddi, telefone.numero].filter(Boolean).join(' ');
-  if (email) resultado.email = email.valor;
-  const local = contato.endereco ? textoLocal(contato.endereco) || contato.endereco.legado || '' : '';
-  if (local) resultado.localizacao = local;
-  for (const tipo of ['site', 'linkedin', 'github'] as const) {
-    const link = contato.links.find((item) => item.tipo === tipo);
-    if (link) resultado[tipo] = link.url;
-  }
-  return resultado;
+function localParaIa(local: LocalPerfil | null) {
+  return local ? { pais: local.pais, estado: local.estado, cidade: local.cidade } : null;
 }
 
 export function perfilParaIa(perfil: PerfilComJson) {
   const normalizado = normalizarPerfil(perfil);
   return {
     nome: normalizado.nome,
-    contato: contatoPrincipal(normalizado),
+    emails: normalizado.emails.map(({ valor, principal }) => ({ valor, principal })),
+    telefones: normalizado.telefones.map(({ ddi, numero, principal }) => ({ ddi, numero, principal })),
+    links: normalizado.links.map(({ tipo, url }) => ({ tipo, url })),
+    endereco: localParaIa(normalizado.endereco),
     resumo: normalizado.resumo,
     experiencias: normalizado.experiencias.map((experiencia) => ({
       id: experiencia.id,
       cargo: experiencia.cargo,
       empresa: experiencia.empresa,
-      periodo: periodoExperiencia(experiencia),
-      local: localExperiencia(experiencia),
+      dataInicioMes: experiencia.dataInicioMes,
+      dataInicioAno: experiencia.dataInicioAno,
+      dataFimMes: experiencia.dataFimMes,
+      dataFimAno: experiencia.dataFimAno,
+      atual: experiencia.atual,
+      local: localParaIa(experiencia.local),
+      localLegado: experiencia.localLegado ?? '',
+      periodoLegado: experiencia.periodoLegado ?? '',
       descricao: experiencia.descricao,
       realizacoes: extrairRealizacoes(experiencia.descricao),
       texto: textoExperiencia(experiencia),
     })),
-    formacao: normalizado.formacao.map(textoFormacao).filter(Boolean),
-    certificacoes: normalizado.certificacoes.map(textoCertificacao).filter(Boolean),
+    formacao: normalizado.formacao.map(({ revisao: _revisao, id: _id, ...formacao }) => formacao),
+    certificacoes: normalizado.certificacoes.map(({ titulo, descricao }) => ({ titulo, descricao })),
     idiomas: normalizado.idiomas,
     skills: normalizado.skills,
   };

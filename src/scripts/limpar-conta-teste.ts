@@ -3,6 +3,9 @@ import { MongoClient } from 'mongodb';
 import { randomUUID } from 'node:crypto';
 import { cabecalhoServico } from '../config/servico';
 import {
+  listaCertificacoes,
+  listaFormacao,
+  listaTexto,
   normalizarExperiencias,
   textoExperiencia,
   tituloExperiencia,
@@ -105,23 +108,18 @@ function documentosDoPerfil(
     if (texto) documentos.push(documento(usuarioId, 'experiencia-' + experiencia.id, tituloExperiencia(experiencia), texto));
   });
 
-  const listas: [string, unknown, string][] = [
-    ['formacao', perfil.formacao, 'Formacao'],
-    ['certificacao', perfil.certificacoes, 'Certificacao'],
+  const listas: [string, string[], string][] = [
+    ['formacao', listaFormacao(perfil.formacao), 'Formacao'],
+    ['certificacao', listaCertificacoes(perfil.certificacoes), 'Certificacao'],
   ];
-  for (const [prefixo, valor, titulo] of listas) {
-    if (!Array.isArray(valor)) continue;
-    valor.forEach((item, indice) => {
-      if (String(item).trim()) documentos.push(documento(usuarioId, prefixo + '-' + indice, titulo, String(item)));
-    });
+  for (const [prefixo, itens, titulo] of listas) {
+    itens.forEach((item, indice) => documentos.push(documento(usuarioId, prefixo + '-' + indice, titulo, item)));
   }
 
-  if (Array.isArray(perfil.idiomas) && perfil.idiomas.length) {
-    documentos.push(documento(usuarioId, 'idiomas', 'Idiomas', perfil.idiomas.join(', ')));
-  }
-  if (Array.isArray(perfil.skills) && perfil.skills.length) {
-    documentos.push(documento(usuarioId, 'skills', 'Skills', perfil.skills.join(', ')));
-  }
+  const idiomas = listaTexto(perfil.idiomas);
+  if (idiomas.length) documentos.push(documento(usuarioId, 'idiomas', 'Idiomas', idiomas.join(', ')));
+  const skills = listaTexto(perfil.skills);
+  if (skills.length) documentos.push(documento(usuarioId, 'skills', 'Skills', skills.join(', ')));
   return documentos;
 }
 

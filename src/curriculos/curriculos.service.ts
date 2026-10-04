@@ -542,7 +542,7 @@ export class CurriculosService implements OnModuleInit {
           keywords,
           contexto,
         },
-        { operacao: `geracao:${id}` },
+        { operacao: `geracao:${id}`, usuarioId: geracao.usuarioId },
       );
       await this.prisma.geracaoCurriculo.update({
         where: { id },
@@ -593,7 +593,7 @@ export class CurriculosService implements OnModuleInit {
               contexto,
               markdownAtual: markdown,
             },
-            { operacao: `geracao:${id}` },
+            { operacao: `geracao:${id}`, usuarioId: geracao.usuarioId },
           );
           if (reducao.degradacao || reducao.markdown === markdown) {
             degradacao = mesclarDegradacao(degradacao, reducao.degradacao);

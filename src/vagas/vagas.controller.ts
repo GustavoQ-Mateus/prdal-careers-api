@@ -15,6 +15,7 @@ import { CurriculosService } from '../curriculos/curriculos.service';
 import { AtualizarVagaDto, CriarVagaDto } from './vaga.dto';
 import { VagasService } from './vagas.service';
 import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
+import { ExigirCotaTokens } from '../cota/cota-tokens.guard';
 
 @UseGuards(JwtAuthGuard)
 @Controller('vagas')
@@ -26,6 +27,7 @@ export class VagasController {
 
   @Post()
   @LimitarRequisicoes(LIMITES.criacao)
+  @ExigirCotaTokens()
   criar(@CurrentUser() user: AuthUser, @Body() dto: CriarVagaDto) {
     return this.vagas.criar(user.userId, dto);
   }
@@ -61,6 +63,7 @@ export class VagasController {
 
   @Post(':id/gerar-cv')
   @LimitarRequisicoes(LIMITES.geracao)
+  @ExigirCotaTokens()
   @HttpCode(202)
   gerarCv(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.curriculos.gerar(user.userId, id);

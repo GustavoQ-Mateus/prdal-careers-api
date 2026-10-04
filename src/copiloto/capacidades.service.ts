@@ -29,8 +29,8 @@ export class CapacidadesService {
     private readonly perfil: PerfilService,
   ) {}
 
-  async keywordsPrevia(descricao: string) {
-    return this.ai.keywords(descricao);
+  async keywordsPrevia(usuarioId: string, descricao: string) {
+    return this.ai.keywords(descricao, { usuarioId });
   }
 
   async consultarRag(usuarioId: string, query: string, k = 5) {
@@ -64,13 +64,16 @@ export class CapacidadesService {
     const vaga = await this.oportunidades.buscar(usuarioId, oportunidadeId);
     const perfil = await this.perfil.buscar(usuarioId);
     const redacao = await this.chamarIa('redigir-mensagem', () =>
-      this.ai.redigirMensagem({
-        vaga,
-        perfil: perfil ? perfilParaIa(perfil) : {},
-        contexto: contexto ?? '',
-      }),
+      this.ai.redigirMensagem(
+        {
+          vaga,
+          perfil: perfil ? perfilParaIa(perfil) : {},
+          contexto: contexto ?? '',
+        },
+        { usuarioId },
+      ),
     );
-    return { tipo: 'mensagem_recrutador' as const, ...redacao };
+    return { tipo: 'mensagem_recrutador' as const, titulo: redacao.titulo, texto: redacao.texto, destino: redacao.destino };
   }
 
   async respostasFormulario(
@@ -81,13 +84,16 @@ export class CapacidadesService {
     const vaga = await this.oportunidades.buscar(usuarioId, oportunidadeId);
     const perfil = await this.perfil.buscar(usuarioId);
     const redacao = await this.chamarIa('redigir-formulario', () =>
-      this.ai.redigirFormulario({
-        vaga,
-        perfil: perfil ? perfilParaIa(perfil) : {},
-        campos,
-      }),
+      this.ai.redigirFormulario(
+        {
+          vaga,
+          perfil: perfil ? perfilParaIa(perfil) : {},
+          campos,
+        },
+        { usuarioId },
+      ),
     );
-    return { tipo: 'resposta_formulario' as const, ...redacao };
+    return { tipo: 'resposta_formulario' as const, titulo: redacao.titulo, respostas: redacao.respostas, texto: redacao.texto };
   }
 
   private async chamarIa<T>(operacao: string, chamada: () => Promise<T>): Promise<T> {

@@ -21,8 +21,24 @@ model Usuario {
   preferencia  PreferenciaUsuario?
   geracoes     GeracaoCurriculo[]
   sessoes      Sessao[]
+  usosTokens   UsoTokensDiario[]
 
   @@map("usuarios")
+}
+
+model UsoTokensDiario {
+  usuarioId    String   @map("usuario_id")
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  dia          DateTime @db.Date
+  entrada      Int      @default(0)
+  saida        Int      @default(0)
+  cacheLida    Int      @default(0) @map("cache_lida")
+  cacheEscrita Int      @default(0) @map("cache_escrita")
+  chamadas     Int      @default(0)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@id([usuarioId, dia])
+  @@map("uso_tokens_diario")
 }
 
 model Sessao {

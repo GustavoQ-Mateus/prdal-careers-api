@@ -1,6 +1,8 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { AxiosError } from 'axios';
 import { firstValueFrom } from 'rxjs';
+import { CotaTokensEsgotada, CotaTokensService } from '../cota/cota-tokens.service';
 
 const DEFAULT_GENERATE_TIMEOUT_MS = 300000;
 const DEFAULT_LLM_TIMEOUT_MS = 60000;
@@ -30,6 +32,7 @@ export interface ComUso {
 
 export interface OpcoesIa {
   operacao?: string;
+  usuarioId?: string | null;
 }
 
 export interface Keyword {
@@ -87,7 +90,33 @@ export class AiClient {
   );
   private readonly llmTimeoutMs = envMs('AI_LLM_TIMEOUT_MS', DEFAULT_LLM_TIMEOUT_MS);
 
-  constructor(private readonly http: HttpService) {}
+  constructor(
+    private readonly http: HttpService,
+    @Optional() private readonly cota?: CotaTokensService,
+  ) {}
+
+  private async registrarUso(usuarioId: string, uso: UsoLlm | null | undefined) {
+    try {
+      await this.cota?.registrar(usuarioId, uso);
+    } catch (err) {
+      this.logger.warn(`uso de tokens nao registrado usuario=${usuarioId} causa=${(err as Error).message}`);
+    }
+  }
+
+  private async comCota<T extends ComUso>(opcoes: OpcoesIa, chamada: () => Promise<T>): Promise<T> {
+    const usuarioId = opcoes.usuarioId;
+    if (!usuarioId || !this.cota) return chamada();
+    await this.cota.verificar(usuarioId);
+    try {
+      const dados = await chamada();
+      await this.registrarUso(usuarioId, dados.uso);
+      return dados;
+    } catch (err) {
+      const uso = (err as AxiosError<ComUso>).response?.data?.uso;
+      if (uso) await this.registrarUso(usuarioId, uso);
+      throw err;
+    }
+  }
 
   private comPrazo(timeoutMs: number, opcoes: OpcoesIa = {}) {
     return {
@@ -99,15 +128,18 @@ export class AiClient {
     };
   }
 
-  async keywords(descricao: string): Promise<KeywordExtraction> {
+  async keywords(descricao: string, opcoes: OpcoesIa = {}): Promise<KeywordExtraction> {
     try {
-      const { data } = await firstValueFrom(
-        this.http.post<KeywordExtraction>(
-          `${this.baseUrl}/keywords`,
-          { descricao },
-          this.comPrazo(this.llmTimeoutMs),
-        ),
-      );
+      const data = await this.comCota(opcoes, async () => {
+        const resposta = await firstValueFrom(
+          this.http.post<KeywordExtraction>(
+            `${this.baseUrl}/keywords`,
+            { descricao },
+            this.comPrazo(this.llmTimeoutMs, opcoes),
+          ),
+        );
+        return resposta.data;
+      });
       return {
         keywords: data.keywords ?? [],
         status: data.status === 'VALIDAS' && data.keywords?.length ? 'VALIDAS' : 'PENDENTE',
@@ -116,6 +148,7 @@ export class AiClient {
         modelo: data.modelo ?? null,
       };
     } catch (err) {
+      if (err instanceof CotaTokensEsgotada) throw err;
       this.logger.warn(
         `degradacao codigo=keywords_ai_service_indisponivel causa=${(err as Error).message}`,
       );
@@ -152,14 +185,16 @@ export class AiClient {
     },
     opcoes: OpcoesIa = {},
   ): Promise<GeneratePipelineResult> {
-    const { data } = await firstValueFrom(
-      this.http.post<GeneratePipelineResult>(
-        `${this.baseUrl}/generate-cv-pipeline`,
-        payload,
-        this.comPrazo(this.generateTimeoutMs, opcoes),
-      ),
-    );
-    return data;
+    return this.comCota(opcoes, async () => {
+      const { data } = await firstValueFrom(
+        this.http.post<GeneratePipelineResult>(
+          `${this.baseUrl}/generate-cv-pipeline`,
+          payload,
+          this.comPrazo(this.generateTimeoutMs, opcoes),
+        ),
+      );
+      return data;
+    });
   }
 
   async reduzirCurriculo(
@@ -172,14 +207,16 @@ export class AiClient {
     },
     opcoes: OpcoesIa = {},
   ): Promise<GeneratePipelineResult> {
-    const { data } = await firstValueFrom(
-      this.http.post<GeneratePipelineResult>(
-        `${this.baseUrl}/reduzir-curriculo`,
-        payload,
-        this.comPrazo(this.generateTimeoutMs, opcoes),
-      ),
-    );
-    return data;
+    return this.comCota(opcoes, async () => {
+      const { data } = await firstValueFrom(
+        this.http.post<GeneratePipelineResult>(
+          `${this.baseUrl}/reduzir-curriculo`,
+          payload,
+          this.comPrazo(this.generateTimeoutMs, opcoes),
+        ),
+      );
+      return data;
+    });
   }
 
   async analisarAts(payload: {
@@ -270,53 +307,69 @@ export class AiClient {
     },
     opcoes: OpcoesIa = {},
   ): Promise<CopilotoTurno> {
-    const { data } = await firstValueFrom(
-      this.http.post<CopilotoTurno>(
-        `${this.baseUrl}/copiloto/turn`,
-        payload,
-        this.comPrazo(this.llmTimeoutMs, opcoes),
-      ),
-    );
-    return data;
+    return this.comCota(opcoes, async () => {
+      const { data } = await firstValueFrom(
+        this.http.post<CopilotoTurno>(
+          `${this.baseUrl}/copiloto/turn`,
+          payload,
+          this.comPrazo(this.llmTimeoutMs, opcoes),
+        ),
+      );
+      return data;
+    });
   }
 
-  async redigirMensagem(payload: {
-    vaga: unknown;
-    perfil: unknown;
-    contexto: string;
-  }): Promise<{ titulo: string; texto: string; destino: string }> {
-    const { data } = await firstValueFrom(
-      this.http.post<{ titulo: string; texto: string; destino: string }>(
-        `${this.baseUrl}/copiloto/redigir-mensagem`,
-        payload,
-        this.comPrazo(this.llmTimeoutMs),
-      ),
-    );
-    return data;
+  async redigirMensagem(
+    payload: {
+      vaga: unknown;
+      perfil: unknown;
+      contexto: string;
+    },
+    opcoes: OpcoesIa = {},
+  ): Promise<RedacaoMensagem> {
+    return this.comCota(opcoes, async () => {
+      const { data } = await firstValueFrom(
+        this.http.post<RedacaoMensagem>(
+          `${this.baseUrl}/copiloto/redigir-mensagem`,
+          payload,
+          this.comPrazo(this.llmTimeoutMs, opcoes),
+        ),
+      );
+      return data;
+    });
   }
 
-  async redigirFormulario(payload: {
-    vaga: unknown;
-    perfil: unknown;
-    campos: string[];
-  }): Promise<{
-    titulo: string;
-    respostas: { campo: string; texto: string }[];
-    texto: string;
-  }> {
-    const { data } = await firstValueFrom(
-      this.http.post<{
-        titulo: string;
-        respostas: { campo: string; texto: string }[];
-        texto: string;
-      }>(
-        `${this.baseUrl}/copiloto/redigir-formulario`,
-        payload,
-        this.comPrazo(this.llmTimeoutMs),
-      ),
-    );
-    return data;
+  async redigirFormulario(
+    payload: {
+      vaga: unknown;
+      perfil: unknown;
+      campos: string[];
+    },
+    opcoes: OpcoesIa = {},
+  ): Promise<RedacaoFormulario> {
+    return this.comCota(opcoes, async () => {
+      const { data } = await firstValueFrom(
+        this.http.post<RedacaoFormulario>(
+          `${this.baseUrl}/copiloto/redigir-formulario`,
+          payload,
+          this.comPrazo(this.llmTimeoutMs, opcoes),
+        ),
+      );
+      return data;
+    });
   }
+}
+
+export interface RedacaoMensagem extends ComUso {
+  titulo: string;
+  texto: string;
+  destino: string;
+}
+
+export interface RedacaoFormulario extends ComUso {
+  titulo: string;
+  respostas: { campo: string; texto: string }[];
+  texto: string;
 }
 
 export interface CopilotoTurno extends ComUso {

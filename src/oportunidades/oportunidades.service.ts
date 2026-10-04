@@ -77,7 +77,7 @@ export class OportunidadesService {
     );
     if (equivalente) return equivalente;
 
-    const extracao = await this.ai.keywords(dto.descricao);
+    const extracao = await this.ai.keywords(dto.descricao, { usuarioId });
     const taxonomia = await this.classificar(dto.titulo, dto.descricao);
     return this.prisma.$transaction(async (tx) => {
       const vaga = await tx.vaga.create({
@@ -334,7 +334,7 @@ export class OportunidadesService {
     let pendentes = 0;
     for (const vaga of vagas) {
       try {
-        const extracao = await this.ai.keywords(vaga.descricao);
+        const extracao = await this.ai.keywords(vaga.descricao, { usuarioId });
         await this.prisma.vaga.update({
           where: { id: vaga.id },
           data: {
@@ -355,7 +355,7 @@ export class OportunidadesService {
   async atualizar(usuarioId: string, id: string, dto: AtualizarOportunidadeDto) {
     const atual = await this.garantirVaga(usuarioId, id);
     const extracao = dto.descricao !== undefined
-      ? await this.ai.keywords(dto.descricao)
+      ? await this.ai.keywords(dto.descricao, { usuarioId })
       : undefined;
     const mudouTexto =
       (dto.titulo !== undefined && dto.titulo !== atual.titulo) ||

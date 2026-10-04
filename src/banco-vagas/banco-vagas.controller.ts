@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ImportarBancoVagasDto } from './banco-vaga.dto';
 import { BancoVagasService } from './banco-vagas.service';
 import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
+import { ExigirCotaTokens } from '../cota/cota-tokens.guard';
 
 @UseGuards(JwtAuthGuard)
 @Controller('banco-vagas')
@@ -12,6 +13,7 @@ export class BancoVagasController {
 
   @Post('import')
   @LimitarRequisicoes(LIMITES.criacao)
+  @ExigirCotaTokens()
   importar(@CurrentUser() user: AuthUser, @Body() dto: ImportarBancoVagasDto) {
     return this.bancoVagas.importar(user.userId, dto);
   }

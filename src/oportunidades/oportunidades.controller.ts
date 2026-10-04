@@ -23,6 +23,7 @@ import {
 } from './oportunidade.dto';
 import { OportunidadesService } from './oportunidades.service';
 import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
+import { ExigirCotaTokens } from '../cota/cota-tokens.guard';
 
 function numeroPaginacao(valor: string | undefined, nome: 'limit' | 'offset') {
   if (valor === undefined) return undefined;
@@ -71,18 +72,21 @@ export class OportunidadesController {
 
   @Post()
   @LimitarRequisicoes(LIMITES.criacao)
+  @ExigirCotaTokens()
   criar(@CurrentUser() user: AuthUser, @Body() dto: CriarOportunidadeDto) {
     return this.oportunidades.criar(user.userId, dto);
   }
 
   @Post('reprocessar-keywords')
   @LimitarRequisicoes(LIMITES.lote)
+  @ExigirCotaTokens()
   reprocessarKeywords(@CurrentUser() user: AuthUser) {
     return this.oportunidades.reprocessarKeywords(user.userId);
   }
 
   @Post('importar')
   @LimitarRequisicoes(LIMITES.criacao)
+  @ExigirCotaTokens()
   importar(@CurrentUser() user: AuthUser, @Body() dto: ImportarOportunidadesDto) {
     return this.banco.importar(user.userId, dto);
   }
@@ -142,6 +146,7 @@ export class OportunidadesController {
 
   @Post(':id/gerar-cv')
   @LimitarRequisicoes(LIMITES.geracao)
+  @ExigirCotaTokens()
   @HttpCode(202)
   gerarCv(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.curriculos.gerar(user.userId, id);

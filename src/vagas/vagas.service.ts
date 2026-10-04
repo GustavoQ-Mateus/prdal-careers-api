@@ -14,7 +14,7 @@ export class VagasService {
   ) {}
 
   async criar(usuarioId: string, dto: CriarVagaDto) {
-    const extracao = await this.aiClient.keywords(dto.descricao);
+    const extracao = await this.aiClient.keywords(dto.descricao, { usuarioId });
     return this.prisma.$transaction(async (tx) => {
       const vaga = await tx.vaga.create({
         data: {
@@ -52,7 +52,7 @@ export class VagasService {
   async atualizar(usuarioId: string, id: string, dto: AtualizarVagaDto) {
     await this.buscar(usuarioId, id);
     const extracao = dto.descricao !== undefined
-      ? await this.aiClient.keywords(dto.descricao)
+      ? await this.aiClient.keywords(dto.descricao, { usuarioId })
       : undefined;
     return this.prisma.vaga.update({
       where: { id },

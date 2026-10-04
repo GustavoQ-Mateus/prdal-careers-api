@@ -24,6 +24,7 @@ import {
   ScoreAvulsoDto,
 } from './copiloto.dto';
 import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
+import { ExigirCotaTokens } from '../cota/cota-tokens.guard';
 
 @UseGuards(JwtAuthGuard)
 @Controller('copiloto')
@@ -61,8 +62,9 @@ export class CopilotoController {
 
   @Post('keywords-previa')
   @LimitarRequisicoes(LIMITES.ia)
-  keywordsPrevia(@Body() dto: KeywordsPreviaDto) {
-    return this.capacidades.keywordsPrevia(dto.descricao);
+  @ExigirCotaTokens()
+  keywordsPrevia(@CurrentUser() user: AuthUser, @Body() dto: KeywordsPreviaDto) {
+    return this.capacidades.keywordsPrevia(user.userId, dto.descricao);
   }
 
   @Post('rag/consulta')
@@ -84,6 +86,7 @@ export class CopilotoController {
 
   @Post('mensagem-recrutador')
   @LimitarRequisicoes(LIMITES.ia)
+  @ExigirCotaTokens()
   mensagemRecrutador(
     @CurrentUser() user: AuthUser,
     @Body() dto: MensagemRecrutadorDto,
@@ -97,6 +100,7 @@ export class CopilotoController {
 
   @Post('respostas-formulario')
   @LimitarRequisicoes(LIMITES.ia)
+  @ExigirCotaTokens()
   respostasFormulario(
     @CurrentUser() user: AuthUser,
     @Body() dto: RespostasFormularioDto,

@@ -19,14 +19,14 @@ async function main() {
     const ai = app.get(AiClient);
     const vagas = await prisma.vaga.findMany({
       where: { keywordsStatus: 'PENDENTE' },
-      select: { id: true, descricao: true },
+      select: { id: true, descricao: true, usuarioId: true },
       orderBy: { atualizadoEm: 'asc' },
     });
     let validas = 0;
     let pendentes = 0;
     for (const vaga of vagas) {
       try {
-        const extracao = await ai.keywords(vaga.descricao);
+        const extracao = await ai.keywords(vaga.descricao, { usuarioId: vaga.usuarioId });
         await prisma.vaga.update({
           where: { id: vaga.id },
           data: {

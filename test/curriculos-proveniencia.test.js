@@ -55,7 +55,7 @@ test('o curriculo grava o modelo e a versao do prompt que o geraram', async () =
   assert.equal(criados.geracao.status, 'CONCLUIDA');
   assert.equal(criados.curriculo.modelo, 'claude-sonnet-5');
   assert.equal(criados.curriculo.promptVersion, 'reescrita.v1');
-  assert.deepEqual(chamadas, [{ operacao: 'geracao:job-1' }]);
+  assert.deepEqual(chamadas, [{ operacao: 'geracao:job-1', usuarioId: 'usuario-1' }]);
 });
 
 test('sem chamada ao modelo o curriculo fica sem modelo e mantem a versao do prompt', async () => {

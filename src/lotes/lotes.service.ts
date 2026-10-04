@@ -85,7 +85,7 @@ export class LotesService implements OnModuleInit {
     const acao =
       lote.tipo === 'INGESTAO'
         ? (ref: string) => this.indexarDocumento(ref)
-        : (ref: string) => this.processarBancoVaga(ref);
+        : (ref: string) => this.processarBancoVaga(ref, lote.usuarioId);
     await this.executarComConcorrencia(pendentes, CONCORRENCIA, (item) =>
       this.processarItem(item, acao),
     );
@@ -134,10 +134,10 @@ export class LotesService implements OnModuleInit {
     });
   }
 
-  private async processarBancoVaga(bancoVagaId: string) {
+  private async processarBancoVaga(bancoVagaId: string, usuarioId: string) {
     const doc = await this.mongo.bancoVagas().findOne({ _id: bancoVagaId });
     if (!doc) throw new Error('postagem nao encontrada no banco de vagas');
-    const extracao = await this.ai.keywords(doc.descricao);
+    const extracao = await this.ai.keywords(doc.descricao, { usuarioId });
     const { categoria, nivel } = await this.ai.classify(doc.titulo, doc.descricao);
     await this.mongo
       .bancoVagas()

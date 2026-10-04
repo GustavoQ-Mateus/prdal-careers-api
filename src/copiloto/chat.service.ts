@@ -8,6 +8,7 @@ import { AuthUser } from '../auth/current-user.decorator';
 import { CopilotoTurno } from '../clients/ai.client';
 import { AiClient } from '../clients/ai.client';
 import { prefixoApi } from '../config/prefixo';
+import { CotaTokensEsgotada, MENSAGEM_COTA_ESGOTADA } from '../cota/cota-tokens.service';
 import { ConversaCopilotoDoc, MensagemCopiloto } from '../mongo/mongo.service';
 import { OportunidadesService } from '../oportunidades/oportunidades.service';
 import { ConversasService } from './conversas.service';
@@ -214,9 +215,20 @@ export class ChatService {
             mensagens: conversa.mensagens,
             tools: CATALOGO_TOOLS,
           },
-          { operacao: `conversa:${conversa._id}` },
+          { operacao: `conversa:${conversa._id}`, usuarioId: conversa.usuarioId },
         );
       } catch (err) {
+        if (err instanceof CotaTokensEsgotada) {
+          await this.registrarErro(conversa, 'cota', MENSAGEM_COTA_ESGOTADA);
+          this.enviar(res, 'erro', {
+            escopo: 'cota',
+            mensagem: MENSAGEM_COTA_ESGOTADA,
+            recuperavel: false,
+            retryAfter: err.retryAfterSegundos,
+          });
+          this.finalizar(res, conversa._id, 'erro');
+          return;
+        }
         await this.registrarErro(conversa, 'ai-service', this.mensagemErro(err));
         this.enviar(res, 'erro', {
           escopo: 'ai-service',

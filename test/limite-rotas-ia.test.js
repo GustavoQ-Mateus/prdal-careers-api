@@ -21,6 +21,7 @@ test('rotas de IA e consulta do copiloto sao limitadas por usuario', async (t) =
       { provide: ChatService, useValue: {} },
       { provide: CapacidadesService, useValue: capacidades },
       { provide: ConversasService, useValue: {} },
+      { provide: require('../dist/cota/cota-tokens.service').CotaTokensService, useValue: { verificar: async () => {} } },
     ],
     configurar: (app) => app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true })),
   });

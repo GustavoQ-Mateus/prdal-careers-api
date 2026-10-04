@@ -1,0 +1,2 @@
+ALTER TABLE curriculos
+  ADD COLUMN IF NOT EXISTS estrutura JSONB;

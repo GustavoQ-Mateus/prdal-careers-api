@@ -135,6 +135,7 @@ model Curriculo {
   degradacao     String?
   modelo         String?
   promptVersion  String?                @map("prompt_version")
+  estrutura      Json?
   geradoEm       DateTime               @default(now()) @map("gerado_em")
   candidaturas   Candidatura[]
   eventos        EventoOportunidade[]

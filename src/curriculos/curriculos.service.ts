@@ -388,6 +388,7 @@ export class CurriculosService implements OnModuleInit {
           docxPath,
           pdfPath,
           degradacao: degradacaoComRenderizacao(curriculo.degradacao, falhou),
+          estrutura: Prisma.DbNull,
           ...(dto.rotulo ? { rotulo: dto.rotulo } : {}),
         },
       });
@@ -563,15 +564,17 @@ export class CurriculosService implements OnModuleInit {
       let markdown = pipeline.markdown;
       let analiseFinal = pipeline.analiseFinal;
       let degradacao = pipeline.degradacao;
-      let modelo = pipeline.modelo ?? null;
-      let promptVersion = pipeline.promptVersion ?? null;
+      const modelo = pipeline.modelo ?? null;
+      const promptVersion = pipeline.promptVersion ?? null;
       let { docxPath, pdfPath, paginas, falhou } = await this.renderizar(
         curriculoId,
         markdown,
       );
 
       let rodadas = 0;
-      while (paginas > 1 && rodadas < 2) {
+      const estruturaGerada = pipeline.estrutura ?? null;
+      let estrutura = estruturaGerada;
+      while (paginas > 1 && rodadas < 2 && estruturaGerada) {
         rodadas += 1;
         this.logger.warn(
           `curriculo ${curriculoId} com ${paginas} paginas; rodada ${rodadas} de corte de conteudo`,
@@ -587,19 +590,15 @@ export class CurriculosService implements OnModuleInit {
                 keywords,
               },
               keywords,
-              contexto,
-              markdownAtual: markdown,
+              estrutura: estruturaGerada,
+              nivel: rodadas,
             },
-            { operacao: `geracao:${id}`, usuarioId: geracao.usuarioId },
+            { operacao: `geracao:${id}` },
           );
-          if (reducao.degradacao || reducao.markdown === markdown) {
-            degradacao = mesclarDegradacao(degradacao, reducao.degradacao);
-            break;
-          }
+          if (reducao.markdown === markdown) break;
           markdown = reducao.markdown;
           analiseFinal = reducao.analiseFinal;
-          modelo = reducao.modelo ?? modelo;
-          promptVersion = reducao.promptVersion ?? promptVersion;
+          estrutura = reducao.estrutura ?? estrutura;
           ({ docxPath, pdfPath, paginas, falhou } = await this.renderizar(
             curriculoId,
             markdown,
@@ -638,6 +637,7 @@ export class CurriculosService implements OnModuleInit {
             degradacao,
             modelo,
             promptVersion,
+            estrutura: estrutura === null ? Prisma.DbNull : (estrutura as Prisma.InputJsonValue),
           },
         });
         await tx.geracaoCurriculo.update({

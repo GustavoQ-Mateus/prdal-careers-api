@@ -82,6 +82,7 @@ export interface FonteContexto {
 
 export interface GeneratePipelineResult extends ComUso {
   markdown: string;
+  estrutura?: unknown;
   analiseInicial: AtsAnalysis;
   analiseFinal: AtsAnalysis;
   degradacao: string | null;
@@ -211,21 +212,19 @@ export class AiClient {
       perfilMestre: unknown;
       vaga: unknown;
       keywords: Keyword[];
-      contexto: FonteContexto[];
-      markdownAtual: string;
+      estrutura: unknown;
+      nivel: number;
     },
     opcoes: OpcoesIa = {},
   ): Promise<GeneratePipelineResult> {
-    return this.comCota(opcoes, async () => {
-      const { data } = await firstValueFrom(
-        this.http.post<GeneratePipelineResult>(
-          `${this.baseUrl}/reduzir-curriculo`,
-          payload,
-          this.comPrazo(this.generateTimeoutMs, opcoes),
-        ),
-      );
-      return data;
-    });
+    const { data } = await firstValueFrom(
+      this.http.post<GeneratePipelineResult>(
+        `${this.baseUrl}/reduzir-curriculo`,
+        payload,
+        this.comPrazo(this.llmTimeoutMs, opcoes),
+      ),
+    );
+    return data;
   }
 
   async analisarAts(payload: {

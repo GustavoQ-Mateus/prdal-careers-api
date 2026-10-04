@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, ConflictException, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
 import { AuthService } from './auth.service';
@@ -38,6 +38,7 @@ export class AuthController {
       gravarSessao(res, credenciais);
       return { csrfToken: credenciais.csrf };
     } catch (erro) {
+      if (erro instanceof ConflictException) throw erro;
       limparSessao(res);
       throw erro;
     }

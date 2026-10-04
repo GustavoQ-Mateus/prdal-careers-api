@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -18,6 +18,12 @@ export interface PayloadAcesso {
 
 export function hashRefresh(refresh: string): string {
   return createHash('sha256').update(refresh).digest('hex');
+}
+
+export function toleranciaRefreshMs(): number {
+  const bruto = (process.env.REFRESH_TOLERANCIA_S ?? '').trim();
+  const segundos = Number(bruto);
+  return (bruto && Number.isFinite(segundos) && segundos >= 0 ? segundos : 30) * 1000;
 }
 
 export function novoSegredo(): string {
@@ -52,6 +58,14 @@ export class SessoesService {
       data: { substituidaEm: agora, ultimoUsoEm: agora },
     });
     if (trocada.count === 0) {
+      const atual = await this.prisma.sessao.findUnique({ where: { id: sessao.id } });
+      if (
+        atual?.substituidaEm &&
+        !atual.revogadaEm &&
+        agora.getTime() - atual.substituidaEm.getTime() < toleranciaRefreshMs()
+      ) {
+        throw new ConflictException('sessao renovada em outra aba');
+      }
       await this.revogarFamilia(sessao.familia);
       throw new UnauthorizedException('sessao expirada');
     }

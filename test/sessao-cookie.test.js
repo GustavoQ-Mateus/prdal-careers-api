@@ -66,6 +66,7 @@ test('escrita sem X-CSRF-Token ou com token errado retorna 403', async (t) => {
 });
 
 test('refresh gira o token e o reuso de um refresh ja trocado revoga a familia', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
   const { nav, prisma } = await entrar(t);
   const ladrao = nav.clonar();
   const primeiro = await nav.chamar('/auth/refresh', { metodo: 'POST' });
@@ -73,12 +74,59 @@ test('refresh gira o token e o reuso de um refresh ja trocado revoga a familia',
   assert.notEqual(nav.jarra.get('prdal_refresh').valor, ladrao.jarra.get('prdal_refresh').valor);
   assert.equal((await nav.chamar('/protegido/ler')).status, 200);
 
+  t.mock.timers.tick(31_000);
   const reuso = await ladrao.chamar('/auth/refresh', { metodo: 'POST' });
   assert.equal(reuso.status, 401);
   assert.ok(prisma.sessoes.every((s) => s.revogadaEm), 'toda a familia revogada');
   assert.equal((await nav.chamar('/auth/refresh', { metodo: 'POST' })).status, 401);
   assert.equal((await nav.chamar('/protegido/ler')).status, 401);
   assert.ok(prisma.sessoes.every((s) => /^[0-9a-f]{64}$/.test(s.refreshHash)), 'refresh guardado como hash');
+});
+
+test('dois refresh simultaneos com o mesmo cookie dao 200 e 409 sem revogar a familia', async (t) => {
+  const { nav, prisma } = await entrar(t);
+  const outraAba = nav.clonar();
+  const respostas = await Promise.all([
+    nav.chamar('/auth/refresh', { metodo: 'POST' }),
+    outraAba.chamar('/auth/refresh', { metodo: 'POST' }),
+  ]);
+  assert.deepEqual(respostas.map((r) => r.status).sort(), [200, 409]);
+  const conflito = respostas.find((r) => r.status === 409);
+  assert.deepEqual(conflito.headers.getSetCookie(), []);
+  assert.equal((await conflito.json()).message, 'sessao renovada em outra aba');
+  assert.ok(prisma.sessoes.every((s) => !s.revogadaEm), 'nenhuma sessao revogada');
+
+  const vencedora = respostas[0].status === 200 ? nav : outraAba;
+  assert.equal((await vencedora.chamar('/protegido/ler')).status, 200);
+  assert.equal((await vencedora.chamar('/auth/refresh', { metodo: 'POST' })).status, 200);
+  assert.equal((await vencedora.chamar('/protegido/ler')).status, 200);
+});
+
+test('reuso dentro da janela de tolerancia da 409 e depois dela revoga a familia', async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() });
+  const { nav, prisma } = await entrar(t);
+  const perdida = nav.clonar();
+  assert.equal((await nav.chamar('/auth/refresh', { metodo: 'POST' })).status, 200);
+
+  t.mock.timers.tick(29_000);
+  assert.equal((await perdida.chamar('/auth/refresh', { metodo: 'POST' })).status, 409);
+  assert.ok(prisma.sessoes.every((s) => !s.revogadaEm));
+  assert.equal((await nav.chamar('/protegido/ler')).status, 200);
+
+  t.mock.timers.tick(2_000);
+  assert.equal((await perdida.chamar('/auth/refresh', { metodo: 'POST' })).status, 401);
+  assert.ok(prisma.sessoes.every((s) => s.revogadaEm), 'toda a familia revogada');
+  assert.equal((await nav.chamar('/protegido/ler')).status, 401);
+});
+
+test('REFRESH_TOLERANCIA_S=0 desliga a janela e o reuso imediato ja revoga', async (t) => {
+  process.env.REFRESH_TOLERANCIA_S = '0';
+  t.after(() => delete process.env.REFRESH_TOLERANCIA_S);
+  const { nav, prisma } = await entrar(t);
+  const perdida = nav.clonar();
+  assert.equal((await nav.chamar('/auth/refresh', { metodo: 'POST' })).status, 200);
+  assert.equal((await perdida.chamar('/auth/refresh', { metodo: 'POST' })).status, 401);
+  assert.ok(prisma.sessoes.every((s) => s.revogadaEm));
 });
 
 test('logout revoga a sessao: refresh e acesso deixam de valer', async (t) => {

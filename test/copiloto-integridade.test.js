@@ -3,6 +3,7 @@ const test = require('node:test');
 const { turnoTexto, turnoTool } = require('./helpers/turnos');
 const { ChatService, exigeConfirmacao } = require('../dist/copiloto/chat.service');
 const { TOOLS_POR_NOME } = require('../dist/copiloto/tools');
+const { pipelineMemoria } = require('./helpers/pipeline-memoria');
 
 function response() {
   const eventos = [];
@@ -104,16 +105,21 @@ test('gerar_curriculo pede confirmacao inclusive no autopiloto', async () => {
   const conversa = {
     ...conversaFalsa('autopiloto'),
     oportunidadeId: 'vaga-1',
-    mensagens: [{ papel: 'tool', tool: 'analisar_ats', conteudo: JSON.stringify({ score: 67, veredicto: 'Cobertura media.' }) }],
   };
+  const { service: pipelineAts } = pipelineMemoria();
+  await pipelineAts.aplicar('usuario-1', 'vaga-1', {
+    tipo: 'analise_concluida',
+    analise: { score: 67, keywordsEncontradas: [], keywordsCriticasAusentes: [], pontosEliminatorios: [], veredicto: 'Cobertura media.' },
+  });
   const chamadas = [];
   const ai = { copilotoTurn: async () => turnoTool('gerar_curriculo', { oportunidadeId: 'vaga-1' }) };
   const executor = { executar: async (_u, tool) => { chamadas.push(tool.nome); return {}; } };
   const res = response();
 
-  await new ChatService(conversasFalsas(conversa, []), ai, executor).chat(res, { userId: 'usuario-1' }, { modo: 'autopiloto', mensagem: 'Gere o curriculo.' });
+  await new ChatService(conversasFalsas(conversa, []), ai, executor, {}, pipelineAts).chat(res, { userId: 'usuario-1' }, { modo: 'autopiloto', mensagem: 'Gere o curriculo.' });
 
   assert.equal(chamadas.length, 0);
   assert.ok(confirmacaoPendente(res));
   assert.equal(conversa.pendencia.tool, 'gerar_curriculo');
+  assert.equal((await pipelineAts.situacao('usuario-1', 'vaga-1')).estado, 'AGUARDANDO_CONFIRMACAO');
 });

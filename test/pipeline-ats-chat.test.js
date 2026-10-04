@@ -1,0 +1,228 @@
+const assert = require('node:assert/strict');
+const test = require('node:test');
+const { turnoTexto, turnoTool, mensagensEnviadas } = require('./helpers/turnos');
+const { pipelineMemoria } = require('./helpers/pipeline-memoria');
+const { ChatService } = require('../dist/copiloto/chat.service');
+const { ToolExecutor } = require('../dist/copiloto/tool-executor');
+const { CurriculosService } = require('../dist/curriculos/curriculos.service');
+
+const analiseInicial = {
+  score: 48,
+  keywordsEncontradas: ['Java'],
+  keywordsCriticasAusentes: ['Docker'],
+  pontosEliminatorios: [],
+  veredicto: 'Cobertura media.',
+  breakdown: { keywordMatch: 20, densidade: 10, secoes: 18, faltando: ['Docker'] },
+};
+const analiseFinal = { ...analiseInicial, score: 71, keywordsEncontradas: ['Java', 'Docker'], keywordsCriticasAusentes: [] };
+
+function ambiente({ falharGeracao = false } = {}) {
+  const { banco, service: pipelineAts } = pipelineMemoria();
+  const vaga = { id: 'vaga-1', usuarioId: 'usuario-1', titulo: 'Dev', empresa: 'Acme', descricao: 'Java e Docker', keywordsStatus: 'VALIDAS', keywords: [{ termo: 'Java', peso: 1 }] };
+  const curriculos = [];
+  const geracoes = banco.geracoes;
+  Object.assign(banco, {
+    vaga: { ...banco.vaga, findFirst: async ({ where }) => (where.id === vaga.id && where.usuarioId === vaga.usuarioId ? vaga : null) },
+    perfilMestre: { findUnique: async () => ({ usuarioId: 'usuario-1', nome: 'Pessoa' }) },
+    geracaoCurriculo: {
+      findFirst: async ({ where }) =>
+        [...geracoes].reverse().find(
+          (g) => g.usuarioId === where.usuarioId && g.vagaId === where.vagaId && (!where.status?.in || where.status.in.includes(g.status)),
+        ) ?? null,
+      create: async ({ data }) => {
+        const geracao = { id: `job-${geracoes.length + 1}`, status: 'PENDENTE', curriculoId: null, criadoEm: new Date(), ...data };
+        geracoes.push(geracao);
+        return geracao;
+      },
+      findUnique: async ({ where }) => {
+        const geracao = geracoes.find((g) => g.id === where.id);
+        return geracao ? { ...geracao, vaga } : null;
+      },
+      update: async ({ where, data }) => Object.assign(geracoes.find((g) => g.id === where.id), data),
+    },
+    curriculo: {
+      count: async () => curriculos.length,
+      create: async ({ data }) => curriculos.push(data),
+      findFirst: async ({ where }) => {
+        const curriculo = curriculos.find((c) => c.id === where.id);
+        return curriculo ? { ...curriculo, scoreBreakdown: curriculo.scoreBreakdown, geradoEm: new Date(), vaga, candidaturas: [] } : null;
+      },
+    },
+  });
+  const ai = {
+    turnos: [],
+    payloads: [],
+    copilotoTurn: async (payload) => {
+      ai.payloads.push(structuredClone(payload));
+      const turno = ai.turnos.shift();
+      if (!turno) throw new Error('turno nao programado');
+      return turno;
+    },
+    contextQuery: async () => ({ chunks: [] }),
+    analisarAts: async () => analiseInicial,
+    generateCvPipeline: async () => {
+      if (falharGeracao) throw new Error('ai-service indisponivel');
+      return { markdown: '# Pessoa', analiseInicial, analiseFinal, degradacao: null };
+    },
+  };
+  const doc = {
+    renderPdf: async () => {
+      throw new Error('doc-service fora');
+    },
+  };
+  const anexos = [];
+  const mongo = { anexarConclusaoGeracao: async (...args) => anexos.push(args) };
+  const servicoCurriculos = new CurriculosService(banco, ai, doc, { registrar: async () => {} }, mongo, pipelineAts);
+  const capacidades = {
+    mensagemRecrutador: async () => ({ tipo: 'mensagem_recrutador', titulo: 'Mensagem', texto: 'Ola', destino: '' }),
+  };
+  const executor = new ToolExecutor(null, null, servicoCurriculos, null, null, null, null, capacidades, { verificar: async () => {} });
+  const conversa = { _id: 'conversa-1', usuarioId: 'usuario-1', modo: 'assistido', oportunidadeId: 'vaga-1', mensagens: [], pendencia: null };
+  const conversas = {
+    abrir: async () => conversa,
+    anexar: async (_id, mensagem) => conversa.mensagens.push(mensagem),
+    definirPendencia: async (_id, pendencia) => { conversa.pendencia = pendencia; },
+    confirmarPendencia: async (_id, callId) => (conversa.pendencia?.callId === callId ? { ...conversa.pendencia, executando: true } : null),
+    registrarConfirmacao: async () => {},
+    buscarConfirmacao: async () => null,
+    atualizarOportunidade: async () => {},
+    definirResumo: async () => {},
+  };
+  const chat = new ChatService(conversas, ai, executor, { garantirVaga: async () => {} }, pipelineAts);
+  return { banco, pipelineAts, ai, anexos, conversa, chat, geracoes };
+}
+
+function resposta() {
+  const eventos = [];
+  return { eventos, setHeader() {}, flushHeaders() {}, write: (e) => eventos.push(e), end() {} };
+}
+
+function eventosDo(res, nome) {
+  return res.eventos.filter((e) => e.startsWith(`event: ${nome}\n`)).map((e) => JSON.parse(e.split('data: ')[1]));
+}
+
+async function aguardar(condicao) {
+  for (let i = 0; i < 200; i++) {
+    if (condicao()) return;
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  throw new Error('condicao nao atingida');
+}
+
+const usuario = { userId: 'usuario-1' };
+
+test('sequencia inteira pelo chat: fora de ordem, analise, confirmacao, geracao e narracao por eventos', async () => {
+  const { banco, pipelineAts, ai, anexos, conversa, chat, geracoes } = ambiente();
+
+  ai.turnos.push(
+    turnoTool('gerar_curriculo', {}, 'toolu_cedo'),
+    turnoTool('analisar_ats', {}, 'toolu_analise'),
+    turnoTool('gerar_curriculo', {}, 'toolu_gerar'),
+  );
+  const primeiro = resposta();
+  await chat.chat(primeiro, usuario, { mensagem: 'Gere meu curriculo para esta vaga', oportunidadeId: 'vaga-1' });
+
+  assert.deepEqual(ai.payloads.map((p) => p.pipelineAts.estado), ['SEM_ANALISE', 'SEM_ANALISE', 'ANALISADA']);
+  assert.match(ai.payloads[0].pipelineAts.descricao, /analisar_ats/);
+  const foraDeOrdem = mensagensEnviadas(ai.payloads[1]).at(-1).content[0];
+  assert.equal(foraDeOrdem.tool_use_id, 'toolu_cedo');
+  assert.equal(foraDeOrdem.is_error, true);
+  assert.match(foraDeOrdem.content, /^falha: Etapa fora de ordem: gerar_curriculo/);
+  assert.match(foraDeOrdem.content, /Próximo passo válido: analisar_ats/);
+  const [confirmacao] = eventosDo(primeiro, 'confirmacao');
+  assert.equal(confirmacao.tool, 'gerar_curriculo');
+  assert.equal(eventosDo(primeiro, 'fim_turno')[0].motivo, 'aguardando_confirmacao');
+  assert.equal((await pipelineAts.situacao('usuario-1', 'vaga-1')).estado, 'AGUARDANDO_CONFIRMACAO');
+
+  const segundo = resposta();
+  await chat.chat(segundo, usuario, { conversaId: 'conversa-1', confirmacao: { callId: confirmacao.callId, decisao: 'confirmar' } });
+  assert.equal(eventosDo(segundo, 'fim_turno')[0].motivo, 'completo');
+  assert.equal(ai.payloads.length, 3);
+  await aguardar(() => geracoes[0]?.status === 'CONCLUIDA' && anexos.length === 1);
+
+  assert.deepEqual(
+    banco.eventos.map((e) => [e.tipo, e.para]),
+    [
+      ['analise_concluida', 'ANALISADA'],
+      ['confirmacao_solicitada', 'AGUARDANDO_CONFIRMACAO'],
+      ['geracao_iniciada', 'GERANDO'],
+      ['geracao_concluida', 'CONCLUIDA'],
+    ],
+  );
+  assert.equal(banco.eventos[2].dados.origem, 'confirmacao');
+  const [, jobId, , mensagens, dados] = anexos[0];
+  assert.equal(jobId, geracoes[0].id);
+  assert.deepEqual(dados, banco.eventos[3].dados.narracao);
+  assert.match(mensagens.etapa1, /^Etapa 1: Aderência do perfil-mestre\nScore: 48/);
+  assert.match(mensagens.etapa3, /Score: 71\. Para referência, a aderência do perfil-mestre foi 48\./);
+  assert.match(mensagens.etapa3, /Keywords cobertas: Java, Docker/);
+  assert.match(mensagens.etapa3, /Observação: Os arquivos PDF e DOCX/);
+  assert.ok(!`${mensagens.etapa1}${mensagens.etapa3}`.includes('[['));
+
+  ai.turnos.push(turnoTool('redigir_mensagem_recrutador', {}, 'toolu_msg'));
+  const terceiro = resposta();
+  await chat.chat(terceiro, usuario, { conversaId: 'conversa-1', mensagem: 'Escreva a mensagem ao recrutador' });
+  assert.equal(ai.payloads.at(-1).pipelineAts.estado, 'CONCLUIDA');
+  assert.equal(eventosDo(terceiro, 'entrega_externa').length, 1);
+  assert.ok(conversa.mensagens.every((m) => !String(m.conteudo).includes('[[NARRACAO')));
+});
+
+test('perfil alterado depois da geracao: o agente ve DESATUALIZADA e a geracao volta pela analise', async () => {
+  const { pipelineAts, ai, chat, geracoes } = ambiente();
+  await pipelineAts.aplicar('usuario-1', 'vaga-1', { tipo: 'geracao_iniciada', jobId: 'job-0', origem: 'direta' });
+  await pipelineAts.aplicar('usuario-1', 'vaga-1', { tipo: 'geracao_concluida', jobId: 'job-0', curriculoId: 'cv-0', narracao: null });
+  await pipelineAts.perfilAlterado('usuario-1');
+
+  ai.turnos.push(turnoTool('gerar_curriculo', {}, 'toolu_regera'), turnoTool('analisar_ats', {}, 'toolu_a'), turnoTexto('Refiz a analise.'));
+  const res = resposta();
+  await chat.chat(res, usuario, { mensagem: 'Mudei meu perfil, gera de novo', oportunidadeId: 'vaga-1' });
+
+  assert.equal(ai.payloads[0].pipelineAts.estado, 'DESATUALIZADA');
+  assert.match(ai.payloads[0].pipelineAts.descricao, /perfil mudou/);
+  const erro = mensagensEnviadas(ai.payloads[1]).at(-1).content[0];
+  assert.equal(erro.is_error, true);
+  assert.match(erro.content, /analisar_ats/);
+  assert.equal(ai.payloads[2].pipelineAts.estado, 'ANALISADA');
+  assert.equal(geracoes.length, 0);
+});
+
+test('recusa da confirmacao volta para analisada e falha da geracao vira FALHOU', async () => {
+  const { banco, pipelineAts, ai, chat, geracoes } = ambiente({ falharGeracao: true });
+  ai.turnos.push(turnoTool('analisar_ats', {}, 'toolu_a'), turnoTool('gerar_curriculo', {}, 'toolu_g'));
+  const primeiro = resposta();
+  await chat.chat(primeiro, usuario, { mensagem: 'Gere', oportunidadeId: 'vaga-1' });
+  const [pedido] = eventosDo(primeiro, 'confirmacao');
+
+  ai.turnos.push(turnoTexto('Tudo bem, fica para depois.'));
+  await chat.chat(resposta(), usuario, { conversaId: 'conversa-1', confirmacao: { callId: pedido.callId, decisao: 'recusar' } });
+  assert.equal((await pipelineAts.situacao('usuario-1', 'vaga-1')).estado, 'ANALISADA');
+
+  ai.turnos.push(turnoTool('gerar_curriculo', {}, 'toolu_g2'));
+  const terceiro = resposta();
+  await chat.chat(terceiro, usuario, { conversaId: 'conversa-1', mensagem: 'Agora pode gerar' });
+  const [novoPedido] = eventosDo(terceiro, 'confirmacao');
+  await chat.chat(resposta(), usuario, { conversaId: 'conversa-1', confirmacao: { callId: novoPedido.callId, decisao: 'confirmar' } });
+  await aguardar(() => geracoes[0]?.status === 'ERRO' && banco.eventos.some((e) => e.tipo === 'geracao_falhou'));
+
+  assert.equal((await pipelineAts.situacao('usuario-1', 'vaga-1')).estado, 'FALHOU');
+  assert.deepEqual(
+    banco.eventos.map((e) => e.tipo),
+    ['analise_concluida', 'confirmacao_solicitada', 'confirmacao_recusada', 'confirmacao_solicitada', 'geracao_iniciada', 'geracao_falhou'],
+  );
+  assert.equal(banco.eventos.at(-1).dados.erro, 'ai-service indisponivel');
+});
+
+test('acao externa antes do curriculo concluido volta com o proximo passo valido', async () => {
+  const { ai, chat } = ambiente();
+  ai.turnos.push(
+    turnoTool('definir_proximo_passo', { titulo: 'Enviar candidatura', tipo: 'ENVIAR_CANDIDATURA' }, 'toolu_ext'),
+    turnoTexto('Primeiro preciso analisar a vaga.'),
+  );
+  const res = resposta();
+  await chat.chat(res, usuario, { mensagem: 'Agende o envio', oportunidadeId: 'vaga-1' });
+  assert.equal(eventosDo(res, 'confirmacao').length, 0);
+  const erro = mensagensEnviadas(ai.payloads[1]).at(-1).content[0];
+  assert.equal(erro.is_error, true);
+  assert.match(erro.content, /currículo gerado e concluído/);
+  assert.match(erro.content, /Próximo passo válido: analisar_ats/);
+});

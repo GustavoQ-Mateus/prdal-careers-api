@@ -3,6 +3,7 @@ import { Collection, Db, MongoClient } from 'mongodb';
 import { randomUUID } from 'node:crypto';
 import { Keyword } from '../clients/ai.client';
 import type { BlocoNativo } from '../copiloto/historico';
+import type { DadosNarracao, MensagensNarracao } from '../pipeline-ats/narracao';
 
 export interface BancoVagaDoc {
   _id: string;
@@ -75,6 +76,8 @@ export interface MensagemCopiloto {
     escopo?: string;
     origem?: 'geracao_assincrona';
     jobId?: string;
+    etapa?: 1 | 3;
+    narracao?: DadosNarracao;
   };
 }
 
@@ -159,7 +162,8 @@ export class MongoService implements OnModuleInit, OnModuleDestroy {
     usuarioId: string,
     jobId: string,
     curriculo: Record<string, unknown>,
-    narracao: string,
+    narracao: MensagensNarracao,
+    dados: DadosNarracao,
   ): Promise<boolean> {
     await this.pronto;
     const callId = randomUUID();
@@ -191,8 +195,13 @@ export class MongoService implements OnModuleInit, OnModuleDestroy {
               },
               {
                 papel: 'assistant',
-                conteudo: narracao,
-                dados: { origem: 'geracao_assincrona', jobId },
+                conteudo: narracao.etapa1,
+                dados: { origem: 'geracao_assincrona', jobId, etapa: 1, narracao: dados },
+              },
+              {
+                papel: 'assistant',
+                conteudo: narracao.etapa3,
+                dados: { origem: 'geracao_assincrona', jobId, etapa: 3 },
               },
             ],
           },

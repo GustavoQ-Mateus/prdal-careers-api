@@ -149,7 +149,7 @@ export class ToolExecutor {
       ativar_entrada: (u, a) => this.oportunidades.ativarEntrada(u, a.entradaId),
       ativar_banco_vaga: (u, a) => this.bancoVagas.ativar(u, a.bancoVagaId),
       analisar_ats: (u, a) => this.curriculos.analisarAts(u, a.oportunidadeId),
-      gerar_curriculo: (u, a) => this.curriculos.gerar(u, a.oportunidadeId),
+      gerar_curriculo: (u, a) => this.curriculos.gerar(u, a.oportunidadeId, 'confirmacao'),
       editar_curriculo: (u, a) =>
         this.curriculos.editar(u, a.curriculoId, { markdown: a.markdown, rotulo: a.rotulo }),
       definir_proximo_passo: (u, a) =>

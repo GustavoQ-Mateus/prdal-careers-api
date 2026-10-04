@@ -6,112 +6,33 @@ const { prepararArgsTool } = require('../dist/copiloto/tool-args');
 const { validarArgs } = require('../dist/copiloto/tool-executor');
 const { TOOLS_POR_NOME } = require('../dist/copiloto/tools');
 
-const leituraFinal = {
-  papel: 'tool',
-  tool: 'buscar_curriculo',
-  conteudo: JSON.stringify({
-    id: 'cv-1',
-    vagaId: 'vaga-1',
-    score: 82,
-    breakdown: { keywordMatch: 35 },
-  }),
-};
-
 test('tipo do proximo passo nao e inferido do titulo: o enum do schema decide', async () => {
   for (const tipo of ['Enviar mensagem ao recrutador', 'verificar status', undefined]) {
-    const resultado = prepararArgsTool({
+    const args = prepararArgsTool({
       tool: 'definir_proximo_passo',
       args: { titulo: 'Enviar mensagem ao recrutador', tipo },
       oportunidadeId: 'vaga-1',
-      mensagens: [leituraFinal],
     });
-    assert.equal(resultado.args.tipo, tipo);
-    assert.equal(resultado.args.oportunidadeId, 'vaga-1');
-    assert.match(await validarArgs(TOOLS_POR_NOME.get('definir_proximo_passo'), resultado.args), /tipo: deve ser um destes valores/);
-  }
-});
-
-test('titulo de agenda nao e barrado por regex; a acao externa ainda exige a Etapa 3', () => {
-  for (const titulo of ['Verificar status da geração do currículo', 'Preparar mensagem ao recrutador']) {
-    const interna = prepararArgsTool({
-      tool: 'definir_proximo_passo',
-      args: { titulo, tipo: 'REVISAR_VAGA' },
-      oportunidadeId: 'vaga-1',
-      mensagens: [],
-    });
-    assert.equal(interna.erro, null);
+    assert.equal(args.tipo, tipo);
+    assert.equal(args.oportunidadeId, 'vaga-1');
+    assert.match(await validarArgs(TOOLS_POR_NOME.get('definir_proximo_passo'), args), /tipo: deve ser um destes valores/);
   }
 });
 
 test('oportunidade em foco so preenche tool que aceita o campo', () => {
-  const nota = prepararArgsTool({ tool: 'registrar_nota', args: { descricao: 'x' }, oportunidadeId: 'vaga-1', mensagens: [] });
-  assert.equal(nota.args.oportunidadeId, 'vaga-1');
-  const registro = prepararArgsTool({ tool: 'registrar_oportunidade', args: { titulo: 'a' }, oportunidadeId: 'vaga-1', mensagens: [] });
-  assert.equal(registro.args.oportunidadeId, undefined);
-  const explicita = prepararArgsTool({ tool: 'buscar_oportunidade', args: { oportunidadeId: 'outra' }, oportunidadeId: 'vaga-1', mensagens: [] });
-  assert.equal(explicita.args.oportunidadeId, 'outra');
+  const nota = prepararArgsTool({ tool: 'registrar_nota', args: { descricao: 'x' }, oportunidadeId: 'vaga-1' });
+  assert.equal(nota.oportunidadeId, 'vaga-1');
+  const registro = prepararArgsTool({ tool: 'registrar_oportunidade', args: { titulo: 'a' }, oportunidadeId: 'vaga-1' });
+  assert.equal(registro.oportunidadeId, undefined);
+  const explicita = prepararArgsTool({ tool: 'buscar_oportunidade', args: { oportunidadeId: 'outra' }, oportunidadeId: 'vaga-1' });
+  assert.equal(explicita.oportunidadeId, 'outra');
+  const candidatura = prepararArgsTool({ tool: 'registrar_candidatura', args: {}, oportunidadeId: 'vaga-1' });
+  assert.equal(candidatura.vagaId, 'vaga-1');
 });
 
-test('acao externa antes da Etapa 3 e barrada', () => {
-  const externa = prepararArgsTool({
-    tool: 'definir_proximo_passo',
-    args: { titulo: 'Enviar mensagem ao recrutador', tipo: 'ENVIAR_CANDIDATURA' },
-    oportunidadeId: 'vaga-1',
-    mensagens: [
-      {
-        papel: 'tool',
-        tool: 'status_geracao',
-        conteudo: JSON.stringify({ status: 'CONCLUIDA', curriculoId: 'cv-1' }),
-      },
-    ],
-  });
-  assert.equal(externa.args.tipo, 'ENVIAR_CANDIDATURA');
-  assert.match(externa.erro, /buscar_curriculo/);
-});
-
-test('uma nova geracao invalida a leitura final de um ciclo anterior', () => {
-  const resultado = prepararArgsTool({
-    tool: 'redigir_mensagem_recrutador',
-    args: {},
-    oportunidadeId: 'vaga-1',
-    mensagens: [
-      leituraFinal,
-      {
-        papel: 'tool',
-        tool: 'gerar_curriculo',
-        conteudo: JSON.stringify({ jobId: 'job-2' }),
-      },
-      {
-        papel: 'tool',
-        tool: 'status_geracao',
-        conteudo: JSON.stringify({ status: 'CONCLUIDA', curriculoId: 'cv-2' }),
-      },
-    ],
-  });
-
-  assert.match(resultado.erro, /buscar_curriculo/);
-});
-
-test('exige a analise ATS antes de iniciar a reescrita', () => {
-  const semAnalise = prepararArgsTool({
-    tool: 'gerar_curriculo',
-    args: {},
-    oportunidadeId: 'vaga-1',
-    mensagens: [],
-  });
-  assert.match(semAnalise.erro, /Etapa 1/);
-
-  const comAnalise = prepararArgsTool({
-    tool: 'gerar_curriculo',
-    args: {},
-    oportunidadeId: 'vaga-1',
-    mensagens: [{
-      papel: 'tool',
-      tool: 'analisar_ats',
-      conteudo: JSON.stringify({ score: 67, veredicto: 'Prosseguir com ajustes.' }),
-    }],
-  });
-  assert.equal(comAnalise.erro, null);
+test('preparar args nao le o historico da conversa', () => {
+  const fonte = require('node:fs').readFileSync(require.resolve('../dist/copiloto/tool-args'), 'utf8');
+  assert.doesNotMatch(fonte, /JSON\.parse|mensagens|leuAnalise|leuCurriculo|TOOLS_APOS_ETAPA_3/);
 });
 
 test('ChatService nao emite confirmacao para escrita invalida', async () => {

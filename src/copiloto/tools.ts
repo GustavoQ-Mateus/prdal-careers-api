@@ -112,15 +112,13 @@ export const TOOLS: ToolDef[] = [
   {
     nome: 'buscar_curriculo',
     efeito: 'leitura',
-    descricao:
-      'Etapa 3 obrigatoria: le o curriculo concluido e seu score e breakdown ATS deterministico antes de qualquer acao externa',
+    descricao: 'Le um curriculo concluido com o score e o breakdown ATS deterministico',
     dto: CurriculoAlvoDto,
   },
   {
     nome: 'status_geracao',
     efeito: 'leitura',
-    descricao:
-      'Consulta uma geracao de curriculo em andamento; quando o status for CONCLUIDA, leia o curriculo com buscar_curriculo usando o curriculoId retornado',
+    descricao: 'Consulta uma geracao de curriculo pelo id devolvido ao inicia-la',
     dto: GeracaoAlvoDto,
     esquema: { descricoes: { jobId: 'id devolvido por gerar_curriculo' } },
   },
@@ -170,7 +168,7 @@ export const TOOLS: ToolDef[] = [
     nome: 'analisar_ats',
     efeito: 'leitura',
     descricao:
-      'Etapa 1 do pipeline ATS: analisa o perfil-mestre contra a vaga e devolve score, keywords encontradas, ausentes, pontos eliminatorios e veredicto antes da geracao',
+      'Analise ATS do perfil-mestre contra a vaga: score, keywords encontradas e ausentes, pontos eliminatorios e veredicto',
     dto: OportunidadeAlvoDto,
     esquema: { descricoes: { oportunidadeId: ID_OPORTUNIDADE } },
   },
@@ -178,7 +176,7 @@ export const TOOLS: ToolDef[] = [
     nome: 'gerar_curriculo',
     efeito: 'escrita',
     descricao:
-      'Etapa 2 do pipeline ATS: inicia a reescrita otimizada depois da confirmacao do candidato; acompanhe depois somente com status_geracao',
+      'Pede ao candidato a confirmacao da reescrita otimizada do curriculo para a vaga; confirmada, a geracao roda em segundo plano e a conclusao chega na conversa',
     dto: OportunidadeAlvoDto,
     esquema: { descricoes: { oportunidadeId: ID_OPORTUNIDADE } },
     resumo: () => 'Gerar o curriculo tailored para a oportunidade',
@@ -195,7 +193,7 @@ export const TOOLS: ToolDef[] = [
     nome: 'definir_proximo_passo',
     efeito: 'escrita',
     descricao:
-      'Cria uma acao na agenda da oportunidade. Nao serve para acompanhar geracao de curriculo (use status_geracao) nem para redigir mensagem ao recrutador (use redigir_mensagem_recrutador). Acoes externas exigem a Etapa 3 concluida',
+      'Cria uma acao na agenda da oportunidade. Nao serve para acompanhar geracao de curriculo (use status_geracao) nem para redigir mensagem ao recrutador (use redigir_mensagem_recrutador)',
     dto: DefinirProximoPassoDto,
     esquema: {
       omitir: ['candidaturaId'],
@@ -252,8 +250,7 @@ export const TOOLS: ToolDef[] = [
   {
     nome: 'redigir_mensagem_recrutador',
     efeito: 'entrega_externa',
-    descricao:
-      'Depois da Etapa 3, redige a mensagem ao recrutador e entrega o texto para o candidato revisar e enviar',
+    descricao: 'Redige a mensagem ao recrutador e entrega o texto para o candidato revisar e enviar',
     dto: MensagemRecrutadorDto,
     esquema: { descricoes: { oportunidadeId: 'id da oportunidade', contexto: 'contexto dado pelo candidato' } },
   },

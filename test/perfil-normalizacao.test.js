@@ -310,13 +310,17 @@ test('salvar normaliza na escrita e grava o contato tipado na coluna json', asyn
         return { id: 'p', ...create };
       },
     },
+    $transaction: async (fn) => fn(prisma),
   };
+  const perfilAlterado = [];
+  const pipelineAts = { perfilAlterado: async (usuarioId, tx) => perfilAlterado.push([usuarioId, tx === prisma]) };
   const corpo = plainToInstance(PerfilMestreDto, {
     ...CORPO_VALIDO,
     endereco: 'Fortaleza - CE',
     experiencias: [{ id: 'x1', cargo: 'Dev', empresa: 'A', periodo: 'Jan 2024 a atual', local: 'Remoto', descricao: 'Fatos' }],
   });
-  const salvo = await new PerfilService(prisma).salvar('usuario-1', corpo);
+  const salvo = await new PerfilService(prisma, pipelineAts).salvar('usuario-1', corpo);
+  assert.deepEqual(perfilAlterado, [['usuario-1', true]]);
   assert.deepEqual(Object.keys(gravado.contato).sort(), ['emails', 'endereco', 'links', 'outrosContatos', 'telefones']);
   assert.deepEqual(gravado.contato.endereco, { pais: 'Brasil', estado: 'CE', cidade: 'Fortaleza' });
   const [experiencia] = gravado.experiencias;

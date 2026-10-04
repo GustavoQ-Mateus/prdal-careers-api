@@ -4,7 +4,7 @@ const { CurriculosService } = require('../dist/curriculos/curriculos.service');
 
 function prismaFalso() {
   const geracoes = [];
-  return {
+  const prisma = {
     geracoes,
     vaga: {
       findFirst: async () => ({ id: 'vaga-1', usuarioId: 'usuario-1', keywordsStatus: 'VALIDAS', keywords: [{ termo: 'Java', peso: 1 }] }),
@@ -24,10 +24,14 @@ function prismaFalso() {
       },
     },
   };
+  prisma.$transaction = async (fn) => fn(prisma);
+  return prisma;
 }
 
 function servico(prisma, aoProcessar) {
-  const service = new CurriculosService(prisma, null, null, null, null);
+  const pipelineAts = { aplicar: async (_u, _v, evento) => prisma.transicoes.push(evento) };
+  prisma.transicoes = [];
+  const service = new CurriculosService(prisma, null, null, null, null, pipelineAts);
   service.processar = async (id) => aoProcessar(prisma.geracoes.find((g) => g.id === id));
   return service;
 }
@@ -45,6 +49,7 @@ test('geracao concluida nao bloqueia uma nova geracao para a mesma vaga', async 
 
   assert.notEqual(primeira.jobId, segunda.jobId);
   assert.equal(prisma.geracoes.length, 2);
+  assert.deepEqual(prisma.transicoes.map((e) => [e.tipo, e.origem]), [['geracao_iniciada', 'direta'], ['geracao_iniciada', 'direta']]);
 });
 
 test('geracao com erro gera um job novo em vez de reiniciar o antigo', async () => {
@@ -74,4 +79,5 @@ test('solicitacao durante geracao em andamento devolve o job em andamento', asyn
   assert.equal(segunda.jobId, primeira.jobId);
   assert.equal(segunda.status, 'GERANDO');
   assert.equal(prisma.geracoes.length, 1);
+  assert.equal(prisma.transicoes.length, 1);
 });

@@ -1,7 +1,6 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import type { Response } from 'express';
-import { randomUUID } from 'node:crypto';
 import { AuthUser } from '../auth/current-user.decorator';
 import { CopilotoTurno } from '../clients/ai.client';
 import { AiClient } from '../clients/ai.client';
@@ -9,10 +8,12 @@ import { CotaTokensEsgotada, MENSAGEM_COTA_ESGOTADA } from '../cota/cota-tokens.
 import { ConversaCopilotoDoc, MensagemCopiloto } from '../mongo/mongo.service';
 import { OportunidadesService } from '../oportunidades/oportunidades.service';
 import { semContato } from '../perfil/perfil.normalizacao';
+import { descreverParaAgente, toolDependeDoPipeline } from '../pipeline-ats/maquina';
+import { PipelineAtsService } from '../pipeline-ats/pipeline-ats.service';
 import { ConversasService } from './conversas.service';
 import { ChatDto } from './copiloto.dto';
 import { BlocoNativo, paraTrocas, resultadoTool } from './historico';
-import { prepararArgsTool } from './tool-args';
+import { oportunidadeDosArgs, prepararArgsTool } from './tool-args';
 import { ToolExecutor, validarArgs } from './tool-executor';
 import { ToolDef, TOOLS_NATIVAS, TOOLS_POR_NOME } from './tools';
 
@@ -44,6 +45,7 @@ export class ChatService {
     private readonly ai: AiClient,
     private readonly executor: ToolExecutor,
     private readonly oportunidades: OportunidadesService,
+    private readonly pipelineAts: PipelineAtsService,
   ) {}
 
   async chat(
@@ -125,6 +127,7 @@ export class ChatService {
 
     if (confirmacao.decisao === 'recusar') {
       await this.conversas.definirPendencia(conversa._id, null);
+      if (pend.tool === 'gerar_curriculo') await this.recusarGeracao(conversa, pend.args);
       await this.conversas.registrarConfirmacao(conversa._id, { callId: pend.callId, tool: pend.tool, decisao: 'recusar', concluidaEm: new Date() });
       await this.registrar(conversa, {
         papel: 'tool',
@@ -138,14 +141,12 @@ export class ChatService {
 
     const tool = TOOLS_POR_NOME.get(pend.tool);
     if (!tool) return true;
-    const preparados = prepararArgsTool({
+    const args = prepararArgsTool({
       tool: tool.nome,
       args: { ...pend.args, ...(confirmacao.ajustes ?? {}) },
       oportunidadeId: conversa.oportunidadeId,
-      mensagens: conversa.mensagens,
     });
-    const args = preparados.args;
-    const erroArgs = preparados.erro ?? (await validarArgs(tool, args));
+    const erroArgs = (await validarArgs(tool, args)) ?? (await this.foraDeOrdem(conversa, tool, args));
     if (erroArgs) {
       await this.conversas.definirPendencia(conversa._id, null);
       await this.conversas.registrarConfirmacao(conversa._id, {
@@ -182,7 +183,7 @@ export class ChatService {
     const resultado = await this.executarTool(res, conversa, tool, pend.callId, args);
     const geracaoEmAndamento = tool.nome === 'gerar_curriculo'
       && resultado.ok
-      && this.geracaoEmAndamento(resultado.valor);
+      && (await this.estaGerando(conversa, args));
     if (resultado.ok) {
       await this.conversas.definirPendencia(conversa._id, null);
       await this.conversas.registrarConfirmacao(conversa._id, { callId: pend.callId, tool: pend.tool, decisao: 'confirmar', resultado: resultado.valor, concluidaEm: new Date() });
@@ -211,6 +212,7 @@ export class ChatService {
           {
             modo,
             oportunidadeId: conversa.oportunidadeId,
+            pipelineAts: await this.contextoPipeline(conversa),
             trocas: paraTrocas(conversa.mensagens, conversa.resumo?.ate ?? 0),
             resumo: conversa.resumo ?? null,
             tools: TOOLS_NATIVAS,
@@ -292,14 +294,12 @@ export class ChatService {
         continue;
       }
 
-      const preparados = prepararArgsTool({
+      const args = prepararArgsTool({
         tool: tool.nome,
         args: chamada.input ?? {},
         oportunidadeId: conversa.oportunidadeId,
-        mensagens: conversa.mensagens,
       });
-      const args = preparados.args;
-      const erroArgs = preparados.erro ?? (await validarArgs(tool, args));
+      const erroArgs = (await validarArgs(tool, args)) ?? (await this.foraDeOrdem(conversa, tool, args));
       if (erroArgs) {
         this.enviar(res, 'tool_resultado', {
           callId,
@@ -320,8 +320,9 @@ export class ChatService {
       }
 
       if (tool.nome === 'gerar_curriculo') {
-        await this.solicitarConfirmacaoEtapa2(res, conversa, callId, args);
-        return;
+        const pedida = await this.solicitarConfirmacaoGeracao(res, conversa, tool, callId, args);
+        if (pedida) return;
+        continue;
       }
 
       if (exigeConfirmacao(tool, modo)) {
@@ -377,16 +378,6 @@ export class ChatService {
       if (execucao.ok) {
         await this.aplicarResultadoTool(conversa, tool.nome, execucao.valor);
       }
-      if (tool.nome === 'analisar_ats' && execucao.ok) {
-        await this.solicitarConfirmacaoEtapa2(res, conversa, randomUUID(), {
-          oportunidadeId: args.oportunidadeId ?? conversa.oportunidadeId ?? '',
-        });
-        return;
-      }
-      if (tool.nome === 'gerar_curriculo' && execucao.ok && this.geracaoEmAndamento(execucao.valor)) {
-        this.finalizar(res, conversa._id, 'completo');
-        return;
-      }
     }
 
     await this.registrarErro(conversa, 'orquestracao', 'o turno excedeu o limite de passos e foi interrompido');
@@ -398,14 +389,65 @@ export class ChatService {
     this.finalizar(res, conversa._id, 'erro');
   }
 
-  private async solicitarConfirmacaoEtapa2(
+  private async contextoPipeline(
+    conversa: ConversaCopilotoDoc,
+  ): Promise<{ oportunidadeId: string; estado: string; descricao: string } | null> {
+    if (!conversa.oportunidadeId) return null;
+    try {
+      const situacao = await this.pipelineAts.situacao(conversa.usuarioId, conversa.oportunidadeId);
+      return { oportunidadeId: conversa.oportunidadeId, estado: situacao.estado, descricao: descreverParaAgente(situacao) };
+    } catch {
+      return null;
+    }
+  }
+
+  private async foraDeOrdem(
+    conversa: ConversaCopilotoDoc,
+    tool: ToolDef,
+    args: Record<string, unknown>,
+  ): Promise<string | null> {
+    const alvo = oportunidadeDosArgs(args);
+    if (!alvo || !toolDependeDoPipeline(tool.nome, args)) return null;
+    try {
+      return await this.pipelineAts.ordem(conversa.usuarioId, alvo, tool.nome, args);
+    } catch (err) {
+      return this.mensagemErro(err);
+    }
+  }
+
+  private async estaGerando(conversa: ConversaCopilotoDoc, args: Record<string, unknown>): Promise<boolean> {
+    const alvo = oportunidadeDosArgs(args);
+    if (!alvo) return false;
+    const situacao = await this.pipelineAts.situacao(conversa.usuarioId, alvo);
+    return situacao.estado === 'GERANDO';
+  }
+
+  private async recusarGeracao(conversa: ConversaCopilotoDoc, args: Record<string, unknown>): Promise<void> {
+    const alvo = oportunidadeDosArgs(args) ?? conversa.oportunidadeId;
+    if (!alvo) return;
+    try {
+      await this.pipelineAts.aplicar(conversa.usuarioId, alvo, { tipo: 'confirmacao_recusada' });
+    } catch {
+      return;
+    }
+  }
+
+  private async solicitarConfirmacaoGeracao(
     res: Response,
     conversa: ConversaCopilotoDoc,
+    tool: ToolDef,
     callId: string,
     args: Record<string, unknown>,
-  ): Promise<void> {
-    const tool = TOOLS_POR_NOME.get('gerar_curriculo')!;
-    const resumo = 'Etapa 1 - Análise ATS concluída. Podemos prosseguir para a Etapa 2 - Reescrita otimizada?';
+  ): Promise<boolean> {
+    try {
+      await this.pipelineAts.aplicar(conversa.usuarioId, String(args.oportunidadeId), { tipo: 'confirmacao_solicitada' });
+    } catch (err) {
+      const erro = this.mensagemErro(err);
+      this.enviar(res, 'tool_resultado', { callId, tool: tool.nome, ok: false, resultado: null, erro: { mensagem: erro, recuperavel: true } });
+      await this.registrarResultado(conversa, { callId, tool: tool.nome, efeito: tool.efeito, args, ok: false, erro });
+      return false;
+    }
+    const resumo = 'Etapa 1 (Análise ATS) concluída. Podemos prosseguir para a Etapa 2 (Reescrita otimizada)?';
     this.enviar(res, 'tool_call', {
       callId,
       tool: tool.nome,
@@ -422,13 +464,7 @@ export class ChatService {
       resumo,
     });
     this.finalizar(res, conversa._id, 'aguardando_confirmacao');
-  }
-
-  private geracaoEmAndamento(inicio: unknown): boolean {
-    if (!inicio || typeof inicio !== 'object') return false;
-    const geracao = inicio as Record<string, unknown>;
-    return typeof geracao.jobId === 'string'
-      && !['CONCLUIDA', 'ERRO'].includes(String(geracao.status ?? 'GERANDO'));
+    return true;
   }
 
   private async executarTool(

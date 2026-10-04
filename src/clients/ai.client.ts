@@ -309,6 +309,7 @@ export class AiClient {
     payload: {
       modo: string;
       oportunidadeId: string | null;
+      pipelineAts?: { oportunidadeId: string; estado: string; descricao: string } | null;
       trocas: Troca[];
       resumo: ResumoConversa | null;
       tools: ToolNativa[];

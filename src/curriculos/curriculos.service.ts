@@ -14,6 +14,9 @@ import { DocClient } from '../clients/doc.client';
 import { EventosService } from '../eventos/eventos.service';
 import { MongoService } from '../mongo/mongo.service';
 import { perfilParaIa } from '../perfil/perfil.normalizacao';
+import type { OrigemGeracao } from '../pipeline-ats/maquina';
+import { DadosNarracao, dadosDaNarracao, narrar, resumoDaAnalise } from '../pipeline-ats/narracao';
+import { PipelineAtsService } from '../pipeline-ats/pipeline-ats.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EditarCurriculoDto } from './curriculo.dto';
 import { lerArquivo, salvarArquivo } from './storage';
@@ -80,36 +83,6 @@ function nomeArquivo(valor: string) {
   return valor.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim() || 'Curriculo';
 }
 
-function listaAnalise(analise: Record<string, unknown>, campo: string): string {
-  const valores = analise[campo];
-  if (!Array.isArray(valores)) return 'Nenhuma';
-  const itens = valores.map((valor) => String(valor).trim()).filter(Boolean);
-  return itens.length ? itens.join(', ') : 'Nenhuma';
-}
-
-export function narracaoAts(inicial: unknown, final: unknown): string | null {
-  if (!inicial || typeof inicial !== 'object' || !final || typeof final !== 'object') return null;
-  const base = inicial as Record<string, unknown>;
-  const pos = final as Record<string, unknown>;
-  if (typeof base.score !== 'number' || typeof pos.score !== 'number') return null;
-  const pontos = listaAnalise(base, 'pontosEliminatorios');
-  const ausentesFinais = listaAnalise(pos, 'keywordsCriticasAusentes');
-  return [
-    'Etapa 1: Aderência do perfil-mestre',
-    `Score: ${base.score}`,
-    `Keywords encontradas: ${listaAnalise(base, 'keywordsEncontradas')}`,
-    `Keywords críticas ausentes: ${listaAnalise(base, 'keywordsCriticasAusentes')}`,
-    ...(pontos === 'Nenhuma' ? [] : [`Pontos de atenção: ${pontos}`]),
-    `Veredicto: ${String(base.veredicto ?? 'Sem veredicto informado.')}`,
-    '',
-    '[[NARRACAO_ATS_ETAPA_3]]',
-    '',
-    'Etapa 3: Aderência do currículo gerado',
-    `Score: ${pos.score}. Para referência, a aderência do perfil-mestre foi ${base.score}.`,
-    ...(ausentesFinais === 'Nenhuma' ? [] : [`Keywords ainda ausentes: ${ausentesFinais}`]),
-  ].join('\n');
-}
-
 @Injectable()
 export class CurriculosService implements OnModuleInit {
   private readonly logger = new Logger(CurriculosService.name);
@@ -120,6 +93,7 @@ export class CurriculosService implements OnModuleInit {
     private readonly docClient: DocClient,
     private readonly eventos: EventosService,
     private readonly mongo: MongoService,
+    private readonly pipelineAts: PipelineAtsService,
   ) {}
 
   async onModuleInit() {
@@ -135,7 +109,7 @@ export class CurriculosService implements OnModuleInit {
     });
   }
 
-  async gerar(usuarioId: string, vagaId: string) {
+  async gerar(usuarioId: string, vagaId: string, origem: OrigemGeracao = 'direta') {
     const vaga = await this.prisma.vaga.findFirst({
       where: { id: vagaId, usuarioId },
     });
@@ -163,8 +137,12 @@ export class CurriculosService implements OnModuleInit {
       return { jobId: emAndamento.id, status: emAndamento.status, curriculoId: emAndamento.curriculoId };
     }
 
-    const geracao = await this.prisma.geracaoCurriculo.create({
-      data: { usuarioId, vagaId },
+    const geracao = await this.prisma.$transaction(async (tx) => {
+      const criada = await tx.geracaoCurriculo.create({
+        data: { usuarioId, vagaId },
+      });
+      await this.pipelineAts.aplicar(usuarioId, vagaId, { tipo: 'geracao_iniciada', jobId: criada.id, origem }, tx);
+      return criada;
     });
     void this.processar(geracao.id);
     return { jobId: geracao.id };
@@ -213,7 +191,7 @@ export class CurriculosService implements OnModuleInit {
     }
 
     const contexto = await this.recuperarContexto(usuarioId, keywords);
-    return this.aiClient.analisarAts({
+    const analise = await this.aiClient.analisarAts({
       perfilMestre: perfilParaIa(perfil),
       vaga: {
         titulo: vaga.titulo,
@@ -224,6 +202,11 @@ export class CurriculosService implements OnModuleInit {
       keywords,
       contexto,
     });
+    const resumo = resumoDaAnalise(analise);
+    if (resumo) {
+      await this.pipelineAts.aplicar(usuarioId, vagaId, { tipo: 'analise_concluida', analise: resumo });
+    }
+    return analise;
   }
 
   async listar(usuarioId: string, query: {
@@ -664,13 +647,37 @@ export class CurriculosService implements OnModuleInit {
           },
         });
       });
-      await this.persistirConclusaoCopiloto(geracao.usuarioId, id, curriculoId);
+      const narracao = dadosDaNarracao(pipeline.analiseInicial, analiseFinal, degradacao);
+      await this.transicionarSemFalhar(id, () =>
+        this.pipelineAts.aplicar(geracao.usuarioId, geracao.vagaId, {
+          tipo: 'geracao_concluida',
+          jobId: id,
+          curriculoId,
+          narracao,
+        }),
+      );
+      await this.persistirConclusaoCopiloto(geracao.usuarioId, id, curriculoId, narracao);
     } catch (err) {
       this.logger.warn(`geracao ${id} falhou: ${(err as Error).message}`);
       await this.prisma.geracaoCurriculo.update({
         where: { id },
         data: { status: 'ERRO', erro: (err as Error).message },
       });
+      await this.transicionarSemFalhar(id, () =>
+        this.pipelineAts.aplicar(geracao.usuarioId, geracao.vagaId, {
+          tipo: 'geracao_falhou',
+          jobId: id,
+          erro: (err as Error).message,
+        }),
+      );
+    }
+  }
+
+  private async transicionarSemFalhar(jobId: string, transicao: () => Promise<unknown>): Promise<void> {
+    try {
+      await transicao();
+    } catch (err) {
+      this.logger.warn(`pipeline ATS sem transicao job=${jobId} causa=${(err as Error).message}`);
     }
   }
 
@@ -692,10 +699,14 @@ export class CurriculosService implements OnModuleInit {
     usuarioId: string,
     jobId: string,
     curriculoId: string,
+    dados?: DadosNarracao | null,
   ): Promise<void> {
     try {
       const curriculo = await this.buscar(usuarioId, curriculoId);
-      const narracao = narracaoAts(curriculo.analiseInicial, curriculo.analiseFinal);
+      const narracao =
+        dados ??
+        (await this.pipelineAts.narracaoDaGeracao(usuarioId, jobId)) ??
+        dadosDaNarracao(curriculo.analiseInicial, curriculo.analiseFinal, curriculo.degradacao);
       if (!narracao) return;
       const persistido = {
         id: curriculo.id,
@@ -707,7 +718,7 @@ export class CurriculosService implements OnModuleInit {
         analiseFinal: curriculo.analiseFinal,
         degradacao: curriculo.degradacao,
       };
-      await this.mongo.anexarConclusaoGeracao(usuarioId, jobId, persistido, narracao);
+      await this.mongo.anexarConclusaoGeracao(usuarioId, jobId, persistido, narrar(narracao), narracao);
     } catch (err) {
       this.logger.warn(`narracao da geracao ${jobId} adiada: ${(err as Error).message}`);
     }

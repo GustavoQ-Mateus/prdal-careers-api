@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { turnoTexto, turnoTool } = require('./helpers/turnos');
+const { mensagensEnviadas, turnoTexto, turnoTool } = require('./helpers/turnos');
 const { ChatService } = require('../dist/copiloto/chat.service');
 const { paraMensagensNativas } = require('../dist/copiloto/historico');
 
@@ -102,7 +102,7 @@ test('persiste o par tool_use e tool_result com o id do modelo e reenvia nativo'
   assert.equal(tool.blocos[0].tool_use_id, 'toolu_perfil_1');
   assert.match(tool.blocos[0].content, /Back-end/);
 
-  const segundo = enviados[1].mensagens;
+  const segundo = mensagensEnviadas(enviados[1]);
   assertPareado(segundo);
   assert.deepEqual(segundo.map((m) => m.role), ['user', 'assistant', 'user']);
   assert.equal(segundo[2].content[0].tool_use_id, 'toolu_perfil_1');
@@ -119,7 +119,7 @@ test('falha da tool volta como tool_result com is_error', async () => {
 
   await new ChatService(conversas, ai, executor).chat(resposta(), { userId: 'usuario-1' }, { mensagem: 'leia' });
 
-  const resultado = enviados[1].mensagens[2].content[0];
+  const resultado = mensagensEnviadas(enviados[1])[2].content[0];
   assert.equal(resultado.tool_use_id, 'toolu_falha');
   assert.equal(resultado.is_error, true);
   assert.match(resultado.content, /banco fora do ar/);
@@ -140,7 +140,7 @@ test('recusa da escrita fecha o tool_use pendente com o mesmo id', async () => {
   assert.equal(conversa.pendencia.callId, 'toolu_escrita');
   await service.chat(resposta(), { userId: 'usuario-1' }, { conversaId: 'conversa-1', confirmacao: { callId: 'toolu_escrita', decisao: 'recusar' } });
 
-  const ultimo = enviados[1].mensagens;
+  const ultimo = mensagensEnviadas(enviados[1]);
   assertPareado(ultimo);
   const resultado = ultimo[2].content[0];
   assert.equal(resultado.tool_use_id, 'toolu_escrita');

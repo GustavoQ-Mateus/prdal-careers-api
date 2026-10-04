@@ -29,7 +29,7 @@ async function enviadoAoLlmDepoisDeLerPerfil(perfil) {
   ];
   const ai = {
     copilotoTurn: async (payload) => {
-      enviadosAoLlm.push(JSON.stringify(payload.mensagens));
+      enviadosAoLlm.push(JSON.stringify(payload.trocas));
       return turnos.shift();
     },
   };

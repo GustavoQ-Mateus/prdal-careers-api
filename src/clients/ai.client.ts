@@ -3,7 +3,8 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { firstValueFrom } from 'rxjs';
 import { CotaTokensEsgotada, CotaTokensService } from '../cota/cota-tokens.service';
-import type { BlocoNativo, MensagemNativa } from '../copiloto/historico';
+import type { BlocoNativo, Troca } from '../copiloto/historico';
+import type { ResumoConversa } from '../mongo/mongo.service';
 
 const DEFAULT_GENERATE_TIMEOUT_MS = 300000;
 const DEFAULT_LLM_TIMEOUT_MS = 60000;
@@ -308,7 +309,8 @@ export class AiClient {
     payload: {
       modo: string;
       oportunidadeId: string | null;
-      mensagens: MensagemNativa[];
+      trocas: Troca[];
+      resumo: ResumoConversa | null;
       tools: ToolNativa[];
     },
     opcoes: OpcoesIa = {},
@@ -388,4 +390,5 @@ export interface ToolNativa {
 export interface CopilotoTurno extends ComUso {
   conteudo: BlocoNativo[];
   parada: string;
+  resumo?: ResumoConversa | null;
 }

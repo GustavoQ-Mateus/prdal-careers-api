@@ -11,13 +11,12 @@ import { OportunidadesService } from '../oportunidades/oportunidades.service';
 import { semContato } from '../perfil/perfil.normalizacao';
 import { ConversasService } from './conversas.service';
 import { ChatDto } from './copiloto.dto';
-import { BlocoNativo, paraMensagensNativas, resultadoTool } from './historico';
+import { BlocoNativo, paraTrocas, resultadoTool } from './historico';
 import { prepararArgsTool } from './tool-args';
 import { ToolExecutor, validarArgs } from './tool-executor';
 import { ToolDef, TOOLS_NATIVAS, TOOLS_POR_NOME } from './tools';
 
 const MAX_PASSOS = 8;
-const LIMITE_HISTORICO = 2000;
 const ESCRITAS_SEM_CONFIRMACAO_NO_AUTOPILOTO = new Set(['registrar_nota']);
 
 type ToolUse = Extract<BlocoNativo, { type: 'tool_use' }>;
@@ -212,7 +211,8 @@ export class ChatService {
           {
             modo,
             oportunidadeId: conversa.oportunidadeId,
-            mensagens: paraMensagensNativas(conversa.mensagens),
+            trocas: paraTrocas(conversa.mensagens, conversa.resumo?.ate ?? 0),
+            resumo: conversa.resumo ?? null,
             tools: TOOLS_NATIVAS,
           },
           { operacao: `conversa:${conversa._id}`, usuarioId: conversa.usuarioId },
@@ -237,6 +237,11 @@ export class ChatService {
         });
         this.finalizar(res, conversa._id, 'erro');
         return;
+      }
+
+      if (turno.resumo) {
+        conversa.resumo = turno.resumo;
+        await this.conversas.definirResumo(conversa._id, turno.resumo);
       }
 
       const blocos = turno.conteudo ?? [];
@@ -608,7 +613,6 @@ export class ChatService {
   private resumirResultado(resultado: unknown, tool: string): string {
     if (tool === 'buscar_curriculo' && resultado && typeof resultado === 'object') {
       const curriculo = resultado as Record<string, unknown>;
-      const markdown = String(curriculo.markdown ?? '');
       return JSON.stringify({
         id: curriculo.id,
         vagaId: curriculo.vagaId,
@@ -618,20 +622,14 @@ export class ChatService {
         analiseInicial: curriculo.analiseInicial,
         analiseFinal: curriculo.analiseFinal,
         degradacao: curriculo.degradacao,
-        markdown:
-          markdown.length > LIMITE_HISTORICO
-            ? `${markdown.slice(0, LIMITE_HISTORICO)}...`
-            : markdown,
+        markdown: curriculo.markdown,
       });
     }
     const resultadoSeguro =
       tool === 'ler_perfil' && resultado && typeof resultado === 'object'
         ? semContato(resultado as Record<string, unknown>)
         : resultado;
-    const texto = JSON.stringify(resultadoSeguro ?? null);
-    return texto.length > LIMITE_HISTORICO
-      ? `${texto.slice(0, LIMITE_HISTORICO)}...`
-      : texto;
+    return JSON.stringify(resultadoSeguro ?? null);
   }
 
   private resultadoHistorico(resultado: unknown, tool: string): unknown {

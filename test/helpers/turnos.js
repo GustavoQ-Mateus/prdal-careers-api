@@ -9,3 +9,9 @@ function turnoTexto(text) {
 }
 
 module.exports = { turnoTool, turnoTexto };
+
+function mensagensEnviadas(payload) {
+  return payload.trocas.flatMap((troca) => troca.mensagens);
+}
+
+module.exports.mensagensEnviadas = mensagensEnviadas;

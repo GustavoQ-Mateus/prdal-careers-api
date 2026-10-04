@@ -96,6 +96,11 @@ export interface ConfirmacaoCopiloto {
   concluidaEm: Date;
 }
 
+export interface ResumoConversa {
+  texto: string;
+  ate: number;
+}
+
 export interface ConversaCopilotoDoc {
   _id: string;
   usuarioId: string;
@@ -103,6 +108,7 @@ export interface ConversaCopilotoDoc {
   oportunidadeId: string | null;
   mensagens: MensagemCopiloto[];
   pendencia: PendenciaCopiloto | null;
+  resumo?: ResumoConversa | null;
   confirmacoes?: ConfirmacaoCopiloto[];
   criadoEm: Date;
   atualizadoEm: Date;

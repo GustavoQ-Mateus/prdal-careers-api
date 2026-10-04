@@ -5,6 +5,7 @@ import {
   MensagemCopiloto,
   MongoService,
   PendenciaCopiloto,
+  ResumoConversa,
 } from '../mongo/mongo.service';
 
 @Injectable()
@@ -111,6 +112,12 @@ export class ConversasService {
         { _id: conversaId },
         { $set: { pendencia, atualizadoEm: new Date() } },
       );
+  }
+
+  async definirResumo(conversaId: string, resumo: ResumoConversa): Promise<void> {
+    await this.mongo
+      .conversasCopiloto()
+      .updateOne({ _id: conversaId }, { $set: { resumo, atualizadoEm: new Date() } });
   }
 
   async atualizarOportunidade(conversaId: string, oportunidadeId: string) {

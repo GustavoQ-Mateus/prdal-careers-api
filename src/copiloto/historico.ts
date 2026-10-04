@@ -12,6 +12,11 @@ export interface MensagemNativa {
   content: BlocoNativo[];
 }
 
+export interface Troca {
+  indice: number;
+  mensagens: MensagemNativa[];
+}
+
 const ID_VALIDO = /[^a-zA-Z0-9_-]/g;
 
 export function idDeTool(valor: string): string {
@@ -39,7 +44,7 @@ function blocoResultado(mensagem: MensagemCopiloto, id: string): BlocoNativo {
   return resultadoTool(id, mensagem.conteudo, falhou);
 }
 
-export function paraMensagensNativas(mensagens: MensagemCopiloto[]): MensagemNativa[] {
+export function paraMensagensNativas(mensagens: MensagemCopiloto[], deslocamento = 0): MensagemNativa[] {
   const saida: MensagemNativa[] = [];
   const pendentes: string[] = [];
 
@@ -78,7 +83,7 @@ export function paraMensagensNativas(mensagens: MensagemCopiloto[]): MensagemNat
       empurrar('assistant', blocos);
       return;
     }
-    const id = idDaMensagemTool(mensagem, indice);
+    const id = idDaMensagemTool(mensagem, indice + deslocamento);
     const posicao = pendentes.indexOf(id);
     if (posicao >= 0) {
       pendentes.splice(posicao, 1);
@@ -92,4 +97,17 @@ export function paraMensagensNativas(mensagens: MensagemCopiloto[]): MensagemNat
   });
   fecharPendentes();
   return saida;
+}
+
+export function paraTrocas(mensagens: MensagemCopiloto[], desde = 0): Troca[] {
+  const inicios: number[] = [];
+  mensagens.forEach((mensagem, indice) => {
+    if (indice >= desde && (mensagem.papel === 'user' || inicios.length === 0)) inicios.push(indice);
+  });
+  return inicios
+    .map((inicio, posicao) => ({
+      indice: inicio,
+      mensagens: paraMensagensNativas(mensagens.slice(inicio, inicios[posicao + 1] ?? mensagens.length), inicio),
+    }))
+    .filter((troca) => troca.mensagens.length > 0);
 }

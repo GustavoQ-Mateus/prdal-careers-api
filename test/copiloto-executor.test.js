@@ -2,7 +2,7 @@ require('reflect-metadata');
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { HttpService } = require('@nestjs/axios');
-const { turnoTexto, turnoTool } = require('./helpers/turnos');
+const { mensagensEnviadas, turnoTexto, turnoTool } = require('./helpers/turnos');
 const { ChatService } = require('../dist/copiloto/chat.service');
 const { ArgumentosInvalidos, ToolExecutor } = require('../dist/copiloto/tool-executor');
 const { TOOLS_POR_NOME } = require('../dist/copiloto/tools');
@@ -94,7 +94,7 @@ test('argumento invalido do modelo vira tool_result com is_error e nao pede conf
   await new ChatService(conversas, ai, { executar: () => { throw new Error('nao executa'); } }).chat(res, { userId: 'u1' }, { mensagem: 'mova a vaga' });
 
   assert.doesNotMatch(eventos.join(''), /event: confirmacao/);
-  const resultado = enviados[1].mensagens.at(-1).content[0];
+  const resultado = mensagensEnviadas(enviados[1]).at(-1).content[0];
   assert.equal(resultado.tool_use_id, 'toolu_x');
   assert.equal(resultado.is_error, true);
   assert.match(resultado.content, /destino must be one of/);

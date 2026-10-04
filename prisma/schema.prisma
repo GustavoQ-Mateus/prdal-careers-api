@@ -22,6 +22,7 @@ model Usuario {
   geracoes     GeracaoCurriculo[]
   sessoes      Sessao[]
   usosTokens   UsoTokensDiario[]
+  pipelinesAts PipelineAts[]
 
   @@map("usuarios")
 }
@@ -115,6 +116,7 @@ model Vaga {
   eventos            EventoOportunidade[]
   layouts            PipelineLayout[]
   geracoes           GeracaoCurriculo[]
+  pipelineAts        PipelineAts?
 
   @@unique([usuarioId, origemImportacaoId])
   @@map("vagas")
@@ -327,4 +329,48 @@ model GeracaoCurriculo {
   atualizadoEm DateTime                @updatedAt @map("atualizado_em")
 
   @@map("geracoes_curriculo")
+}
+
+enum EstadoPipelineAts {
+  SEM_ANALISE
+  ANALISADA
+  AGUARDANDO_CONFIRMACAO
+  GERANDO
+  CONCLUIDA
+  FALHOU
+  DESATUALIZADA
+}
+
+model PipelineAts {
+  vagaId                  String              @id @map("vaga_id")
+  vaga                    Vaga                @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  usuarioId               String              @map("usuario_id")
+  usuario                 Usuario             @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  estado                  EstadoPipelineAts
+  jobId                   String?             @map("job_id")
+  curriculoId             String?             @map("curriculo_id")
+  perfilAlteradoNaGeracao Boolean             @default(false) @map("perfil_alterado_na_geracao")
+  versao                  Int                 @default(0)
+  atualizadoEm            DateTime            @default(now()) @updatedAt @map("atualizado_em")
+  eventos                 EventoPipelineAts[]
+
+  @@index([usuarioId, estado])
+  @@map("pipelines_ats")
+}
+
+model EventoPipelineAts {
+  id         String            @id @default(uuid())
+  vagaId     String            @map("vaga_id")
+  pipeline   PipelineAts       @relation(fields: [vagaId], references: [vagaId], onDelete: Cascade)
+  usuarioId  String            @map("usuario_id")
+  tipo       String
+  de         EstadoPipelineAts
+  para       EstadoPipelineAts
+  jobId      String?           @map("job_id")
+  dados      Json
+  ocorridoEm DateTime          @default(now()) @map("ocorrido_em")
+
+  @@index([vagaId, ocorridoEm])
+  @@index([usuarioId, jobId])
+  @@map("eventos_pipeline_ats")
 }

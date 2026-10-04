@@ -127,7 +127,7 @@ test('reindexacao do RAG le formacao, certificacao e experiencia do perfil salvo
   assert.equal(docs.find((d) => d.origemId === 'formacao-0').texto, 'Universidade A | Tecnólogo em ADS | 02/2023 - atual | em andamento');
   assert.equal(docs.find((d) => d.origemId === 'certificacao-0').texto, 'AWS Cloud Practitioner, Emitida em 2025');
   assert.equal(
-    docs.find((d) => d.origemId === 'experiencia-x1').texto,
+    docs.find((d) => d.tipo === 'experiencia' && d.origemId === 'x1').texto,
     'Cargo: Dev\nEmpresa: Empresa A\nPeríodo: 01/2022 - 12/2023\nLocal: Campinas - SP\n- Mantive APIs.\nTecnologias: Python',
   );
 });

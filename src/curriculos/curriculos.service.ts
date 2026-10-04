@@ -9,7 +9,7 @@ import {
 import { Prisma, StatusGeracaoCurriculo } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import archiver from 'archiver';
-import { AiClient, AtsAnalysis, Keyword } from '../clients/ai.client';
+import { AiClient, AtsAnalysis, FonteContexto, Keyword } from '../clients/ai.client';
 import { DocClient } from '../clients/doc.client';
 import { EventosService } from '../eventos/eventos.service';
 import { MongoService } from '../mongo/mongo.service';
@@ -212,7 +212,7 @@ export class CurriculosService implements OnModuleInit {
       );
     }
 
-    const contexto = await this.recuperarContexto(usuarioId, vaga);
+    const contexto = await this.recuperarContexto(usuarioId, keywords);
     return this.aiClient.analisarAts({
       perfilMestre: perfilParaIa(perfil),
       vaga: {
@@ -521,10 +521,7 @@ export class CurriculosService implements OnModuleInit {
       }
 
       const keywords = normalizarKeywords(geracao.vaga.keywords);
-      const contexto = await this.recuperarContexto(
-        geracao.usuarioId,
-        geracao.vaga,
-      );
+      const contexto = await this.recuperarContexto(geracao.usuarioId, keywords);
 
       await this.prisma.geracaoCurriculo.update({
         where: { id },
@@ -718,14 +715,15 @@ export class CurriculosService implements OnModuleInit {
 
   private async recuperarContexto(
     usuarioId: string,
-    vaga: { titulo: string; descricao: string },
-  ): Promise<string[]> {
+    keywords: Keyword[],
+  ): Promise<FonteContexto[]> {
+    const consultas = [...keywords]
+      .sort((a, b) => b.peso - a.peso)
+      .map((keyword) => keyword.termo);
+    if (!consultas.length) return [];
     try {
-      const { chunks } = await this.aiClient.contextQuery(
-        usuarioId,
-        `${vaga.titulo} ${vaga.descricao}`,
-      );
-      return chunks.map((c) => c.texto);
+      const { chunks } = await this.aiClient.contextQuery(usuarioId, consultas);
+      return chunks;
     } catch (err) {
       this.logger.warn(`contexto indisponivel: ${(err as Error).message}`);
       return [];

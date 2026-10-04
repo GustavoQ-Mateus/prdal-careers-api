@@ -71,6 +71,15 @@ export interface AtsAnalysis {
   breakdown: ScoreBreakdown;
 }
 
+export interface FonteContexto {
+  id: string;
+  tipo: string;
+  factual: boolean;
+  titulo: string;
+  texto: string;
+  origem?: string;
+}
+
 export interface GeneratePipelineResult extends ComUso {
   markdown: string;
   analiseInicial: AtsAnalysis;
@@ -164,7 +173,7 @@ export class AiClient {
     perfilMestre: unknown;
     vaga: unknown;
     keywords: Keyword[];
-    contexto: string[];
+    contexto: FonteContexto[];
   }): Promise<string> {
     const { data } = await firstValueFrom(
       this.http.post<{ markdown: string }>(
@@ -181,7 +190,7 @@ export class AiClient {
       perfilMestre: unknown;
       vaga: unknown;
       keywords: Keyword[];
-      contexto: string[];
+      contexto: FonteContexto[];
     },
     opcoes: OpcoesIa = {},
   ): Promise<GeneratePipelineResult> {
@@ -202,7 +211,7 @@ export class AiClient {
       perfilMestre: unknown;
       vaga: unknown;
       keywords: Keyword[];
-      contexto: string[];
+      contexto: FonteContexto[];
       markdownAtual: string;
     },
     opcoes: OpcoesIa = {},
@@ -223,7 +232,7 @@ export class AiClient {
     perfilMestre: unknown;
     vaga: unknown;
     keywords: Keyword[];
-    contexto: string[];
+    contexto: FonteContexto[];
   }): Promise<AtsAnalysis> {
     const { data } = await firstValueFrom(
       this.http.post<AtsAnalysis>(`${this.baseUrl}/analisar-ats`, payload),
@@ -283,14 +292,14 @@ export class AiClient {
 
   async contextQuery(
     usuarioId: string,
-    query: string,
+    consulta: string | string[],
     k = 5,
-  ): Promise<{ chunks: { texto: string; origem: string; titulo: string }[] }> {
+  ): Promise<{ chunks: FonteContexto[] }> {
+    const corpo = Array.isArray(consulta)
+      ? { usuarioId, consultas: consulta, k }
+      : { usuarioId, query: consulta, k };
     const { data } = await firstValueFrom(
-      this.http.post<{ chunks: { texto: string; origem: string; titulo: string }[] }>(
-        `${this.baseUrl}/context/query`,
-        { usuarioId, query, k },
-      ),
+      this.http.post<{ chunks: FonteContexto[] }>(`${this.baseUrl}/context/query`, corpo),
     );
     return data;
   }

@@ -2,10 +2,9 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { turnoTexto, turnoTool } = require('./helpers/turnos');
 const { ChatService } = require('../dist/copiloto/chat.service');
-const {
-  normalizarTipoAcao,
-  prepararArgsTool,
-} = require('../dist/copiloto/tool-args');
+const { prepararArgsTool } = require('../dist/copiloto/tool-args');
+const { validarArgs } = require('../dist/copiloto/tool-executor');
+const { TOOLS_POR_NOME } = require('../dist/copiloto/tools');
 
 const leituraFinal = {
   papel: 'tool',
@@ -18,49 +17,45 @@ const leituraFinal = {
   }),
 };
 
-test('normaliza intencoes comuns para os enums de acao', () => {
-  const casos = [
-    ['enviar mensagem ao recrutador', 'ENVIAR_CANDIDATURA'],
-    ['gerar currículo', 'GERAR_CURRICULO'],
-    ['revisar vaga e currículo', 'REVISAR_VAGA'],
-    ['fazer follow-up', 'FAZER_FOLLOW_UP'],
-    ['preparar entrevista', 'PREPARAR_ENTREVISTA'],
-    ['enviar material ao recrutador', 'ENVIAR_MATERIAL'],
-    ['ação sem classificação', 'OUTRO'],
-  ];
-
-  for (const [entrada, esperado] of casos) {
-    assert.equal(normalizarTipoAcao(entrada, ''), esperado);
-  }
-});
-
-test('normaliza tipo textual ou ausente antes da confirmacao', () => {
-  for (const tipo of ['Enviar mensagem ao recrutador', undefined]) {
+test('tipo do proximo passo nao e inferido do titulo: o enum do schema decide', async () => {
+  for (const tipo of ['Enviar mensagem ao recrutador', 'verificar status', undefined]) {
     const resultado = prepararArgsTool({
       tool: 'definir_proximo_passo',
       args: { titulo: 'Enviar mensagem ao recrutador', tipo },
       oportunidadeId: 'vaga-1',
       mensagens: [leituraFinal],
     });
-
-    assert.equal(resultado.erro, null);
-    assert.equal(resultado.args.tipo, 'ENVIAR_CANDIDATURA');
+    assert.equal(resultado.args.tipo, tipo);
     assert.equal(resultado.args.oportunidadeId, 'vaga-1');
+    assert.match(await validarArgs(TOOLS_POR_NOME.get('definir_proximo_passo'), resultado.args), /tipo must be one of/);
   }
 });
 
-test('rejeita status de geracao como agenda e acao externa antes da Etapa 3', () => {
-  const statusAgenda = prepararArgsTool({
-    tool: 'definir_proximo_passo',
-    args: { titulo: 'Verificar status da geração do currículo' },
-    oportunidadeId: 'vaga-1',
-    mensagens: [],
-  });
-  assert.match(statusAgenda.erro, /status_geracao/);
+test('titulo de agenda nao e barrado por regex; a acao externa ainda exige a Etapa 3', () => {
+  for (const titulo of ['Verificar status da geração do currículo', 'Preparar mensagem ao recrutador']) {
+    const interna = prepararArgsTool({
+      tool: 'definir_proximo_passo',
+      args: { titulo, tipo: 'REVISAR_VAGA' },
+      oportunidadeId: 'vaga-1',
+      mensagens: [],
+    });
+    assert.equal(interna.erro, null);
+  }
+});
 
+test('oportunidade em foco so preenche tool que aceita o campo', () => {
+  const nota = prepararArgsTool({ tool: 'registrar_nota', args: { descricao: 'x' }, oportunidadeId: 'vaga-1', mensagens: [] });
+  assert.equal(nota.args.oportunidadeId, 'vaga-1');
+  const registro = prepararArgsTool({ tool: 'registrar_oportunidade', args: { titulo: 'a' }, oportunidadeId: 'vaga-1', mensagens: [] });
+  assert.equal(registro.args.oportunidadeId, undefined);
+  const explicita = prepararArgsTool({ tool: 'buscar_oportunidade', args: { oportunidadeId: 'outra' }, oportunidadeId: 'vaga-1', mensagens: [] });
+  assert.equal(explicita.args.oportunidadeId, 'outra');
+});
+
+test('acao externa antes da Etapa 3 e barrada', () => {
   const externa = prepararArgsTool({
     tool: 'definir_proximo_passo',
-    args: { titulo: 'Enviar mensagem ao recrutador', tipo: 'texto livre' },
+    args: { titulo: 'Enviar mensagem ao recrutador', tipo: 'ENVIAR_CANDIDATURA' },
     oportunidadeId: 'vaga-1',
     mensagens: [
       {
@@ -119,17 +114,6 @@ test('exige a analise ATS antes de iniciar a reescrita', () => {
   assert.equal(comAnalise.erro, null);
 });
 
-test('direciona preparacao de mensagem para a tool de redacao', () => {
-  const resultado = prepararArgsTool({
-    tool: 'definir_proximo_passo',
-    args: { titulo: 'Preparar mensagem ao recrutador' },
-    oportunidadeId: 'vaga-1',
-    mensagens: [leituraFinal],
-  });
-
-  assert.match(resultado.erro, /redigir_mensagem_recrutador/);
-});
-
 test('ChatService nao emite confirmacao para escrita invalida', async () => {
   const conversa = {
     _id: 'conversa-1',
@@ -179,5 +163,5 @@ test('ChatService nao emite confirmacao para escrita invalida', async () => {
 
   const saida = eventos.join('');
   assert.doesNotMatch(saida, /event: confirmacao/);
-  assert.match(saida, /status_geracao/);
+  assert.match(saida, /tipo must be one of/);
 });

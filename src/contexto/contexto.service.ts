@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { LotesService } from '../lotes/lotes.service';
-import { DocumentoRagDoc, MongoService } from '../mongo/mongo.service';
+import { DocumentoRagDoc, MongoService, TipoDocumentoRag } from '../mongo/mongo.service';
 import {
   listaCertificacoes,
   listaFormacao,
@@ -29,6 +29,7 @@ export class ContextoService {
     const novos: DocumentoRagDoc[] = [];
     const doc = (
       origem: DocumentoRagDoc['origem'],
+      tipo: TipoDocumentoRag,
       origemId: string,
       titulo: string,
       texto: string,
@@ -37,6 +38,8 @@ export class ContextoService {
       usuarioId,
       origem,
       origemId,
+      tipo,
+      factual: origem === 'perfil',
       titulo,
       texto,
       criadoEm: new Date(),
@@ -44,27 +47,27 @@ export class ContextoService {
 
     if (perfil) {
       if (perfil.resumo?.trim()) {
-        novos.push(doc('perfil', 'resumo', 'Resumo', perfil.resumo));
+        novos.push(doc('perfil', 'resumo', 'resumo', 'Resumo', perfil.resumo));
       }
       normalizarExperiencias(perfil.experiencias).forEach((experiencia) => {
         const texto = textoExperiencia(experiencia);
         if (texto) {
-          novos.push(doc('perfil', `experiencia-${experiencia.id}`, tituloExperiencia(experiencia), texto));
+          novos.push(doc('perfil', 'experiencia', experiencia.id, tituloExperiencia(experiencia), texto));
         }
       });
       listaFormacao(perfil.formacao).forEach((formacao, i) => {
-        novos.push(doc('perfil', `formacao-${i}`, 'Formacao', formacao));
+        novos.push(doc('perfil', 'formacao', `formacao-${i}`, 'Formacao', formacao));
       });
       listaCertificacoes(perfil.certificacoes).forEach((certificacao, i) => {
-        novos.push(doc('perfil', `certificacao-${i}`, 'Certificacao', certificacao));
+        novos.push(doc('perfil', 'certificacao', `certificacao-${i}`, 'Certificacao', certificacao));
       });
       const idiomas = listaTexto(perfil.idiomas);
       if (idiomas.length) {
-        novos.push(doc('perfil', 'idiomas', 'Idiomas', idiomas.join(', ')));
+        novos.push(doc('perfil', 'idiomas', 'idiomas', 'Idiomas', idiomas.join(', ')));
       }
       const skills = listaTexto(perfil.skills);
       if (skills.length) {
-        novos.push(doc('perfil', 'skills', 'Skills', skills.join(', ')));
+        novos.push(doc('perfil', 'skills', 'skills', 'Skills', skills.join(', ')));
       }
     }
 
@@ -74,7 +77,7 @@ export class ContextoService {
     });
     for (const c of candidaturas) {
       if (c.notas.trim()) {
-        novos.push(doc('candidatura', c.id, c.vaga.titulo, c.notas));
+        novos.push(doc('candidatura', 'candidatura', c.id, c.vaga.titulo, c.notas));
       }
     }
 
@@ -93,7 +96,7 @@ export class ContextoService {
     return { loteId: lote.id, total: ids.length };
   }
 
-  async upload(usuarioId: string, arquivos: ArquivoTexto[]) {
+  async upload(usuarioId: string, arquivos: ArquivoTexto[], historico = false) {
     const documentos: DocumentoRagDoc[] = [];
     for (const { titulo, corpo } of arquivos) {
       const notaId = randomUUID();
@@ -102,6 +105,7 @@ export class ContextoService {
         usuarioId,
         titulo,
         corpo,
+        historico,
         criadoEm: new Date(),
       });
       documentos.push({
@@ -109,6 +113,8 @@ export class ContextoService {
         usuarioId,
         origem: 'nota',
         origemId: notaId,
+        tipo: 'nota',
+        factual: historico,
         titulo,
         texto: corpo,
         criadoEm: new Date(),

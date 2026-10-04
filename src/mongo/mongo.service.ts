@@ -19,11 +19,30 @@ export interface BancoVagaDoc {
   criadoEm: Date;
 }
 
+export type TipoDocumentoRag =
+  | 'experiencia'
+  | 'resumo'
+  | 'skills'
+  | 'formacao'
+  | 'certificacao'
+  | 'idiomas'
+  | 'nota'
+  | 'candidatura';
+
+const TIPOS_PERFIL: TipoDocumentoRag[] = ['experiencia', 'resumo', 'skills', 'formacao', 'certificacao', 'idiomas'];
+
+export function tipoPadraoRag(origem: DocumentoRagDoc['origem'], origemId: string): TipoDocumentoRag {
+  if (origem !== 'perfil') return origem;
+  return TIPOS_PERFIL.find((tipo) => origemId === tipo || origemId.startsWith(`${tipo}-`)) ?? 'experiencia';
+}
+
 export interface DocumentoRagDoc {
   _id: string;
   usuarioId: string;
   origem: 'perfil' | 'candidatura' | 'nota';
   origemId: string;
+  tipo?: TipoDocumentoRag;
+  factual?: boolean;
   titulo: string;
   texto: string;
   criadoEm: Date;
@@ -34,6 +53,7 @@ export interface NotaObsidianDoc {
   usuarioId: string;
   titulo: string;
   corpo: string;
+  historico?: boolean;
   criadoEm: Date;
 }
 

@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Post,
@@ -14,6 +15,7 @@ import {
   ArquivoRecebido,
   LimiteUploadInterceptor,
   lerArquivosTexto,
+  lerHistorico,
   opcoesMulter,
 } from './upload-texto';
 
@@ -32,8 +34,13 @@ export class ContextoController {
   upload(
     @CurrentUser() user: AuthUser,
     @UploadedFiles() arquivos: ArquivoRecebido[],
+    @Body() corpo: { historico?: unknown },
   ) {
-    return this.contexto.upload(user.userId, lerArquivosTexto(arquivos ?? []));
+    return this.contexto.upload(
+      user.userId,
+      lerArquivosTexto(arquivos ?? []),
+      lerHistorico(corpo?.historico),
+    );
   }
 
   @Get('status')

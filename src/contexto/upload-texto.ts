@@ -60,6 +60,13 @@ export class LimiteUploadInterceptor implements NestInterceptor {
   }
 }
 
+export function lerHistorico(valor: unknown): boolean {
+  if (valor === undefined || valor === null || valor === '') return false;
+  if (valor === true || valor === 'true') return true;
+  if (valor === false || valor === 'false') return false;
+  throw new BadRequestException('historico deve ser true ou false');
+}
+
 const decodificador = new TextDecoder('utf-8', { fatal: true });
 
 export function lerArquivosTexto(arquivos: ArquivoRecebido[]): ArquivoTexto[] {

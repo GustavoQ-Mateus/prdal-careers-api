@@ -103,3 +103,60 @@ test('md e txt em UTF-8 sao gravados e indexados', async (t) => {
   assert.equal(gravados.rag.length, 2);
   assert.equal(gravados.lotes.length, 1);
 });
+
+test('nota enviada sem marca e apoio, nunca fonte factual', async (t) => {
+  const { gravados, enviar } = await subir(t);
+  const resposta = await enviar([['planos.md', 'quero estudar Kubernetes']]);
+  assert.equal(resposta.status, 201);
+  assert.equal(gravados.notas[0].historico, false);
+  assert.equal(gravados.rag[0].tipo, 'nota');
+  assert.equal(gravados.rag[0].factual, false);
+});
+
+test('nota marcada como historico vira fonte factual', async (t) => {
+  const { gravados, url } = await subirComUrl(t);
+  const form = new FormData();
+  form.append('historico', 'true');
+  form.append('arquivos', new Blob(['Migrei o faturamento para Kubernetes em 2023.']), 'projeto.md');
+  const resposta = await fetch(`${url}/contexto/upload`, {
+    method: 'POST',
+    headers: { ...autenticado('usuario-vitima') },
+    body: form,
+  });
+  assert.equal(resposta.status, 201);
+  assert.equal(gravados.notas[0].historico, true);
+  assert.equal(gravados.rag[0].factual, true);
+});
+
+test('historico com valor invalido retorna 400 e nada e gravado', async (t) => {
+  const { gravados, url } = await subirComUrl(t);
+  const form = new FormData();
+  form.append('historico', 'talvez');
+  form.append('arquivos', new Blob(['texto']), 'nota.md');
+  const resposta = await fetch(`${url}/contexto/upload`, {
+    method: 'POST',
+    headers: { ...autenticado('usuario-vitima') },
+    body: form,
+  });
+  assert.equal(resposta.status, 400);
+  nadaGravado(gravados);
+});
+
+async function subirComUrl(t) {
+  const { ContextoController } = require('../dist/contexto/contexto.controller');
+  const { ContextoService } = require('../dist/contexto/contexto.service');
+  const { PrismaService } = require('../dist/prisma/prisma.service');
+  const { MongoService } = require('../dist/mongo/mongo.service');
+  const { LotesService } = require('../dist/lotes/lotes.service');
+  const { gravados, mongo, lotes } = falsos();
+  const { url } = await subirApp(t, {
+    controllers: [ContextoController],
+    providers: [
+      ContextoService,
+      { provide: PrismaService, useValue: {} },
+      { provide: MongoService, useValue: mongo },
+      { provide: LotesService, useValue: lotes },
+    ],
+  });
+  return { gravados, url };
+}

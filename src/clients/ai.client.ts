@@ -267,6 +267,8 @@ export class AiClient {
       usuarioId: string;
       origem: string;
       origemId: string;
+      tipo: string;
+      factual: boolean;
       titulo: string;
       texto: string;
     }[],

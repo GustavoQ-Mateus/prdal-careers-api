@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { LoteItem } from '@prisma/client';
 import { AiClient } from '../clients/ai.client';
-import { MongoService } from '../mongo/mongo.service';
+import { MongoService, tipoPadraoRag } from '../mongo/mongo.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const CONCORRENCIA = Number(process.env.BATCH_CONCURRENCY ?? 3);
@@ -155,6 +155,8 @@ export class LotesService implements OnModuleInit {
         usuarioId: doc.usuarioId,
         origem: doc.origem,
         origemId: doc.origemId,
+        tipo: doc.tipo ?? tipoPadraoRag(doc.origem, doc.origemId),
+        factual: doc.factual ?? doc.origem === 'perfil',
         titulo: doc.titulo,
         texto: doc.texto,
       },

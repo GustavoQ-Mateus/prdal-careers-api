@@ -89,7 +89,7 @@ test('argumento invalido do modelo vira tool_result com is_error e nao pede conf
   const turnos = [turnoTool('mover_estagio', { destino: 'CONTRATADO' }, 'toolu_x'), turnoTexto('Vou corrigir.')];
   const ai = { copilotoTurnStream: async (payload) => { enviados.push(structuredClone(payload)); return turnos.shift(); } };
   const eventos = [];
-  const res = { setHeader() {}, flushHeaders() {}, write: (e) => eventos.push(e), end() {} };
+  const res = { setHeader() {}, flushHeaders() {}, on() {}, write: (e) => eventos.push(e), end() {} };
 
   await new ChatService(conversas, ai, { executar: () => { throw new Error('nao executa'); } }).chat(res, { userId: 'u1' }, { mensagem: 'mova a vaga' });
 

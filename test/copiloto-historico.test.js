@@ -81,7 +81,7 @@ function conversaFalsa() {
 
 function resposta() {
   const eventos = [];
-  return { eventos, setHeader() {}, flushHeaders() {}, write(c) { eventos.push(c); }, end() {} };
+  return { eventos, setHeader() {}, flushHeaders() {}, on() {}, write(c) { eventos.push(c); }, end() {} };
 }
 
 test('persiste o par tool_use e tool_result com o id do modelo e reenvia nativo', async () => {

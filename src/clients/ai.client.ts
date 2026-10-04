@@ -317,12 +317,14 @@ export class AiClient {
     },
     opcoes: OpcoesIa,
     aoDelta: (texto: string) => void,
+    sinal?: AbortSignal,
   ): Promise<CopilotoTurno> {
     const usuarioId = opcoes.usuarioId;
+    if (sinal?.aborted) throw new TurnoCancelado();
     if (usuarioId && this.cota) await this.cota.verificar(usuarioId);
     const registro: { uso: UsoLlm | null } = { uso: null };
     try {
-      return await this.lerTurnoEmStream(payload, opcoes, aoDelta, registro);
+      return await this.lerTurnoEmStream(payload, opcoes, aoDelta, registro, sinal);
     } finally {
       if (usuarioId && registro.uso) await this.registrarUso(usuarioId, registro.uso);
     }
@@ -333,9 +335,12 @@ export class AiClient {
     opcoes: OpcoesIa,
     aoDelta: (texto: string) => void,
     registro: { uso: UsoLlm | null },
+    sinal?: AbortSignal,
   ): Promise<CopilotoTurno> {
     const controle = new AbortController();
     const relogio = setTimeout(() => controle.abort(), this.llmTimeoutMs);
+    const cancelar = () => controle.abort();
+    sinal?.addEventListener('abort', cancelar, { once: true });
     let emitiu = false;
     try {
       const resposta = await this.http.axiosRef.post<NodeJS.ReadableStream>(
@@ -357,6 +362,8 @@ export class AiClient {
           if (evento.tipo === 'delta') {
             emitiu = true;
             aoDelta(evento.texto);
+          } else if (evento.tipo === 'uso') {
+            registro.uso = evento.uso;
           } else if (evento.tipo === 'fim') {
             registro.uso = evento.uso ?? null;
             return {
@@ -374,10 +381,12 @@ export class AiClient {
       }
       throw new TurnoInterrompido('o turno terminou sem resposta completa', emitiu);
     } catch (err) {
+      if (sinal?.aborted) throw new TurnoCancelado();
       if (err instanceof TurnoInterrompido || !emitiu) throw err;
       throw new TurnoInterrompido((err as Error).message, true);
     } finally {
       clearTimeout(relogio);
+      sinal?.removeEventListener('abort', cancelar);
     }
   }
 
@@ -449,8 +458,15 @@ export interface CopilotoTurno extends ComUso {
 
 type EventoTurnoStream =
   | { tipo: 'delta'; texto: string }
+  | { tipo: 'uso'; uso: UsoLlm }
   | ({ tipo: 'fim' } & CopilotoTurno)
   | { tipo: 'erro'; detail: string; interrompido?: boolean; uso?: UsoLlm | null; modelo?: string | null };
+
+export class TurnoCancelado extends Error {
+  constructor() {
+    super('o candidato saiu da conversa e o turno foi cancelado');
+  }
+}
 
 export class TurnoInterrompido extends Error {
   constructor(

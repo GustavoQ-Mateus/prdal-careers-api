@@ -34,7 +34,7 @@ async function enviadoAoLlmDepoisDeLerPerfil(perfil) {
     },
   };
   const executor = { executar: async () => perfil };
-  const res = { setHeader() {}, flushHeaders() {}, write() {}, end() {} };
+  const res = { setHeader() {}, flushHeaders() {}, on() {}, write() {}, end() {} };
 
   await new ChatService(conversas, ai, executor).chat(res, { userId: 'usuario-1' }, { mensagem: 'leia meu perfil' });
 

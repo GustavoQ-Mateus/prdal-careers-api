@@ -70,7 +70,7 @@ test('ChatService nao emite confirmacao para escrita invalida', async () => {
   const eventos = [];
   const res = {
     setHeader() {},
-    flushHeaders() {},
+    flushHeaders() {}, on() {},
     write(chunk) {
       eventos.push(chunk);
     },

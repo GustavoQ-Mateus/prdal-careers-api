@@ -41,7 +41,7 @@ function cenario(conversa) {
     definirPendencia: async () => {},
     definirResumo: async (_id, resumo) => resumos.push(resumo),
   };
-  const res = { setHeader() {}, flushHeaders() {}, write() {}, end() {} };
+  const res = { setHeader() {}, flushHeaders() {}, on() {}, write() {}, end() {} };
   return { conversas, resumos, res };
 }
 

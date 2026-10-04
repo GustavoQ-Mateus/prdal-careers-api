@@ -99,7 +99,7 @@ function ambiente({ falharGeracao = false } = {}) {
 
 function resposta() {
   const eventos = [];
-  return { eventos, setHeader() {}, flushHeaders() {}, write: (e) => eventos.push(e), end() {} };
+  return { eventos, setHeader() {}, flushHeaders() {}, on() {}, write: (e) => eventos.push(e), end() {} };
 }
 
 function eventosDo(res, nome) {

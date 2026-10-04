@@ -46,7 +46,7 @@ function resposta(aoEscrever = () => {}) {
   return {
     eventos,
     setHeader() {},
-    flushHeaders() {},
+    flushHeaders() {}, on() {},
     write(bloco) {
       eventos.push(bloco);
       aoEscrever(bloco);
@@ -154,4 +154,77 @@ test('delta com caractere multibyte partido entre pacotes chega inteiro', async 
   await chat.chat(res, { userId: 'u1' }, { mensagem: 'oi' });
 
   assert.deepEqual(eventos(res, 'token').map((e) => e.delta), ['Ação é ótima']);
+});
+
+function desconectavel() {
+  const ouvintes = {};
+  const res = resposta();
+  res.on = (evento, fn) => {
+    ouvintes[evento] = fn;
+  };
+  res.desconectar = () => {
+    res.destroyed = true;
+    ouvintes.close?.();
+  };
+  return res;
+}
+
+test('web desconecta no meio do stream: a api cancela o ai-service, para de pedir passos e registra o uso parcial', async (t) => {
+  let pedidos = 0;
+  let avisarFechamento;
+  const fechou = new Promise((resolve) => { avisarFechamento = resolve; });
+  const usoParcial = { entrada: 1200, saida: 0, cacheLida: 0, cacheEscrita: 0, chamadas: 1 };
+  const url = await servidor(t, async (res) => {
+    pedidos += 1;
+    res.on('close', () => avisarFechamento(res.writableFinished));
+    res.write(linha({ tipo: 'uso', uso: usoParcial }));
+    res.write(linha({ tipo: 'delta', texto: 'Comecando ' }));
+  });
+  const { chat, conversa, usos } = montar(url);
+  const res = desconectavel();
+  const escrever = res.write;
+  res.write = (bloco) => {
+    escrever(bloco);
+    if (bloco.startsWith('event: token')) res.desconectar();
+  };
+
+  await chat.chat(res, { userId: 'u1' }, { mensagem: 'oi' });
+
+  assert.equal(await fechou, false);
+  assert.equal(pedidos, 1);
+  assert.deepEqual(usos, [['u1', usoParcial]]);
+  assert.equal(eventos(res, 'token').length, 1);
+  assert.equal(eventos(res, 'fim_turno').length, 0);
+  assert.equal(eventos(res, 'erro').length, 0);
+  assert.ok(conversa.mensagens.every((m) => m.papel !== 'assistant'));
+  assert.equal(conversa.mensagens.at(-1).dados.evento, 'cancelado');
+});
+
+test('web desconecta durante a tool: a api nao pede o passo seguinte', async () => {
+  const { ChatService } = require('../dist/copiloto/chat.service');
+  const sinais = [];
+  const ai = {
+    copilotoTurnStream: async (_payload, _opcoes, _aoDelta, sinal) => {
+      sinais.push(sinal);
+      return { conteudo: [{ type: 'tool_use', id: 'toolu_perfil', name: 'ler_perfil', input: {} }], parada: 'tool_use' };
+    },
+  };
+  const res = desconectavel();
+  const executor = {
+    executar: async () => {
+      res.desconectar();
+      return { nome: 'Pessoa' };
+    },
+  };
+  const conversa = { _id: 'c2', usuarioId: 'u1', modo: 'assistido', oportunidadeId: null, mensagens: [], pendencia: null };
+  const conversas = { abrir: async () => conversa, anexar: async () => {}, definirPendencia: async () => {}, definirResumo: async () => {} };
+  const chat = new ChatService(conversas, ai, executor, { garantirVaga: async () => {} }, null);
+
+  await chat.chat(res, { userId: 'u1' }, { mensagem: 'leia meu perfil' });
+
+  assert.equal(sinais.length, 1);
+  assert.equal(sinais[0].aborted, true);
+  assert.deepEqual(conversa.mensagens.map((m) => m.papel), ['user', 'assistant', 'tool', 'evento']);
+  assert.equal(conversa.mensagens.at(-1).dados.evento, 'cancelado');
+  assert.equal(eventos(res, 'fim_turno').length, 0);
 });

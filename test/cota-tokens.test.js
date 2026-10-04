@@ -243,7 +243,7 @@ test('no chat SSE a cota estourada sai como evento de erro', async (t) => {
   chat.registrarErro = async () => {};
   const res = {
     setHeader: () => {},
-    flushHeaders: () => {},
+    flushHeaders: () => {}, on: () => {},
     write: (bloco) => eventos.push(bloco),
     end: () => {},
   };

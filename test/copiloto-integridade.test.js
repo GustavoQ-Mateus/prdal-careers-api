@@ -10,7 +10,7 @@ function response() {
   return {
     eventos,
     setHeader() {},
-    flushHeaders() {},
+    flushHeaders() {}, on() {},
     write(chunk) { eventos.push(chunk); },
     end() {},
   };

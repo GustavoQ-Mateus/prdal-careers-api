@@ -2,7 +2,7 @@ import { HttpException, Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import type { Response } from 'express';
 import { AuthUser } from '../auth/current-user.decorator';
-import { AiClient, CopilotoTurno, TurnoInterrompido } from '../clients/ai.client';
+import { AiClient, CopilotoTurno, TurnoCancelado, TurnoInterrompido } from '../clients/ai.client';
 import { CotaTokensEsgotada, MENSAGEM_COTA_ESGOTADA } from '../cota/cota-tokens.service';
 import { ConversaCopilotoDoc, MensagemCopiloto } from '../mongo/mongo.service';
 import { OportunidadesService } from '../oportunidades/oportunidades.service';
@@ -97,6 +97,10 @@ export class ChatService {
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
+    const cancelamento = new AbortController();
+    res.on('close', () => {
+      if (!res.writableEnded) cancelamento.abort();
+    });
 
     try {
       if (dto.confirmacao) {
@@ -110,7 +114,7 @@ export class ChatService {
         await this.registrar(conversa, { papel: 'user', conteudo: dto.mensagem });
       }
 
-      await this.laco(res, conversa, modo);
+      await this.laco(res, conversa, modo, cancelamento.signal);
     } catch (err) {
       await this.registrarErro(conversa, 'interno', this.mensagemErro(err));
       this.enviar(res, 'erro', {
@@ -219,8 +223,13 @@ export class ChatService {
     res: Response,
     conversa: ConversaCopilotoDoc,
     modo: 'assistido' | 'autopiloto',
+    sinal: AbortSignal,
   ): Promise<void> {
     for (let passo = 0; passo < MAX_PASSOS; passo++) {
+      if (sinal.aborted) {
+        await this.registrarCancelamento(conversa);
+        return;
+      }
       let turno: CopilotoTurno;
       let transmitido = false;
       try {
@@ -238,8 +247,13 @@ export class ChatService {
             transmitido = true;
             this.enviar(res, 'token', { delta });
           },
+          sinal,
         );
       } catch (err) {
+        if (err instanceof TurnoCancelado || sinal.aborted) {
+          await this.registrarCancelamento(conversa);
+          return;
+        }
         if (err instanceof TurnoInterrompido && err.emitiu) {
           await this.registrarErro(conversa, 'ai-service', `resposta interrompida no meio: ${err.message}`);
           this.enviar(res, 'erro', {
@@ -283,6 +297,10 @@ export class ChatService {
         .trim();
       const chamadas = blocos.filter((bloco): bloco is ToolUse => bloco.type === 'tool_use');
       await this.registrar(conversa, { papel: 'assistant', conteudo: texto, blocos });
+      if (sinal.aborted) {
+        await this.registrarCancelamento(conversa);
+        return;
+      }
       if (!transmitido && texto) this.enviar(res, 'token', { delta: texto });
 
       if (chamadas.length === 0) {
@@ -641,12 +659,21 @@ export class ChatService {
   }
 
   private enviar(res: Response, evento: string, data: unknown): void {
+    if (res.destroyed || res.writableEnded) return;
     res.write(`event: ${evento}\ndata: ${JSON.stringify(data)}\n\n`);
   }
 
   private finalizar(res: Response, conversaId: string, motivo: string): void {
     this.enviar(res, 'fim_turno', { motivo, conversaId });
-    res.end();
+    if (!res.writableEnded) res.end();
+  }
+
+  private async registrarCancelamento(conversa: ConversaCopilotoDoc): Promise<void> {
+    await this.registrar(conversa, {
+      papel: 'evento',
+      conteudo: 'A resposta anterior foi interrompida porque a conversa foi fechada antes do fim.',
+      dados: { evento: 'cancelado', escopo: 'conexao' },
+    });
   }
 
   private async registrar(

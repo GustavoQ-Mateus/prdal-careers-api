@@ -72,7 +72,7 @@ export interface MensagemCopiloto {
     resultado?: unknown;
     erro?: string;
     entrega?: { tipo: string; titulo: string; texto: string; destino?: string };
-    evento?: 'erro';
+    evento?: 'erro' | 'cancelado';
     escopo?: string;
     origem?: 'geracao_assincrona';
     jobId?: string;

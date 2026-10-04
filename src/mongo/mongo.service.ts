@@ -2,6 +2,7 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Collection, Db, MongoClient } from 'mongodb';
 import { randomUUID } from 'node:crypto';
 import { Keyword } from '../clients/ai.client';
+import type { BlocoNativo } from '../copiloto/historico';
 
 export interface BancoVagaDoc {
   _id: string;
@@ -61,6 +62,7 @@ export interface MensagemCopiloto {
   papel: 'user' | 'assistant' | 'tool' | 'evento';
   conteudo: string;
   tool?: string | null;
+  blocos?: BlocoNativo[];
   dados?: {
     callId?: string;
     efeito?: 'leitura' | 'escrita' | 'entrega_externa';

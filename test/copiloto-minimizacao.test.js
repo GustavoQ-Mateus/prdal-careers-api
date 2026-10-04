@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const { turnoTexto, turnoTool } = require('./helpers/turnos');
 const { of } = require('rxjs');
 const { ChatService } = require('../dist/copiloto/chat.service');
 
@@ -24,8 +25,8 @@ async function enviadoAoLlmDepoisDeLerPerfil(perfil) {
   };
   const enviadosAoLlm = [];
   const turnos = [
-    { tipo: 'tool_call', tool: 'ler_perfil', args: {} },
-    { tipo: 'texto', texto: 'Li seu perfil.' },
+    turnoTool('ler_perfil'),
+    turnoTexto('Li seu perfil.'),
   ];
   const ai = {
     copilotoTurn: async (payload) => {

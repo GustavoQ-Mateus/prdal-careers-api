@@ -1,3 +1,4 @@
+import type { ToolNativa } from '../clients/ai.client';
 import { TIPOS_ACAO_OPORTUNIDADE } from './tool-args';
 
 export type EfeitoTool = 'leitura' | 'escrita' | 'entrega_externa';
@@ -377,9 +378,21 @@ export const TOOLS: ToolDef[] = [
 
 export const TOOLS_POR_NOME = new Map(TOOLS.map((t) => [t.nome, t]));
 
-export const CATALOGO_TOOLS = TOOLS.map((t) => ({
-  nome: t.nome,
-  efeito: t.efeito,
-  descricao: t.descricao,
-  parametros: t.parametros as Record<string, unknown>,
+function propriedade(regra: string): Record<string, unknown> {
+  if (regra === 'true | false') return { type: 'boolean' };
+  if (regra === 'inteiro' || regra === 'quantidade') return { type: 'integer', description: regra };
+  if (regra.startsWith('lista')) return { type: 'array', items: { type: 'string' }, description: regra };
+  return { type: 'string', description: regra };
+}
+
+export const TOOLS_NATIVAS: ToolNativa[] = TOOLS.map((t) => ({
+  name: t.nome,
+  description: t.descricao,
+  input_schema: {
+    type: 'object',
+    properties: Object.fromEntries(
+      Object.entries(t.parametros).map(([nome, regra]) => [nome, propriedade(regra)]),
+    ),
+    additionalProperties: false,
+  },
 }));

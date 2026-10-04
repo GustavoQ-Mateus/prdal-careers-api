@@ -14,12 +14,25 @@ import { OportunidadesService } from '../oportunidades/oportunidades.service';
 import { semContato } from '../perfil/perfil.normalizacao';
 import { ConversasService } from './conversas.service';
 import { ChatDto } from './copiloto.dto';
+import { BlocoNativo, paraMensagensNativas, resultadoTool } from './historico';
 import { prepararArgsTool } from './tool-args';
-import { CATALOGO_TOOLS, ToolDef, TOOLS_POR_NOME } from './tools';
+import { ToolDef, TOOLS_NATIVAS, TOOLS_POR_NOME } from './tools';
 
 const MAX_PASSOS = 8;
 const LIMITE_HISTORICO = 2000;
 const ESCRITAS_SEM_CONFIRMACAO_NO_AUTOPILOTO = new Set(['registrar_nota']);
+
+type ToolUse = Extract<BlocoNativo, { type: 'tool_use' }>;
+
+interface ResultadoRegistrado {
+  callId: string;
+  tool: string;
+  efeito: ToolDef['efeito'];
+  args: Record<string, unknown>;
+  ok: boolean;
+  resultado?: unknown;
+  erro?: string;
+}
 
 export function exigeConfirmacao(tool: ToolDef, modo: 'assistido' | 'autopiloto'): boolean {
   if (tool.efeito !== 'escrita') return false;
@@ -130,6 +143,8 @@ export class ChatService {
         papel: 'tool',
         tool: pend.tool,
         conteudo: 'o candidato recusou esta escrita; nao repita',
+        blocos: [resultadoTool(pend.callId, 'o candidato recusou esta escrita; nao repita', true)],
+        dados: { callId: pend.callId, efeito: 'escrita', args: pend.args, ok: false, erro: 'recusada pelo candidato' },
       });
       return true;
     }
@@ -159,17 +174,13 @@ export class ChatService {
         resultado: null,
         erro: { mensagem: preparados.erro, recuperavel: true },
       });
-      await this.registrar(conversa, {
-        papel: 'tool',
+      await this.registrarResultado(conversa, {
+        callId: pend.callId,
         tool: tool.nome,
-        conteudo: `falha: ${preparados.erro}`,
-        dados: {
-          callId: pend.callId,
-          efeito: tool.efeito,
-          args,
-          ok: false,
-          erro: preparados.erro,
-        },
+        efeito: tool.efeito,
+        args,
+        ok: false,
+        erro: preparados.erro,
       });
       return true;
     }
@@ -213,8 +224,8 @@ export class ChatService {
           {
             modo,
             oportunidadeId: conversa.oportunidadeId,
-            mensagens: conversa.mensagens,
-            tools: CATALOGO_TOOLS,
+            mensagens: paraMensagensNativas(conversa.mensagens),
+            tools: TOOLS_NATIVAS,
           },
           { operacao: `conversa:${conversa._id}`, usuarioId: conversa.usuarioId },
         );
@@ -240,34 +251,61 @@ export class ChatService {
         return;
       }
 
-      if (turno.tipo === 'texto' || !turno.tool) {
-        const texto = turno.texto ?? '';
-        this.streamTokens(res, texto);
-        await this.registrar(conversa, { papel: 'assistant', conteudo: texto });
+      const blocos = turno.conteudo ?? [];
+      const texto = blocos
+        .flatMap((bloco) => (bloco.type === 'text' ? [bloco.text] : []))
+        .join('\n\n')
+        .trim();
+      const chamadas = blocos.filter((bloco): bloco is ToolUse => bloco.type === 'tool_use');
+      await this.registrar(conversa, { papel: 'assistant', conteudo: texto, blocos });
+      this.streamTokens(res, texto);
+
+      if (chamadas.length === 0) {
         this.finalizar(res, conversa._id, 'completo');
         return;
       }
 
-      const tool = TOOLS_POR_NOME.get(turno.tool);
-      if (!tool) {
-        await this.registrarErro(conversa, 'tool', `tool desconhecida: ${turno.tool}`);
-        this.enviar(res, 'erro', {
-          escopo: 'tool',
-          mensagem: `tool desconhecida: ${turno.tool}`,
-          recuperavel: true,
+      const [chamada, ...excedentes] = chamadas;
+      for (const extra of excedentes) {
+        await this.registrarResultado(conversa, {
+          callId: extra.id,
+          tool: extra.name,
+          efeito: TOOLS_POR_NOME.get(extra.name)?.efeito ?? 'leitura',
+          args: extra.input ?? {},
+          ok: false,
+          erro: 'execute uma tool por vez',
         });
-        this.finalizar(res, conversa._id, 'erro');
-        return;
+      }
+
+      const callId = chamada.id;
+      const tool = TOOLS_POR_NOME.get(chamada.name);
+      if (!tool) {
+        const erro = `tool desconhecida: ${chamada.name}`;
+        this.enviar(res, 'tool_resultado', {
+          callId,
+          tool: chamada.name,
+          ok: false,
+          resultado: null,
+          erro: { mensagem: erro, recuperavel: true },
+        });
+        await this.registrarResultado(conversa, {
+          callId,
+          tool: chamada.name,
+          efeito: 'leitura',
+          args: chamada.input ?? {},
+          ok: false,
+          erro,
+        });
+        continue;
       }
 
       const preparados = prepararArgsTool({
         tool: tool.nome,
-        args: turno.args ?? {},
+        args: chamada.input ?? {},
         oportunidadeId: conversa.oportunidadeId,
         mensagens: conversa.mensagens,
       });
       const args = preparados.args;
-      const callId = randomUUID();
       if (preparados.erro) {
         this.enviar(res, 'tool_resultado', {
           callId,
@@ -276,17 +314,13 @@ export class ChatService {
           resultado: null,
           erro: { mensagem: preparados.erro, recuperavel: true },
         });
-        await this.registrar(conversa, {
-          papel: 'tool',
+        await this.registrarResultado(conversa, {
+          callId,
           tool: tool.nome,
-          conteudo: `falha: ${preparados.erro}`,
-          dados: {
-            callId,
-            efeito: tool.efeito,
-            args,
-            ok: false,
-            erro: preparados.erro,
-          },
+          efeito: tool.efeito,
+          args,
+          ok: false,
+          erro: preparados.erro,
         });
         continue;
       }
@@ -334,6 +368,7 @@ export class ChatService {
           conversa,
           credencial,
           tool,
+          callId,
           args,
         );
         this.finalizar(
@@ -436,17 +471,13 @@ export class ChatService {
         resultado,
         erro: null,
       });
-      await this.registrar(conversa, {
-        papel: 'tool',
+      await this.registrarResultado(conversa, {
+        callId,
         tool: tool.nome,
-        conteudo: this.resumirResultado(resultado, tool.nome),
-        dados: {
-          callId,
-          efeito: tool.efeito,
-          args,
-          ok: true,
-          resultado: this.resultadoHistorico(resultado, tool.nome),
-        },
+        efeito: tool.efeito,
+        args,
+        ok: true,
+        resultado,
       });
       return { ok: true, valor: resultado };
     } catch (err) {
@@ -458,17 +489,13 @@ export class ChatService {
         resultado: null,
         erro: { mensagem, recuperavel: true },
       });
-      await this.registrar(conversa, {
-        papel: 'tool',
+      await this.registrarResultado(conversa, {
+        callId,
         tool: tool.nome,
-        conteudo: `falha: ${mensagem}`,
-        dados: {
-          callId,
-          efeito: tool.efeito,
-          args,
-          ok: false,
-          erro: mensagem,
-        },
+        efeito: tool.efeito,
+        args,
+        ok: false,
+        erro: mensagem,
       });
       return { ok: false };
     }
@@ -479,6 +506,7 @@ export class ChatService {
     conversa: ConversaCopilotoDoc,
     credencial: Record<string, string>,
     tool: ToolDef,
+    callId: string,
     args: Record<string, unknown>,
   ): Promise<boolean> {
     try {
@@ -494,11 +522,14 @@ export class ChatService {
         texto: r.texto,
         destino: r.destino ?? '',
       });
+      const conteudo = `texto entregue ao candidato: ${r.titulo}`;
       await this.registrar(conversa, {
         papel: 'tool',
         tool: tool.nome,
-        conteudo: `texto entregue ao candidato: ${r.titulo}`,
+        conteudo,
+        blocos: [resultadoTool(callId, JSON.stringify({ entregue: true, titulo: r.titulo, texto: r.texto }))],
         dados: {
+          callId,
           efeito: 'entrega_externa',
           ok: true,
           entrega: r,
@@ -569,6 +600,30 @@ export class ChatService {
   ): Promise<void> {
     conversa.mensagens.push(mensagem);
     await this.conversas.anexar(conversa._id, mensagem);
+  }
+
+  private async registrarResultado(
+    conversa: ConversaCopilotoDoc,
+    registro: ResultadoRegistrado,
+  ): Promise<void> {
+    const conteudo = registro.ok
+      ? this.resumirResultado(registro.resultado, registro.tool)
+      : `falha: ${registro.erro}`;
+    await this.registrar(conversa, {
+      papel: 'tool',
+      tool: registro.tool,
+      conteudo,
+      blocos: [resultadoTool(registro.callId, conteudo, !registro.ok)],
+      dados: {
+        callId: registro.callId,
+        efeito: registro.efeito,
+        args: registro.args,
+        ok: registro.ok,
+        ...(registro.ok
+          ? { resultado: this.resultadoHistorico(registro.resultado, registro.tool) }
+          : { erro: registro.erro }),
+      },
+    });
   }
 
   private async registrarErro(

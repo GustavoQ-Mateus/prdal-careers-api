@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const { turnoTexto, turnoTool } = require('./helpers/turnos');
 const { ChatService } = require('../dist/copiloto/chat.service');
 const {
   normalizarTipoAcao,
@@ -148,15 +149,11 @@ test('ChatService nao emite confirmacao para escrita invalida', async () => {
     },
   };
   const turnos = [
-    {
-      tipo: 'tool_call',
-      tool: 'definir_proximo_passo',
-      args: {
-        titulo: 'Verificar status da geração do currículo',
-        tipo: 'verificar status',
-      },
-    },
-    { tipo: 'texto', texto: 'Vou consultar a geração pela tool correta.' },
+    turnoTool('definir_proximo_passo', {
+      titulo: 'Verificar status da geração do currículo',
+      tipo: 'verificar status',
+    }),
+    turnoTexto('Vou consultar a geração pela tool correta.'),
   ];
   const ai = { copilotoTurn: async () => turnos.shift() };
   const http = {

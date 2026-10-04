@@ -3,6 +3,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import { firstValueFrom } from 'rxjs';
 import { CotaTokensEsgotada, CotaTokensService } from '../cota/cota-tokens.service';
+import type { BlocoNativo, MensagemNativa } from '../copiloto/historico';
 
 const DEFAULT_GENERATE_TIMEOUT_MS = 300000;
 const DEFAULT_LLM_TIMEOUT_MS = 60000;
@@ -307,13 +308,8 @@ export class AiClient {
     payload: {
       modo: string;
       oportunidadeId: string | null;
-      mensagens: { papel: string; conteudo: string; tool?: string | null }[];
-      tools: {
-        nome: string;
-        efeito: string;
-        descricao: string;
-        parametros: Record<string, unknown>;
-      }[];
+      mensagens: MensagemNativa[];
+      tools: ToolNativa[];
     },
     opcoes: OpcoesIa = {},
   ): Promise<CopilotoTurno> {
@@ -382,9 +378,14 @@ export interface RedacaoFormulario extends ComUso {
   texto: string;
 }
 
+export interface ToolNativa {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+  strict?: boolean;
+}
+
 export interface CopilotoTurno extends ComUso {
-  tipo: 'texto' | 'tool_call';
-  texto: string | null;
-  tool: string | null;
-  args: Record<string, unknown>;
+  conteudo: BlocoNativo[];
+  parada: string;
 }

@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const { turnoTexto, turnoTool } = require('./helpers/turnos');
 const { of } = require('rxjs');
 const { ChatService, exigeConfirmacao } = require('../dist/copiloto/chat.service');
 const { TOOLS_POR_NOME } = require('../dist/copiloto/tools');
@@ -50,7 +51,7 @@ test('chat sem modo roda em assistido e pede confirmacao antes de escrever', asy
   const modos = [];
   const conversa = conversaFalsa('assistido');
   const chamadas = [];
-  const ai = { copilotoTurn: async () => ({ tipo: 'tool_call', tool: 'registrar_oportunidade', args: { titulo: 'Vaga', empresa: 'Acme', descricao: 'Descricao' } }) };
+  const ai = { copilotoTurn: async () => turnoTool('registrar_oportunidade', { titulo: 'Vaga', empresa: 'Acme', descricao: 'Descricao' }) };
   const http = { request: (request) => { chamadas.push(request); return of({ data: {} }); } };
   const res = response();
 
@@ -64,9 +65,9 @@ test('chat sem modo roda em assistido e pede confirmacao antes de escrever', asy
 test('reaproveita oportunidade na mesma conversa no segundo registro confirmado', async () => {
   const conversa = conversaFalsa('assistido');
   const turnos = [
-    { tipo: 'tool_call', tool: 'registrar_oportunidade', args: { titulo: 'Vaga', empresa: 'Acme', descricao: 'Descricao' } },
-    { tipo: 'tool_call', tool: 'registrar_oportunidade', args: { titulo: 'Vaga', empresa: 'Acme', descricao: 'Descricao' } },
-    { tipo: 'texto', texto: 'Oportunidade pronta.' },
+    turnoTool('registrar_oportunidade', { titulo: 'Vaga', empresa: 'Acme', descricao: 'Descricao' }),
+    turnoTool('registrar_oportunidade', { titulo: 'Vaga', empresa: 'Acme', descricao: 'Descricao' }),
+    turnoTexto('Oportunidade pronta.'),
   ];
   const chamadas = [];
   const ai = { copilotoTurn: async () => turnos.shift() };
@@ -108,7 +109,7 @@ test('gerar_curriculo pede confirmacao inclusive no autopiloto', async () => {
     mensagens: [{ papel: 'tool', tool: 'analisar_ats', conteudo: JSON.stringify({ score: 67, veredicto: 'Cobertura media.' }) }],
   };
   const chamadas = [];
-  const ai = { copilotoTurn: async () => ({ tipo: 'tool_call', tool: 'gerar_curriculo', args: { oportunidadeId: 'vaga-1' } }) };
+  const ai = { copilotoTurn: async () => turnoTool('gerar_curriculo', { oportunidadeId: 'vaga-1' }) };
   const http = { request: (request) => { chamadas.push(request); return of({ data: {} }); } };
   const res = response();
 

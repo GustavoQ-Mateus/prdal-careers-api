@@ -1,6 +1,7 @@
 require('reflect-metadata');
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const { turnoTexto, turnoTool } = require('./helpers/turnos');
 const { ValidationPipe } = require('@nestjs/common');
 const { ThrottlerModule } = require('@nestjs/throttler');
 const { subirApp, autenticado } = require('./helpers/app-teste');
@@ -37,7 +38,7 @@ async function subir(t) {
     anexar: async () => {},
     definirPendencia: async () => {},
   };
-  const ai = { copilotoTurn: async () => ({ tipo: 'texto', texto: 'ok' }) };
+  const ai = { copilotoTurn: async () => turnoTexto('ok') };
   const chat = new ChatService(conversas, ai, {}, oportunidades);
 
   const { url } = await subirApp(t, {

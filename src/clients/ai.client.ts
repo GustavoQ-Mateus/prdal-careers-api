@@ -3,6 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 
 const DEFAULT_GENERATE_TIMEOUT_MS = 300000;
+const DEFAULT_LLM_TIMEOUT_MS = 60000;
+const MARGEM_PRAZO_MS = 1000;
+export const HEADER_PRAZO = 'X-Prdal-Prazo-Ms';
 export const DEGRADACAO_KEYWORDS_INDISPONIVEIS =
   'A extração de keywords da vaga está indisponível no momento. Tente novamente em instantes.';
 
@@ -64,15 +67,25 @@ export class AiClient {
     'AI_GENERATE_TIMEOUT_MS',
     DEFAULT_GENERATE_TIMEOUT_MS,
   );
+  private readonly llmTimeoutMs = envMs('AI_LLM_TIMEOUT_MS', DEFAULT_LLM_TIMEOUT_MS);
 
   constructor(private readonly http: HttpService) {}
+
+  private comPrazo(timeoutMs: number) {
+    return {
+      timeout: timeoutMs,
+      headers: { [HEADER_PRAZO]: String(Math.max(1, timeoutMs - MARGEM_PRAZO_MS)) },
+    };
+  }
 
   async keywords(descricao: string): Promise<KeywordExtraction> {
     try {
       const { data } = await firstValueFrom(
-        this.http.post<KeywordExtraction>(`${this.baseUrl}/keywords`, {
-          descricao,
-        }),
+        this.http.post<KeywordExtraction>(
+          `${this.baseUrl}/keywords`,
+          { descricao },
+          this.comPrazo(this.llmTimeoutMs),
+        ),
       );
       return {
         keywords: data.keywords ?? [],
@@ -101,6 +114,7 @@ export class AiClient {
       this.http.post<{ markdown: string }>(
         `${this.baseUrl}/generate-cv`,
         payload,
+        this.comPrazo(this.generateTimeoutMs),
       ),
     );
     return data.markdown;
@@ -116,7 +130,7 @@ export class AiClient {
       this.http.post<GeneratePipelineResult>(
         `${this.baseUrl}/generate-cv-pipeline`,
         payload,
-        { timeout: this.generateTimeoutMs },
+        this.comPrazo(this.generateTimeoutMs),
       ),
     );
     return data;
@@ -133,7 +147,7 @@ export class AiClient {
       this.http.post<GeneratePipelineResult>(
         `${this.baseUrl}/reduzir-curriculo`,
         payload,
-        { timeout: this.generateTimeoutMs },
+        this.comPrazo(this.generateTimeoutMs),
       ),
     );
     return data;
@@ -225,7 +239,11 @@ export class AiClient {
     }[];
   }): Promise<CopilotoTurno> {
     const { data } = await firstValueFrom(
-      this.http.post<CopilotoTurno>(`${this.baseUrl}/copiloto/turn`, payload),
+      this.http.post<CopilotoTurno>(
+        `${this.baseUrl}/copiloto/turn`,
+        payload,
+        this.comPrazo(this.llmTimeoutMs),
+      ),
     );
     return data;
   }
@@ -239,6 +257,7 @@ export class AiClient {
       this.http.post<{ titulo: string; texto: string; destino: string }>(
         `${this.baseUrl}/copiloto/redigir-mensagem`,
         payload,
+        this.comPrazo(this.llmTimeoutMs),
       ),
     );
     return data;
@@ -258,7 +277,11 @@ export class AiClient {
         titulo: string;
         respostas: { campo: string; texto: string }[];
         texto: string;
-      }>(`${this.baseUrl}/copiloto/redigir-formulario`, payload),
+      }>(
+        `${this.baseUrl}/copiloto/redigir-formulario`,
+        payload,
+        this.comPrazo(this.llmTimeoutMs),
+      ),
     );
     return data;
   }

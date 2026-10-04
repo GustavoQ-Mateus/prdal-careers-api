@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PerfilMestreDto } from './perfil.dto';
-import { normalizarContato, normalizarExperiencias, normalizarPerfil } from './perfil.normalizacao';
+import { normalizarPerfil, perfilParaPersistencia } from './perfil.normalizacao';
 
 @Injectable()
 export class PerfilService {
@@ -14,21 +14,23 @@ export class PerfilService {
   }
 
   async salvar(usuarioId: string, dto: PerfilMestreDto) {
+    const perfil = perfilParaPersistencia(normalizarPerfil(dto));
+    const json = (valor: unknown) => valor as Prisma.InputJsonValue;
     const dados = {
-      nome: dto.nome,
-      contato: normalizarContato(dto.contato) as unknown as Prisma.InputJsonValue,
-      resumo: dto.resumo,
-      experiencias: normalizarExperiencias(dto.experiencias) as unknown as Prisma.InputJsonValue,
-      formacao: dto.formacao as Prisma.InputJsonValue,
-      certificacoes: (dto.certificacoes ?? []) as Prisma.InputJsonValue,
-      idiomas: (dto.idiomas ?? []) as Prisma.InputJsonValue,
-      skills: dto.skills as Prisma.InputJsonValue,
+      nome: perfil.nome,
+      contato: json(perfil.contato),
+      resumo: perfil.resumo,
+      experiencias: json(perfil.experiencias),
+      formacao: json(perfil.formacao),
+      certificacoes: json(perfil.certificacoes),
+      idiomas: json(perfil.idiomas),
+      skills: json(perfil.skills),
     };
-    const perfil = await this.prisma.perfilMestre.upsert({
+    const salvo = await this.prisma.perfilMestre.upsert({
       where: { usuarioId },
       create: { usuarioId, ...dados },
       update: dados,
     });
-    return normalizarPerfil(perfil);
+    return normalizarPerfil(salvo);
   }
 }

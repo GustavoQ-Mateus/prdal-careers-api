@@ -11,6 +11,7 @@ import { prefixoApi } from '../config/prefixo';
 import { CotaTokensEsgotada, MENSAGEM_COTA_ESGOTADA } from '../cota/cota-tokens.service';
 import { ConversaCopilotoDoc, MensagemCopiloto } from '../mongo/mongo.service';
 import { OportunidadesService } from '../oportunidades/oportunidades.service';
+import { semContato } from '../perfil/perfil.normalizacao';
 import { ConversasService } from './conversas.service';
 import { ChatDto } from './copiloto.dto';
 import { prepararArgsTool } from './tool-args';
@@ -619,11 +620,11 @@ export class ChatService {
             : markdown,
       });
     }
-    const semContato =
+    const resultadoSeguro =
       tool === 'ler_perfil' && resultado && typeof resultado === 'object'
-        ? { ...(resultado as Record<string, unknown>), contato: undefined }
+        ? semContato(resultado as Record<string, unknown>)
         : resultado;
-    const texto = JSON.stringify(semContato ?? null);
+    const texto = JSON.stringify(resultadoSeguro ?? null);
     return texto.length > LIMITE_HISTORICO
       ? `${texto.slice(0, LIMITE_HISTORICO)}...`
       : texto;

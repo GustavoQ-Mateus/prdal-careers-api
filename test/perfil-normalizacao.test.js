@@ -367,3 +367,47 @@ test('lista em texto ou item em formato desconhecido nao some na normalizacao', 
   assert.deepEqual(normalizarPerfil(salvo).certificacoes, objetos.certificacoes);
   assert.deepEqual(normalizarPerfil(salvo).formacao, objetos.formacao);
 });
+
+test('email com varios enderecos vira itens separados e valor sem forma de email ganha marca', () => {
+  for (const separador of [', ', '; ', ' ', ',']) {
+    const perfil = normalizarPerfil({ contato: [{ tipo: 'email', valor: `a@x.dev${separador}b@x.dev` }] });
+    assert.deepEqual(
+      perfil.emails.map(({ valor, principal, revisao }) => ({ valor, principal, revisao })),
+      [
+        { valor: 'a@x.dev', principal: true, revisao: undefined },
+        { valor: 'b@x.dev', principal: false, revisao: undefined },
+      ],
+      separador,
+    );
+    assert.equal(new Set(perfil.emails.map((email) => email.id)).size, 2);
+  }
+
+  const invalido = normalizarPerfil({
+    emails: [
+      { id: 'e1', valor: 'nao-e-email', principal: true },
+      { id: 'e2', valor: 'pessoa@x.dev', principal: false },
+    ],
+  });
+  assert.deepEqual(invalido.emails, [
+    { id: 'e1', valor: 'nao-e-email', principal: false, revisao: ['email_invalido'] },
+    { id: 'e2', valor: 'pessoa@x.dev', principal: true },
+  ]);
+  assert.deepEqual(perfilParaIa(invalido).emails.find((email) => email.principal).valor, 'pessoa@x.dev');
+
+  const soInvalido = normalizarPerfil({ contato: [{ tipo: 'email', valor: 'nao-e-email' }] });
+  assert.deepEqual(soInvalido.emails.map(({ principal, revisao }) => ({ principal, revisao })), [
+    { principal: true, revisao: ['email_invalido'] },
+  ]);
+
+  const misto = normalizarPerfil({ emails: [{ id: 'e', valor: 'a@x.dev, nao-e-email', principal: true }] });
+  assert.deepEqual(misto.emails.map(({ valor, revisao }) => ({ valor, revisao })), [
+    { valor: 'a@x.dev, nao-e-email', revisao: ['email_invalido'] },
+  ]);
+
+  const corrigido = normalizarPerfil({ emails: [{ id: 'e', valor: 'a@x.dev', principal: true, revisao: ['email_invalido'] }] });
+  assert.deepEqual(corrigido.emails, [{ id: 'e', valor: 'a@x.dev', principal: true }]);
+
+  const salvo = JSON.parse(JSON.stringify(perfilParaPersistencia(invalido)));
+  assert.deepEqual(normalizarPerfil(salvo).emails, invalido.emails);
+  assert.deepEqual(validar(JSON.parse(JSON.stringify(invalido))), []);
+});

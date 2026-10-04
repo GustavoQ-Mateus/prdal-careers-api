@@ -30,6 +30,7 @@ export const MOTIVOS_REVISAO = [
   'ddi_ausente',
   'localizacao_texto',
   'contato_sem_tipo',
+  'email_invalido',
 ] as const;
 export type MotivoRevisao = (typeof MOTIVOS_REVISAO)[number];
 
@@ -46,7 +47,7 @@ interface Revisavel {
   revisao?: MotivoRevisao[];
 }
 
-export interface EmailPerfil {
+export interface EmailPerfil extends Revisavel {
   id: string;
   valor: string;
   principal: boolean;
@@ -226,9 +227,27 @@ function idsUnicos<T extends { id: string }>(itens: T[], prefixo: string): T[] {
   });
 }
 
-function comPrincipalUnico<T extends { principal: boolean }>(itens: T[]): T[] {
-  const indice = Math.max(0, itens.findIndex((item) => item.principal));
+function comPrincipalUnico<T extends { principal: boolean }>(itens: T[], elegivel: (item: T) => boolean = () => true): T[] {
+  const candidatos = itens.some(elegivel) ? elegivel : () => true;
+  const escolhido = itens.findIndex((item) => candidatos(item) && item.principal);
+  const indice = escolhido >= 0 ? escolhido : Math.max(0, itens.findIndex(candidatos));
   return itens.map((item, posicao) => ({ ...item, principal: posicao === indice }));
+}
+
+const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
+const SEPARADOR_EMAIL = /[\s,;]+/;
+
+const emailValido = (email: EmailPerfil) => !email.revisao?.includes('email_invalido');
+
+function separarEmails(item: EmailPerfil): EmailPerfil[] {
+  const partes = item.valor.split(SEPARADOR_EMAIL).filter(Boolean);
+  const valores = partes.length > 1 && partes.every((parte) => EMAIL_RE.test(parte)) ? partes : [item.valor];
+  return valores.map((valor, posicao) => {
+    const revisao: MotivoRevisao[] = motivos(item.revisao).filter((motivo) => motivo !== 'email_invalido');
+    if (!EMAIL_RE.test(valor)) revisao.push('email_invalido');
+    const id = posicao === 0 || !item.id ? item.id : `${item.id}-${posicao + 1}`;
+    return comRevisao({ id, valor, principal: posicao === 0 && item.principal }, revisao);
+  });
 }
 
 const ROTULO_STATUS_FORMACAO: Record<string, string> = {
@@ -398,8 +417,9 @@ function normalizarDdi(valor: unknown): string {
 function normalizarContatoNovo(dado: Record<string, unknown>): ContatoPerfil {
   const lista = (valor: unknown) => (Array.isArray(valor) ? valor.map(registro).filter((item) => item !== null) : []);
   const emails = lista(dado.emails)
-    .map((item) => ({ id: texto(item.id), valor: texto(item.valor), principal: item.principal === true }))
-    .filter((item) => item.valor);
+    .map((item) => ({ id: texto(item.id), valor: texto(item.valor), principal: item.principal === true, revisao: motivos(item.revisao) }))
+    .filter((item) => item.valor)
+    .flatMap(separarEmails);
   const telefones = lista(dado.telefones)
     .map((item) =>
       comRevisao(
@@ -423,7 +443,7 @@ function normalizarContatoNovo(dado: Record<string, unknown>): ContatoPerfil {
     }
   }
   return {
-    emails: comPrincipalUnico(idsUnicos(emails, 'email')),
+    emails: comPrincipalUnico(idsUnicos(emails, 'email'), emailValido),
     telefones: comPrincipalUnico(idsUnicos(telefones, 'telefone')),
     links: idsUnicos(links, 'link'),
     endereco: normalizarEndereco(dado.endereco),

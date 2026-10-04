@@ -73,7 +73,7 @@ class RevisavelDto {
   revisao?: MotivoRevisao[];
 }
 
-export class EmailPerfilDto {
+export class EmailPerfilDto extends RevisavelDto {
   @IsString()
   @MinLength(1)
   @MaxLength(LIMITE.id)

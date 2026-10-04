@@ -97,8 +97,26 @@ test('a api soma o uso devolvido pelo ai-service, inclusive quando a chamada fal
     { entrada: linha.entrada, saida: linha.saida, cacheLida: linha.cacheLida, cacheEscrita: linha.cacheEscrita, chamadas: linha.chamadas },
     { entrada: 290, saida: 160, cacheLida: 4000, cacheEscrita: 600, chamadas: 5 },
   );
-  assert.equal(await cota.consumido('u1'), 290 + 160 + 4000 + 600);
+  assert.equal(await cota.consumido('u1'), 290 + 160 * 5 + 4000 * 0.1 + 600 * 1.25);
   assert.equal(prisma.linhas.size, 1);
+});
+
+test('consumo pesa cada tipo de token pelo custo relativo', async () => {
+  const consumo = async (uso) => {
+    const cota = new CotaComRelogio(prismaDeUso(), '2026-10-04T12:00:00Z');
+    await cota.registrar('u1', { entrada: 0, saida: 0, cacheLida: 0, cacheEscrita: 0, chamadas: 1, ...uso });
+    return cota.consumido('u1');
+  };
+  assert.equal(await consumo({ cacheLida: 10_000 }), 1_000);
+  assert.equal(await consumo({ saida: 1_000 }), 5_000);
+  assert.equal(await consumo({ entrada: 1_000 }), 1_000);
+  assert.equal(await consumo({ cacheEscrita: 1_000 }), 1_250);
+  assert.equal(await consumo({ cacheLida: 3 }), 1);
+  const prisma = prismaDeUso();
+  const cota = new CotaComRelogio(prisma, '2026-10-04T12:00:00Z');
+  await cota.registrar('u1', { entrada: 7, saida: 3, cacheLida: 11, cacheEscrita: 13, chamadas: 1 });
+  const linha = prisma.linhas.get('u1|2026-10-04T00:00:00.000Z');
+  assert.deepEqual([linha.entrada, linha.saida, linha.cacheLida, linha.cacheEscrita], [7, 3, 11, 13]);
 });
 
 test('cota estourada bloqueia a chamada ao ai-service antes de enviar', async (t) => {

@@ -5,6 +5,11 @@ import type { UsoLlm } from '../clients/ai.client';
 export const COTA_TOKENS_DIA_PADRAO = 1_000_000;
 const DIA_MS = 86_400_000;
 
+export const PESO_ENTRADA = 1;
+export const PESO_CACHE_ESCRITA = 1.25;
+export const PESO_CACHE_LIDA = 0.1;
+export const PESO_SAIDA = 5;
+
 export const MENSAGEM_COTA_ESGOTADA =
   'Você atingiu o limite diário de uso do assistente de IA. O limite volta a valer à meia-noite (UTC).';
 
@@ -22,6 +27,20 @@ export function limiteDiario(): number {
   if (!bruto) return COTA_TOKENS_DIA_PADRAO;
   const valor = Number(bruto);
   return Number.isFinite(valor) && valor >= 0 ? Math.floor(valor) : COTA_TOKENS_DIA_PADRAO;
+}
+
+export function tokensEquivalentes(uso: {
+  entrada: number;
+  saida: number;
+  cacheLida: number;
+  cacheEscrita: number;
+}): number {
+  return Math.ceil(
+    uso.entrada * PESO_ENTRADA +
+      uso.cacheEscrita * PESO_CACHE_ESCRITA +
+      uso.cacheLida * PESO_CACHE_LIDA +
+      uso.saida * PESO_SAIDA,
+  );
 }
 
 export function diaUtc(agora: Date): Date {
@@ -45,7 +64,7 @@ export class CotaTokensService {
       where: { usuarioId_dia: { usuarioId, dia: diaUtc(this.agora()) } },
     });
     if (!uso) return 0;
-    return uso.entrada + uso.saida + uso.cacheLida + uso.cacheEscrita;
+    return tokensEquivalentes(uso);
   }
 
   async verificar(usuarioId: string): Promise<void> {

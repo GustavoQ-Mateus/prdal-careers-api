@@ -15,6 +15,7 @@
     "start:prod": "node dist/main.js",
     "backfill:taxonomia": "nest build && node dist/scripts/backfill-taxonomia.js",
     "reprocessar:keywords": "nest build && node dist/scripts/reprocessar-keywords.js",
+    "tools:exportar": "nest build && node dist/scripts/exportar-tools.js ../ai-service/evals/agente/tools.json",
     "prisma:generate": "prisma generate",
     "postinstall": "prisma generate"
   },

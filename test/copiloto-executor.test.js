@@ -61,10 +61,10 @@ test('args fora do DTO nao chegam ao service', async () => {
   const tool = TOOLS_POR_NOME.get('definir_proximo_passo');
   await assert.rejects(
     executor.executar('u', tool, { titulo: 'x', tipo: 'verificar status' }),
-    (err) => err instanceof ArgumentosInvalidos && /tipo must be one of/.test(err.message),
+    (err) => err instanceof ArgumentosInvalidos && /tipo: deve ser um destes valores/.test(err.message),
   );
   await assert.rejects(executor.executar('u', TOOLS_POR_NOME.get('ler_timeline'), { limite: 500 }), /limite/);
-  await assert.rejects(executor.executar('u', TOOLS_POR_NOME.get('ler_perfil'), { extra: 1 }), /extra should not exist/);
+  await assert.rejects(executor.executar('u', TOOLS_POR_NOME.get('ler_perfil'), { extra: 1 }), /extra: campo que esta ação não aceita/);
   assert.equal(chamadas.length, 0);
 });
 
@@ -97,5 +97,23 @@ test('argumento invalido do modelo vira tool_result com is_error e nao pede conf
   const resultado = mensagensEnviadas(enviados[1]).at(-1).content[0];
   assert.equal(resultado.tool_use_id, 'toolu_x');
   assert.equal(resultado.is_error, true);
-  assert.match(resultado.content, /destino must be one of/);
+  assert.match(resultado.content, /destino: deve ser um destes valores/);
+});
+
+test('mensagens de validacao saem em portugues para o modelo e para o web', async () => {
+  const { executor } = executorComServicos();
+  const casos = [
+    ['ler_timeline', { limite: 500 }, /limite: não pode ser maior que 100/],
+    ['ler_timeline', { limite: 'x' }, /limite: deve ser um número inteiro/],
+    ['registrar_nota', { descricao: 7 }, /descricao: deve ser texto/],
+    ['definir_proximo_passo', { titulo: 'x', tipo: 'outro', principal: 'sim' }, /principal: deve ser verdadeiro ou falso/],
+  ];
+  for (const [nome, args, esperado] of casos) {
+    await assert.rejects(executor.executar('u', TOOLS_POR_NOME.get(nome), args), (err) => {
+      assert.match(err.message, /^argumentos inválidos para /);
+      assert.match(err.message, esperado);
+      assert.doesNotMatch(err.message, /must|should|shorter|longer|greater|less than/);
+      return true;
+    });
+  }
 });

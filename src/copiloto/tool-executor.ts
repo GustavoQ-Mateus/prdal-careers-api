@@ -24,11 +24,46 @@ export const TOOLS_COM_COTA = new Set([
 
 export class ArgumentosInvalidos extends Error {}
 
+function ultimoNumero(texto: string): string {
+  return texto.match(/\d+/g)?.at(-1) ?? '';
+}
+
+function valoresAceitos(texto: string): string {
+  const inicio = texto.indexOf(':');
+  return inicio >= 0 ? texto.slice(inicio + 1).trim() : '';
+}
+
+const TRADUCOES: Record<string, (texto: string) => string> = {
+  whitelistValidation: () => 'campo que esta ação não aceita',
+  isString: () => 'deve ser texto',
+  isInt: () => 'deve ser um número inteiro',
+  isNumber: () => 'deve ser um número',
+  isBoolean: () => 'deve ser verdadeiro ou falso',
+  isDateString: () => 'deve ser uma data no formato ISO 8601',
+  isIso8601: () => 'deve ser uma data no formato ISO 8601',
+  isArray: () => 'deve ser uma lista',
+  isNotEmpty: () => 'não pode ficar vazio',
+  isEnum: (texto) => `deve ser um destes valores: ${valoresAceitos(texto)}`,
+  isIn: (texto) => `deve ser um destes valores: ${valoresAceitos(texto)}`,
+  maxLength: (texto) => `deve ter no máximo ${ultimoNumero(texto)} caracteres`,
+  minLength: (texto) => `deve ter no mínimo ${ultimoNumero(texto)} caracteres`,
+  max: (texto) => `não pode ser maior que ${ultimoNumero(texto)}`,
+  min: (texto) => `não pode ser menor que ${ultimoNumero(texto)}`,
+  arrayMaxSize: (texto) => `deve ter no máximo ${ultimoNumero(texto)} itens`,
+  arrayMinSize: (texto) => `deve ter pelo menos ${ultimoNumero(texto)} itens`,
+  nestedValidation: () => 'deve ser um objeto ou uma lista de objetos',
+};
+
+export function traduzirRestricao(restricao: string, texto: string): string {
+  const traducao = TRADUCOES[restricao];
+  return traducao ? traducao(texto) : texto;
+}
+
 function mensagens(erros: ValidationError[], prefixo = ''): string[] {
   return erros.flatMap((erro) => {
     const caminho = `${prefixo}${erro.property}`;
-    const proprias = Object.values(erro.constraints ?? {}).map((texto) =>
-      texto.startsWith(erro.property) ? `${prefixo}${texto}` : `${caminho}: ${texto}`,
+    const proprias = Object.entries(erro.constraints ?? {}).map(
+      ([restricao, texto]) => `${caminho}: ${traduzirRestricao(restricao, texto)}`,
     );
     return [...proprias, ...mensagens(erro.children ?? [], `${caminho}.`)];
   });
@@ -42,7 +77,7 @@ export async function validarArgs(tool: ToolDef, args: Args): Promise<string | n
     forbidUnknownValues: false,
   });
   if (erros.length === 0) return null;
-  return `argumentos invalidos para ${tool.nome}: ${mensagens(erros).join('; ')}`;
+  return `argumentos inválidos para ${tool.nome}: ${mensagens(erros).join('; ')}`;
 }
 
 function semPaginacao(data: unknown): unknown {

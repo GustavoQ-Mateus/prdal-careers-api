@@ -27,7 +27,7 @@ test('tipo do proximo passo nao e inferido do titulo: o enum do schema decide', 
     });
     assert.equal(resultado.args.tipo, tipo);
     assert.equal(resultado.args.oportunidadeId, 'vaga-1');
-    assert.match(await validarArgs(TOOLS_POR_NOME.get('definir_proximo_passo'), resultado.args), /tipo must be one of/);
+    assert.match(await validarArgs(TOOLS_POR_NOME.get('definir_proximo_passo'), resultado.args), /tipo: deve ser um destes valores/);
   }
 });
 
@@ -163,5 +163,5 @@ test('ChatService nao emite confirmacao para escrita invalida', async () => {
 
   const saida = eventos.join('');
   assert.doesNotMatch(saida, /event: confirmacao/);
-  assert.match(saida, /tipo must be one of/);
+  assert.match(saida, /tipo: deve ser um destes valores/);
 });

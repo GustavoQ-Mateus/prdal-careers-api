@@ -51,7 +51,7 @@ test('chat sem modo roda em assistido e pede confirmacao antes de escrever', asy
   const modos = [];
   const conversa = conversaFalsa('assistido');
   const chamadas = [];
-  const ai = { copilotoTurn: async () => turnoTool('registrar_oportunidade', { titulo: 'Vaga', empresa: 'Acme', descricao: 'Descricao' }) };
+  const ai = { copilotoTurnStream: async () => turnoTool('registrar_oportunidade', { titulo: 'Vaga', empresa: 'Acme', descricao: 'Descricao' }) };
   const executor = { executar: async (_u, tool) => { chamadas.push(tool.nome); return {}; } };
   const res = response();
 
@@ -70,7 +70,7 @@ test('reaproveita oportunidade na mesma conversa no segundo registro confirmado'
     turnoTexto('Oportunidade pronta.'),
   ];
   const chamadas = [];
-  const ai = { copilotoTurn: async () => turnos.shift() };
+  const ai = { copilotoTurnStream: async () => turnos.shift() };
   const executor = {
     executar: async (_u, tool) => {
       chamadas.push(tool.nome);
@@ -112,7 +112,7 @@ test('gerar_curriculo pede confirmacao inclusive no autopiloto', async () => {
     analise: { score: 67, keywordsEncontradas: [], keywordsCriticasAusentes: [], pontosEliminatorios: [], veredicto: 'Cobertura media.' },
   });
   const chamadas = [];
-  const ai = { copilotoTurn: async () => turnoTool('gerar_curriculo', { oportunidadeId: 'vaga-1' }) };
+  const ai = { copilotoTurnStream: async () => turnoTool('gerar_curriculo', { oportunidadeId: 'vaga-1' }) };
   const executor = { executar: async (_u, tool) => { chamadas.push(tool.nome); return {}; } };
   const res = response();
 

@@ -52,7 +52,7 @@ function ambiente({ falharGeracao = false } = {}) {
   const ai = {
     turnos: [],
     payloads: [],
-    copilotoTurn: async (payload) => {
+    copilotoTurnStream: async (payload) => {
       ai.payloads.push(structuredClone(payload));
       const turno = ai.turnos.shift();
       if (!turno) throw new Error('turno nao programado');

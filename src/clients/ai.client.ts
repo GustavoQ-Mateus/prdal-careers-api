@@ -1,6 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { AxiosError } from 'axios';
+import { StringDecoder } from 'node:string_decoder';
 import { firstValueFrom } from 'rxjs';
 import { CotaTokensEsgotada, CotaTokensService } from '../cota/cota-tokens.service';
 import type { BlocoNativo, Troca } from '../copiloto/historico';
@@ -305,7 +306,7 @@ export class AiClient {
     return data;
   }
 
-  async copilotoTurn(
+  async copilotoTurnStream(
     payload: {
       modo: string;
       oportunidadeId: string | null;
@@ -314,18 +315,70 @@ export class AiClient {
       resumo: ResumoConversa | null;
       tools: ToolNativa[];
     },
-    opcoes: OpcoesIa = {},
+    opcoes: OpcoesIa,
+    aoDelta: (texto: string) => void,
   ): Promise<CopilotoTurno> {
-    return this.comCota(opcoes, async () => {
-      const { data } = await firstValueFrom(
-        this.http.post<CopilotoTurno>(
-          `${this.baseUrl}/copiloto/turn`,
-          payload,
-          this.comPrazo(this.llmTimeoutMs, opcoes),
-        ),
+    const usuarioId = opcoes.usuarioId;
+    if (usuarioId && this.cota) await this.cota.verificar(usuarioId);
+    const registro: { uso: UsoLlm | null } = { uso: null };
+    try {
+      return await this.lerTurnoEmStream(payload, opcoes, aoDelta, registro);
+    } finally {
+      if (usuarioId && registro.uso) await this.registrarUso(usuarioId, registro.uso);
+    }
+  }
+
+  private async lerTurnoEmStream(
+    payload: unknown,
+    opcoes: OpcoesIa,
+    aoDelta: (texto: string) => void,
+    registro: { uso: UsoLlm | null },
+  ): Promise<CopilotoTurno> {
+    const controle = new AbortController();
+    const relogio = setTimeout(() => controle.abort(), this.llmTimeoutMs);
+    let emitiu = false;
+    try {
+      const resposta = await this.http.axiosRef.post<NodeJS.ReadableStream>(
+        `${this.baseUrl}/copiloto/turn/stream`,
+        payload,
+        { ...this.comPrazo(this.llmTimeoutMs, opcoes), responseType: 'stream', signal: controle.signal },
       );
-      return data;
-    });
+      const decodificador = new StringDecoder('utf8');
+      let resto = '';
+      for await (const pedaco of resposta.data) {
+        resto += typeof pedaco === 'string' ? pedaco : decodificador.write(pedaco as Buffer);
+        let quebra = resto.indexOf('\n');
+        while (quebra >= 0) {
+          const linha = resto.slice(0, quebra).trim();
+          resto = resto.slice(quebra + 1);
+          quebra = resto.indexOf('\n');
+          if (!linha) continue;
+          const evento = JSON.parse(linha) as EventoTurnoStream;
+          if (evento.tipo === 'delta') {
+            emitiu = true;
+            aoDelta(evento.texto);
+          } else if (evento.tipo === 'fim') {
+            registro.uso = evento.uso ?? null;
+            return {
+              conteudo: evento.conteudo,
+              parada: evento.parada,
+              resumo: evento.resumo ?? null,
+              uso: evento.uso ?? null,
+              modelo: evento.modelo ?? null,
+            };
+          } else {
+            registro.uso = evento.uso ?? null;
+            throw new TurnoInterrompido(evento.detail, emitiu || evento.interrompido === true);
+          }
+        }
+      }
+      throw new TurnoInterrompido('o turno terminou sem resposta completa', emitiu);
+    } catch (err) {
+      if (err instanceof TurnoInterrompido || !emitiu) throw err;
+      throw new TurnoInterrompido((err as Error).message, true);
+    } finally {
+      clearTimeout(relogio);
+    }
   }
 
   async redigirMensagem(
@@ -392,4 +445,18 @@ export interface CopilotoTurno extends ComUso {
   conteudo: BlocoNativo[];
   parada: string;
   resumo?: ResumoConversa | null;
+}
+
+type EventoTurnoStream =
+  | { tipo: 'delta'; texto: string }
+  | ({ tipo: 'fim' } & CopilotoTurno)
+  | { tipo: 'erro'; detail: string; interrompido?: boolean; uso?: UsoLlm | null; modelo?: string | null };
+
+export class TurnoInterrompido extends Error {
+  constructor(
+    mensagem: string,
+    readonly emitiu: boolean,
+  ) {
+    super(mensagem);
+  }
 }

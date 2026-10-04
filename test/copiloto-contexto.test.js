@@ -53,7 +53,7 @@ test('resumo devolvido e persistido e o proximo turno so manda as trocas depois 
     { ...turnoTexto('Certo.'), resumo: { texto: 'Candidato adiou o registro.', ate: 4 } },
     turnoTexto('Seguimos.'),
   ];
-  const ai = { copilotoTurn: async (payload) => { payloads.push(structuredClone(payload)); return turnos.shift(); } };
+  const ai = { copilotoTurnStream: async (payload) => { payloads.push(structuredClone(payload)); return turnos.shift(); } };
   const service = new ChatService(conversas, ai, { executar: async () => ({}) });
 
   await service.chat(res, { userId: 'u1' }, { mensagem: 'e a vaga de dados?' });
@@ -71,7 +71,7 @@ test('resultado de tool fica inteiro no historico, sem corte por caractere', asy
   const { conversas, res } = cenario(conversa);
   const grande = { nome: 'Pessoa', resumo: 'a'.repeat(9000) };
   const turnos = [turnoTool('ler_perfil', {}, 'toolu_g'), turnoTexto('Li.')];
-  const ai = { copilotoTurn: async () => turnos.shift() };
+  const ai = { copilotoTurnStream: async () => turnos.shift() };
 
   await new ChatService(conversas, ai, { executar: async () => grande }).chat(res, { userId: 'u1' }, { mensagem: 'leia' });
 

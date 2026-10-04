@@ -60,7 +60,7 @@ test('ChatService nao emite confirmacao para escrita invalida', async () => {
     }),
     turnoTexto('Vou consultar a geração pela tool correta.'),
   ];
-  const ai = { copilotoTurn: async () => turnos.shift() };
+  const ai = { copilotoTurnStream: async () => turnos.shift() };
   const executor = {
     executar: () => {
       throw new Error('nao deve executar escrita invalida');

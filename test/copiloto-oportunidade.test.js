@@ -38,7 +38,7 @@ async function subir(t) {
     anexar: async () => {},
     definirPendencia: async () => {},
   };
-  const ai = { copilotoTurn: async () => turnoTexto('ok') };
+  const ai = { copilotoTurnStream: async () => turnoTexto('ok') };
   const chat = new ChatService(conversas, ai, {}, oportunidades);
 
   const { url } = await subirApp(t, {

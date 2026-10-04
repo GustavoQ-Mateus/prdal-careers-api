@@ -234,7 +234,7 @@ test('no chat SSE a cota estourada sai como evento de erro', async (t) => {
     finalizar: async () => {},
   };
   const ai = {
-    copilotoTurn: async () => {
+    copilotoTurnStream: async () => {
       throw new CotaTokensEsgotada(120);
     },
   };

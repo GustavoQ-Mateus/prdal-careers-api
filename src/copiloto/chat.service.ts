@@ -2,8 +2,7 @@ import { HttpException, Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import type { Response } from 'express';
 import { AuthUser } from '../auth/current-user.decorator';
-import { CopilotoTurno } from '../clients/ai.client';
-import { AiClient } from '../clients/ai.client';
+import { AiClient, CopilotoTurno, TurnoInterrompido } from '../clients/ai.client';
 import { CotaTokensEsgotada, MENSAGEM_COTA_ESGOTADA } from '../cota/cota-tokens.service';
 import { ConversaCopilotoDoc, MensagemCopiloto } from '../mongo/mongo.service';
 import { OportunidadesService } from '../oportunidades/oportunidades.service';
@@ -207,8 +206,9 @@ export class ChatService {
   ): Promise<void> {
     for (let passo = 0; passo < MAX_PASSOS; passo++) {
       let turno: CopilotoTurno;
+      let transmitido = false;
       try {
-        turno = await this.ai.copilotoTurn(
+        turno = await this.ai.copilotoTurnStream(
           {
             modo,
             oportunidadeId: conversa.oportunidadeId,
@@ -218,8 +218,22 @@ export class ChatService {
             tools: TOOLS_NATIVAS,
           },
           { operacao: `conversa:${conversa._id}`, usuarioId: conversa.usuarioId },
+          (delta) => {
+            transmitido = true;
+            this.enviar(res, 'token', { delta });
+          },
         );
       } catch (err) {
+        if (err instanceof TurnoInterrompido && err.emitiu) {
+          await this.registrarErro(conversa, 'ai-service', `resposta interrompida no meio: ${err.message}`);
+          this.enviar(res, 'erro', {
+            escopo: 'ai-service',
+            mensagem: 'A resposta foi interrompida antes de terminar. Repita para continuar.',
+            recuperavel: true,
+          });
+          this.finalizar(res, conversa._id, 'erro');
+          return;
+        }
         if (err instanceof CotaTokensEsgotada) {
           await this.registrarErro(conversa, 'cota', MENSAGEM_COTA_ESGOTADA);
           this.enviar(res, 'erro', {
@@ -253,7 +267,7 @@ export class ChatService {
         .trim();
       const chamadas = blocos.filter((bloco): bloco is ToolUse => bloco.type === 'tool_use');
       await this.registrar(conversa, { papel: 'assistant', conteudo: texto, blocos });
-      this.streamTokens(res, texto);
+      if (!transmitido && texto) this.enviar(res, 'token', { delta: texto });
 
       if (chamadas.length === 0) {
         this.finalizar(res, conversa._id, 'completo');
@@ -565,13 +579,6 @@ export class ChatService {
         recuperavel: true,
       });
       return false;
-    }
-  }
-
-  private streamTokens(res: Response, texto: string): void {
-    if (!texto) return;
-    for (const parte of texto.match(/\S+\s*/g) ?? [texto]) {
-      this.enviar(res, 'token', { delta: parte });
     }
   }
 

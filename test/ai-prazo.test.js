@@ -9,9 +9,12 @@ function servidorQueRegistra() {
   const servidor = http.createServer((req, res) => {
     recebidas.push({ url: req.url, prazo: req.headers['x-prdal-prazo-ms'], operacao: req.headers['x-prdal-operacao'] });
     res.setHeader('Content-Type', 'application/json');
+    if (req.url === '/copiloto/turn/stream') {
+      res.end(`${JSON.stringify({ tipo: 'fim', conteudo: [{ type: 'text', text: 'oi' }], parada: 'end_turn' })}\n`);
+      return;
+    }
     const corpos = {
       '/keywords': { keywords: [{ termo: 'Python', peso: 1 }], status: 'VALIDAS', degradacao: null },
-      '/copiloto/turn': { tipo: 'texto', texto: 'oi', tool: null, args: {} },
       '/generate-cv-pipeline': { markdown: '# x', analiseInicial: {}, analiseFinal: {}, degradacao: null },
     };
     res.end(JSON.stringify(corpos[req.url] ?? { chunks: [] }));
@@ -35,13 +38,13 @@ test('chamadas de LLM enviam ao ai-service o prazo restante e a operacao, as dem
   const ai = app.get(AiClient);
 
   await ai.keywords('Vaga Python');
-  await ai.copilotoTurn({ modo: 'assistido', oportunidadeId: null, mensagens: [], tools: [] }, { operacao: 'conversa:c1' });
+  await ai.copilotoTurnStream({ modo: 'assistido', oportunidadeId: null, trocas: [], resumo: null, tools: [] }, { operacao: 'conversa:c1' }, () => {});
   await ai.generateCvPipeline({ perfilMestre: {}, vaga: {}, keywords: [], contexto: [] }, { operacao: 'geracao:g1' });
   await ai.contextQuery('usuario-1', 'consulta');
 
   assert.deepEqual(recebidas, [
     { url: '/keywords', prazo: '44000', operacao: undefined },
-    { url: '/copiloto/turn', prazo: '44000', operacao: 'conversa:c1' },
+    { url: '/copiloto/turn/stream', prazo: '44000', operacao: 'conversa:c1' },
     { url: '/generate-cv-pipeline', prazo: '199000', operacao: 'geracao:g1' },
     { url: '/context/query', prazo: undefined, operacao: undefined },
   ]);

@@ -87,7 +87,7 @@ test('argumento invalido do modelo vira tool_result com is_error e nao pede conf
   const conversas = { abrir: async () => conversa, anexar: async () => {}, definirPendencia: async () => { throw new Error('sem pendencia'); } };
   const enviados = [];
   const turnos = [turnoTool('mover_estagio', { destino: 'CONTRATADO' }, 'toolu_x'), turnoTexto('Vou corrigir.')];
-  const ai = { copilotoTurn: async (payload) => { enviados.push(structuredClone(payload)); return turnos.shift(); } };
+  const ai = { copilotoTurnStream: async (payload) => { enviados.push(structuredClone(payload)); return turnos.shift(); } };
   const eventos = [];
   const res = { setHeader() {}, flushHeaders() {}, write: (e) => eventos.push(e), end() {} };
 

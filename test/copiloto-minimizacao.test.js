@@ -28,7 +28,7 @@ async function enviadoAoLlmDepoisDeLerPerfil(perfil) {
     turnoTexto('Li seu perfil.'),
   ];
   const ai = {
-    copilotoTurn: async (payload) => {
+    copilotoTurnStream: async (payload) => {
       enviadosAoLlm.push(JSON.stringify(payload.trocas));
       return turnos.shift();
     },

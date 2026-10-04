@@ -88,7 +88,7 @@ test('persiste o par tool_use e tool_result com o id do modelo e reenvia nativo'
   const { conversa, conversas } = conversaFalsa();
   const enviados = [];
   const turnos = [turnoTool('ler_perfil', {}, 'toolu_perfil_1'), turnoTexto('Li seu perfil.')];
-  const ai = { copilotoTurn: async (payload) => { enviados.push(structuredClone(payload)); return turnos.shift(); } };
+  const ai = { copilotoTurnStream: async (payload) => { enviados.push(structuredClone(payload)); return turnos.shift(); } };
   const executor = { executar: async () => ({ nome: 'Pessoa', resumo: 'Back-end' }) };
   const res = resposta();
 
@@ -114,7 +114,7 @@ test('falha da tool volta como tool_result com is_error', async () => {
   const { conversa, conversas } = conversaFalsa();
   const enviados = [];
   const turnos = [turnoTool('ler_perfil', {}, 'toolu_falha'), turnoTexto('Nao consegui ler.')];
-  const ai = { copilotoTurn: async (payload) => { enviados.push(structuredClone(payload)); return turnos.shift(); } };
+  const ai = { copilotoTurnStream: async (payload) => { enviados.push(structuredClone(payload)); return turnos.shift(); } };
   const executor = { executar: async () => { throw new Error('banco fora do ar'); } };
 
   await new ChatService(conversas, ai, executor).chat(resposta(), { userId: 'usuario-1' }, { mensagem: 'leia' });
@@ -133,7 +133,7 @@ test('recusa da escrita fecha o tool_use pendente com o mesmo id', async () => {
     turnoTool('registrar_oportunidade', { titulo: 'V', empresa: 'E', descricao: 'D' }, 'toolu_escrita'),
     turnoTexto('Tudo bem, nao registrei.'),
   ];
-  const ai = { copilotoTurn: async (payload) => { enviados.push(structuredClone(payload)); return turnos.shift(); } };
+  const ai = { copilotoTurnStream: async (payload) => { enviados.push(structuredClone(payload)); return turnos.shift(); } };
   const service = new ChatService(conversas, ai, { executar: () => { throw new Error('nao deve escrever'); } });
 
   await service.chat(resposta(), { userId: 'usuario-1' }, { mensagem: 'registre' });

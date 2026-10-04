@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { AuthUser } from '../auth/current-user.decorator';
 import { CopilotoTurno } from '../clients/ai.client';
 import { AiClient } from '../clients/ai.client';
+import { prefixoApi } from '../config/prefixo';
 import { ConversaCopilotoDoc, MensagemCopiloto } from '../mongo/mongo.service';
 import { OportunidadesService } from '../oportunidades/oportunidades.service';
 import { ConversasService } from './conversas.service';
@@ -27,7 +28,7 @@ export function exigeConfirmacao(tool: ToolDef, modo: 'assistido' | 'autopiloto'
 @Injectable()
 export class ChatService {
   private readonly selfUrl =
-    process.env.API_SELF_URL ?? `http://127.0.0.1:${process.env.PORT ?? 3000}`;
+    (process.env.API_SELF_URL ?? `http://127.0.0.1:${process.env.PORT ?? 3000}`).replace(/\/+$/, '') + prefixoApi();
 
   constructor(
     private readonly conversas: ConversasService,

@@ -1,0 +1,101 @@
+require('reflect-metadata');
+const assert = require('node:assert/strict');
+const test = require('node:test');
+const { HttpService } = require('@nestjs/axios');
+const { turnoTexto, turnoTool } = require('./helpers/turnos');
+const { ChatService } = require('../dist/copiloto/chat.service');
+const { ArgumentosInvalidos, ToolExecutor } = require('../dist/copiloto/tool-executor');
+const { TOOLS_POR_NOME } = require('../dist/copiloto/tools');
+
+function executorComServicos() {
+  const chamadas = [];
+  const servico = (nome, retorno = {}) =>
+    new Proxy({}, {
+      get: (_alvo, metodo) => async (...args) => {
+        chamadas.push([`${nome}.${String(metodo)}`, ...args]);
+        return typeof retorno === 'function' ? retorno(String(metodo)) : retorno;
+      },
+    });
+  const cotas = [];
+  const executor = new ToolExecutor(
+    servico('oportunidades', (metodo) => (metodo === 'listar' ? { itens: [{ id: 'v1' }], total: 1 } : { id: 'v1' })),
+    servico('acoes', { id: 'acao-1' }),
+    servico('curriculos', { jobId: 'job-1', status: 'GERANDO' }),
+    servico('perfil', { nome: 'Pessoa' }),
+    servico('bancoVagas'),
+    servico('hoje', { itens: [] }),
+    servico('candidaturas'),
+    servico('capacidades'),
+    { verificar: async (usuarioId) => cotas.push(usuarioId) },
+  );
+  return { executor, chamadas, cotas };
+}
+
+test('executa a tool chamando o service com o usuario, sem HTTP', async () => {
+  const { executor, chamadas } = executorComServicos();
+  const tool = TOOLS_POR_NOME.get('definir_proximo_passo');
+  const resultado = await executor.executar('usuario-1', tool, {
+    oportunidadeId: 'v1',
+    titulo: 'Enviar follow-up',
+    tipo: 'FAZER_FOLLOW_UP',
+    venceEm: '2026-10-10T12:00:00.000Z',
+  });
+  assert.deepEqual(resultado, { id: 'acao-1' });
+  assert.deepEqual(chamadas, [[
+    'acoes.criar',
+    'usuario-1',
+    'v1',
+    { titulo: 'Enviar follow-up', tipo: 'FAZER_FOLLOW_UP', venceEm: '2026-10-10T12:00:00.000Z', lembrarEm: undefined, principal: undefined },
+  ]]);
+});
+
+test('listagens paginadas chegam como lista e a agenda garante a preferencia antes', async () => {
+  const { executor, chamadas } = executorComServicos();
+  assert.deepEqual(await executor.executar('u', TOOLS_POR_NOME.get('listar_oportunidades'), { visao: 'ativas' }), [{ id: 'v1' }]);
+  await executor.executar('u', TOOLS_POR_NOME.get('ler_agenda'), { periodo: '7' });
+  assert.deepEqual(chamadas.slice(1).map((c) => c[0]), ['hoje.garantirPreferencia', 'hoje.agenda']);
+});
+
+test('args fora do DTO nao chegam ao service', async () => {
+  const { executor, chamadas } = executorComServicos();
+  const tool = TOOLS_POR_NOME.get('definir_proximo_passo');
+  await assert.rejects(
+    executor.executar('u', tool, { titulo: 'x', tipo: 'verificar status' }),
+    (err) => err instanceof ArgumentosInvalidos && /tipo must be one of/.test(err.message),
+  );
+  await assert.rejects(executor.executar('u', TOOLS_POR_NOME.get('ler_timeline'), { limite: 500 }), /limite/);
+  await assert.rejects(executor.executar('u', TOOLS_POR_NOME.get('ler_perfil'), { extra: 1 }), /extra should not exist/);
+  assert.equal(chamadas.length, 0);
+});
+
+test('tools que chamam o Claude verificam a cota antes, as demais nao', async () => {
+  const { executor, cotas } = executorComServicos();
+  await executor.executar('u1', TOOLS_POR_NOME.get('gerar_curriculo'), { oportunidadeId: 'v1' });
+  await executor.executar('u1', TOOLS_POR_NOME.get('buscar_oportunidade'), { oportunidadeId: 'v1' });
+  assert.deepEqual(cotas, ['u1']);
+});
+
+test('ChatService nao depende de HttpService nem de credencial do usuario', () => {
+  const dependencias = Reflect.getMetadata('design:paramtypes', ChatService);
+  assert.ok(!dependencias.includes(HttpService));
+  assert.ok(dependencias.includes(ToolExecutor));
+  assert.equal(ChatService.prototype.chat.length, 3);
+});
+
+test('argumento invalido do modelo vira tool_result com is_error e nao pede confirmacao', async () => {
+  const conversa = { _id: 'c1', usuarioId: 'u1', modo: 'assistido', oportunidadeId: 'v1', mensagens: [], pendencia: null };
+  const conversas = { abrir: async () => conversa, anexar: async () => {}, definirPendencia: async () => { throw new Error('sem pendencia'); } };
+  const enviados = [];
+  const turnos = [turnoTool('mover_estagio', { destino: 'CONTRATADO' }, 'toolu_x'), turnoTexto('Vou corrigir.')];
+  const ai = { copilotoTurn: async (payload) => { enviados.push(structuredClone(payload)); return turnos.shift(); } };
+  const eventos = [];
+  const res = { setHeader() {}, flushHeaders() {}, write: (e) => eventos.push(e), end() {} };
+
+  await new ChatService(conversas, ai, { executar: () => { throw new Error('nao executa'); } }).chat(res, { userId: 'u1' }, { mensagem: 'mova a vaga' });
+
+  assert.doesNotMatch(eventos.join(''), /event: confirmacao/);
+  const resultado = enviados[1].mensagens.at(-1).content[0];
+  assert.equal(resultado.tool_use_id, 'toolu_x');
+  assert.equal(resultado.is_error, true);
+  assert.match(resultado.content, /destino must be one of/);
+});

@@ -247,7 +247,7 @@ test('no chat SSE a cota estourada sai como evento de erro', async (t) => {
     write: (bloco) => eventos.push(bloco),
     end: () => {},
   };
-  await chat.chat(res, { userId: 'u1' }, {}, { mensagem: 'oi' });
+  await chat.chat(res, { userId: 'u1' }, { mensagem: 'oi' });
 
   const erro = eventos.find((bloco) => bloco.includes('event: erro'));
   assert.ok(erro, eventos.join(''));

@@ -11,6 +11,6 @@ import { OportunidadesService } from './oportunidades.service';
   imports: [ClientsModule, BancoVagasModule, CurriculosModule],
   controllers: [OportunidadesController, AcoesController],
   providers: [OportunidadesService, AcoesService],
-  exports: [OportunidadesService],
+  exports: [OportunidadesService, AcoesService],
 })
 export class OportunidadesModule {}

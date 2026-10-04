@@ -1,7 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { turnoTexto, turnoTool } = require('./helpers/turnos');
-const { of } = require('rxjs');
 const { ChatService } = require('../dist/copiloto/chat.service');
 
 const EMAIL = 'pessoa.privada@exemplo.dev';
@@ -34,10 +33,10 @@ async function enviadoAoLlmDepoisDeLerPerfil(perfil) {
       return turnos.shift();
     },
   };
-  const http = { request: () => of({ data: perfil }) };
+  const executor = { executar: async () => perfil };
   const res = { setHeader() {}, flushHeaders() {}, write() {}, end() {} };
 
-  await new ChatService(conversas, ai, http).chat(res, { userId: 'usuario-1' }, {}, { mensagem: 'leia meu perfil' });
+  await new ChatService(conversas, ai, executor).chat(res, { userId: 'usuario-1' }, { mensagem: 'leia meu perfil' });
 
   assert.equal(enviadosAoLlm.length, 2);
   return enviadosAoLlm[1];

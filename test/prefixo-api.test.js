@@ -77,13 +77,3 @@ test('sem API_PREFIXO o health e as rotas ficam na raiz', async (t) => {
   assert.equal((await nav.entrar('vitima@teste.dev', SENHA)).status, 201);
   assert.equal(nav.jarra.get('prdal_refresh').attrs.path, '/auth/refresh');
 });
-
-test('selfUrl das ferramentas do copiloto inclui o prefixo', (t) => {
-  const { ChatService } = require('../dist/copiloto/chat.service');
-  const nova = () => new ChatService({}, {}, {}, {});
-  process.env.API_SELF_URL = 'http://api:3000/';
-  t.after(() => delete process.env.API_SELF_URL);
-  assert.equal(nova().selfUrl, 'http://api:3000');
-  comPrefixo(t, 'api');
-  assert.equal(nova().selfUrl, 'http://api:3000/api');
-});

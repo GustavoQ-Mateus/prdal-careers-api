@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Headers,
   Param,
   Post,
   Query,
@@ -52,12 +51,10 @@ export class CopilotoController {
   @LimitarRequisicoes(LIMITES.chat)
   async chatSse(
     @CurrentUser() user: AuthUser,
-    @Headers('cookie') cookie: string | undefined,
-    @Headers('x-csrf-token') csrf: string | undefined,
     @Body() dto: ChatDto,
     @Res() res: Response,
   ) {
-    await this.chat.chat(res, user, { cookie: cookie ?? '', 'x-csrf-token': csrf ?? '' }, dto);
+    await this.chat.chat(res, user, dto);
   }
 
   @Post('keywords-previa')

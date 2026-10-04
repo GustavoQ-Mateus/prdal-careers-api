@@ -25,15 +25,6 @@ import {
 
 export type EfeitoTool = 'leitura' | 'escrita' | 'entrega_externa';
 
-export type Metodo = 'GET' | 'POST' | 'PUT' | 'PATCH';
-
-export interface RequisicaoTool {
-  metodo: Metodo;
-  caminho: string;
-  corpo?: Record<string, unknown>;
-  query?: Record<string, string>;
-}
-
 export interface ToolDef {
   nome: string;
   efeito: EfeitoTool;
@@ -41,7 +32,6 @@ export interface ToolDef {
   dto: ClasseDto;
   esquema?: OpcoesEsquema;
   resumo?: (args: Args) => string;
-  requisicao: (args: Args) => RequisicaoTool;
 }
 
 type Args = Record<string, unknown>;
@@ -52,22 +42,6 @@ export const LIMITE_OPCIONAIS_ESTRITOS = 24;
 const ID_OPORTUNIDADE = 'id da oportunidade; quando omitido, vale a oportunidade em foco';
 
 const s = (v: unknown): string => (v == null ? '' : String(v));
-
-const query = (args: Args, chaves: string[]): Record<string, string> => {
-  const q: Record<string, string> = {};
-  for (const chave of chaves) {
-    if (args[chave] != null && args[chave] !== '') q[chave] = s(args[chave]);
-  }
-  return q;
-};
-
-const corpo = (args: Args, chaves: string[]): Record<string, unknown> => {
-  const c: Record<string, unknown> = {};
-  for (const chave of chaves) {
-    if (args[chave] !== undefined) c[chave] = args[chave];
-  }
-  return c;
-};
 
 export const TOOLS: ToolDef[] = [
   {
@@ -81,11 +55,6 @@ export const TOOLS: ToolDef[] = [
         busca: 'texto livre sobre titulo e empresa',
       },
     },
-    requisicao: (a) => ({
-      metodo: 'GET',
-      caminho: '/oportunidades',
-      query: query(a, ['visao', 'busca', 'categoria', 'nivel', 'prioridade', 'ordenarPor']),
-    }),
   },
   {
     nome: 'buscar_oportunidade',
@@ -93,7 +62,6 @@ export const TOOLS: ToolDef[] = [
     descricao: 'Detalha uma oportunidade',
     dto: OportunidadeAlvoDto,
     esquema: { descricoes: { oportunidadeId: ID_OPORTUNIDADE } },
-    requisicao: (a) => ({ metodo: 'GET', caminho: `/oportunidades/${s(a.oportunidadeId)}` }),
   },
   {
     nome: 'abrir_workspace',
@@ -101,7 +69,6 @@ export const TOOLS: ToolDef[] = [
     descricao: 'Abre o workspace com candidatura, curriculos e acoes da oportunidade',
     dto: OportunidadeAlvoDto,
     esquema: { descricoes: { oportunidadeId: ID_OPORTUNIDADE } },
-    requisicao: (a) => ({ metodo: 'GET', caminho: `/oportunidades/${s(a.oportunidadeId)}/workspace` }),
   },
   {
     nome: 'ler_timeline',
@@ -115,11 +82,6 @@ export const TOOLS: ToolDef[] = [
         limite: 'quantidade de eventos, de 1 a 100',
       },
     },
-    requisicao: (a) => ({
-      metodo: 'GET',
-      caminho: `/oportunidades/${s(a.oportunidadeId)}/timeline`,
-      query: query(a, ['cursor', 'limite']),
-    }),
   },
   {
     nome: 'listar_acoes',
@@ -127,14 +89,12 @@ export const TOOLS: ToolDef[] = [
     descricao: 'Lista as acoes de agenda da oportunidade',
     dto: OportunidadeAlvoDto,
     esquema: { descricoes: { oportunidadeId: ID_OPORTUNIDADE } },
-    requisicao: (a) => ({ metodo: 'GET', caminho: `/oportunidades/${s(a.oportunidadeId)}/acoes` }),
   },
   {
     nome: 'ler_perfil',
     efeito: 'leitura',
     descricao: 'Le o perfil-mestre do candidato, sem dados de contato',
     dto: SemArgumentosDto,
-    requisicao: () => ({ metodo: 'GET', caminho: '/perfil-mestre' }),
   },
   {
     nome: 'listar_curriculos',
@@ -148,11 +108,6 @@ export const TOOLS: ToolDef[] = [
         vinculado: 'true para curriculos ja usados em candidatura, false para os demais',
       },
     },
-    requisicao: (a) => ({
-      metodo: 'GET',
-      caminho: '/curriculos',
-      query: query(a, ['vagaId', 'scoreMinimo', 'vinculado']),
-    }),
   },
   {
     nome: 'buscar_curriculo',
@@ -160,7 +115,6 @@ export const TOOLS: ToolDef[] = [
     descricao:
       'Etapa 3 obrigatoria: le o curriculo concluido e seu score e breakdown ATS deterministico antes de qualquer acao externa',
     dto: CurriculoAlvoDto,
-    requisicao: (a) => ({ metodo: 'GET', caminho: `/curriculos/${s(a.curriculoId)}` }),
   },
   {
     nome: 'status_geracao',
@@ -169,14 +123,12 @@ export const TOOLS: ToolDef[] = [
       'Consulta uma geracao de curriculo em andamento; quando o status for CONCLUIDA, leia o curriculo com buscar_curriculo usando o curriculoId retornado',
     dto: GeracaoAlvoDto,
     esquema: { descricoes: { jobId: 'id devolvido por gerar_curriculo' } },
-    requisicao: (a) => ({ metodo: 'GET', caminho: `/geracoes-curriculo/${s(a.jobId)}` }),
   },
   {
     nome: 'listar_banco_vagas',
     efeito: 'leitura',
     descricao: 'Lista o banco de vagas importadas',
     dto: SemArgumentosDto,
-    requisicao: () => ({ metodo: 'GET', caminho: '/banco-vagas' }),
   },
   {
     nome: 'ler_agenda',
@@ -190,7 +142,6 @@ export const TOOLS: ToolDef[] = [
         periodo: 'janela em dias a partir de hoje',
       },
     },
-    requisicao: (a) => ({ metodo: 'GET', caminho: '/hoje', query: query(a, ['de', 'ate', 'periodo']) }),
   },
 
   {
@@ -200,11 +151,6 @@ export const TOOLS: ToolDef[] = [
     dto: CriarOportunidadeDto,
     esquema: { descricoes: { fonte: 'url ou origem da vaga' } },
     resumo: (a) => `Registrar a oportunidade ${s(a.titulo)} na ${s(a.empresa)}`,
-    requisicao: (a) => ({
-      metodo: 'POST',
-      caminho: '/oportunidades',
-      corpo: corpo(a, ['titulo', 'empresa', 'descricao', 'fonte']),
-    }),
   },
   {
     nome: 'ativar_entrada',
@@ -212,7 +158,6 @@ export const TOOLS: ToolDef[] = [
     descricao: 'Ativa uma entrada da visao de entrada como oportunidade',
     dto: EntradaAlvoDto,
     resumo: () => 'Ativar a entrada como oportunidade',
-    requisicao: (a) => ({ metodo: 'POST', caminho: `/oportunidades/entradas/${s(a.entradaId)}/ativar` }),
   },
   {
     nome: 'ativar_banco_vaga',
@@ -220,7 +165,6 @@ export const TOOLS: ToolDef[] = [
     descricao: 'Ativa uma vaga do banco de vagas como oportunidade',
     dto: BancoVagaAlvoDto,
     resumo: () => 'Ativar a vaga do banco como oportunidade',
-    requisicao: (a) => ({ metodo: 'POST', caminho: `/banco-vagas/${s(a.bancoVagaId)}/ativar` }),
   },
   {
     nome: 'analisar_ats',
@@ -229,7 +173,6 @@ export const TOOLS: ToolDef[] = [
       'Etapa 1 do pipeline ATS: analisa o perfil-mestre contra a vaga e devolve score, keywords encontradas, ausentes, pontos eliminatorios e veredicto antes da geracao',
     dto: OportunidadeAlvoDto,
     esquema: { descricoes: { oportunidadeId: ID_OPORTUNIDADE } },
-    requisicao: (a) => ({ metodo: 'POST', caminho: `/oportunidades/${s(a.oportunidadeId)}/analisar-ats` }),
   },
   {
     nome: 'gerar_curriculo',
@@ -239,7 +182,6 @@ export const TOOLS: ToolDef[] = [
     dto: OportunidadeAlvoDto,
     esquema: { descricoes: { oportunidadeId: ID_OPORTUNIDADE } },
     resumo: () => 'Gerar o curriculo tailored para a oportunidade',
-    requisicao: (a) => ({ metodo: 'POST', caminho: `/oportunidades/${s(a.oportunidadeId)}/gerar-cv` }),
   },
   {
     nome: 'editar_curriculo',
@@ -248,11 +190,6 @@ export const TOOLS: ToolDef[] = [
     dto: EditarCurriculoToolDto,
     esquema: { descricoes: { markdown: 'curriculo completo em markdown', rotulo: 'nome curto da versao' } },
     resumo: () => 'Editar o curriculo e recomputar o score',
-    requisicao: (a) => ({
-      metodo: 'PUT',
-      caminho: `/curriculos/${s(a.curriculoId)}`,
-      corpo: corpo(a, ['markdown', 'rotulo']),
-    }),
   },
   {
     nome: 'definir_proximo_passo',
@@ -272,11 +209,6 @@ export const TOOLS: ToolDef[] = [
       },
     },
     resumo: (a) => `Definir o proximo passo: ${s(a.titulo)}`,
-    requisicao: (a) => ({
-      metodo: 'POST',
-      caminho: `/oportunidades/${s(a.oportunidadeId)}/acoes`,
-      corpo: corpo(a, ['titulo', 'tipo', 'venceEm', 'lembrarEm', 'principal']),
-    }),
   },
   {
     nome: 'concluir_passo',
@@ -284,7 +216,6 @@ export const TOOLS: ToolDef[] = [
     descricao: 'Conclui uma acao de agenda',
     dto: AcaoAlvoDto,
     resumo: () => 'Concluir o passo',
-    requisicao: (a) => ({ metodo: 'POST', caminho: `/acoes/${s(a.acaoId)}/concluir` }),
   },
   {
     nome: 'mover_estagio',
@@ -293,11 +224,6 @@ export const TOOLS: ToolDef[] = [
     dto: MoverEstagioDto,
     esquema: { descricoes: { oportunidadeId: ID_OPORTUNIDADE, motivo: 'motivo da mudanca, quando houver' } },
     resumo: (a) => `Mover a oportunidade para ${s(a.destino)}`,
-    requisicao: (a) => ({
-      metodo: 'POST',
-      caminho: `/oportunidades/${s(a.oportunidadeId)}/transicoes`,
-      corpo: corpo(a, ['destino', 'motivo']),
-    }),
   },
   {
     nome: 'registrar_candidatura',
@@ -306,7 +232,6 @@ export const TOOLS: ToolDef[] = [
     dto: CriarCandidaturaDto,
     esquema: { descricoes: { vagaId: 'id da oportunidade', curriculoId: 'curriculo usado na inscricao' } },
     resumo: () => 'Registrar a candidatura',
-    requisicao: (a) => ({ metodo: 'POST', caminho: '/candidaturas', corpo: corpo(a, ['vagaId', 'curriculoId']) }),
   },
   {
     nome: 'atualizar_candidatura',
@@ -314,11 +239,6 @@ export const TOOLS: ToolDef[] = [
     descricao: 'Atualiza status, notas ou curriculo de uma candidatura',
     dto: AtualizarCandidaturaToolDto,
     resumo: () => 'Atualizar a candidatura',
-    requisicao: (a) => ({
-      metodo: 'PATCH',
-      caminho: `/candidaturas/${s(a.candidaturaId)}`,
-      corpo: corpo(a, ['status', 'notas', 'curriculoId']),
-    }),
   },
   {
     nome: 'registrar_nota',
@@ -327,11 +247,6 @@ export const TOOLS: ToolDef[] = [
     dto: RegistrarNotaDto,
     esquema: { descricoes: { oportunidadeId: ID_OPORTUNIDADE, descricao: 'texto da nota' } },
     resumo: () => 'Registrar a nota no historico',
-    requisicao: (a) => ({
-      metodo: 'POST',
-      caminho: `/oportunidades/${s(a.oportunidadeId)}/timeline/notas`,
-      corpo: corpo(a, ['descricao']),
-    }),
   },
 
   {
@@ -341,11 +256,6 @@ export const TOOLS: ToolDef[] = [
       'Depois da Etapa 3, redige a mensagem ao recrutador e entrega o texto para o candidato revisar e enviar',
     dto: MensagemRecrutadorDto,
     esquema: { descricoes: { oportunidadeId: 'id da oportunidade', contexto: 'contexto dado pelo candidato' } },
-    requisicao: (a) => ({
-      metodo: 'POST',
-      caminho: '/copiloto/mensagem-recrutador',
-      corpo: corpo(a, ['oportunidadeId', 'contexto']),
-    }),
   },
   {
     nome: 'redigir_respostas_formulario',
@@ -353,11 +263,6 @@ export const TOOLS: ToolDef[] = [
     descricao: 'Redige respostas para campos de formulario de candidatura e entrega o texto para o candidato usar',
     dto: RespostasFormularioDto,
     esquema: { descricoes: { oportunidadeId: 'id da oportunidade', campos: 'perguntas do formulario' } },
-    requisicao: (a) => ({
-      metodo: 'POST',
-      caminho: '/copiloto/respostas-formulario',
-      corpo: corpo(a, ['oportunidadeId', 'campos']),
-    }),
   },
 ];
 

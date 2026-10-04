@@ -1,13 +1,10 @@
-import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import type { Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import { firstValueFrom } from 'rxjs';
 import { AuthUser } from '../auth/current-user.decorator';
 import { CopilotoTurno } from '../clients/ai.client';
 import { AiClient } from '../clients/ai.client';
-import { prefixoApi } from '../config/prefixo';
 import { CotaTokensEsgotada, MENSAGEM_COTA_ESGOTADA } from '../cota/cota-tokens.service';
 import { ConversaCopilotoDoc, MensagemCopiloto } from '../mongo/mongo.service';
 import { OportunidadesService } from '../oportunidades/oportunidades.service';
@@ -16,6 +13,7 @@ import { ConversasService } from './conversas.service';
 import { ChatDto } from './copiloto.dto';
 import { BlocoNativo, paraMensagensNativas, resultadoTool } from './historico';
 import { prepararArgsTool } from './tool-args';
+import { ToolExecutor, validarArgs } from './tool-executor';
 import { ToolDef, TOOLS_NATIVAS, TOOLS_POR_NOME } from './tools';
 
 const MAX_PASSOS = 8;
@@ -42,20 +40,16 @@ export function exigeConfirmacao(tool: ToolDef, modo: 'assistido' | 'autopiloto'
 
 @Injectable()
 export class ChatService {
-  private readonly selfUrl =
-    (process.env.API_SELF_URL ?? `http://127.0.0.1:${process.env.PORT ?? 3000}`).replace(/\/+$/, '') + prefixoApi();
-
   constructor(
     private readonly conversas: ConversasService,
     private readonly ai: AiClient,
-    private readonly http: HttpService,
+    private readonly executor: ToolExecutor,
     private readonly oportunidades: OportunidadesService,
   ) {}
 
   async chat(
     res: Response,
     user: AuthUser,
-    credencial: Record<string, string>,
     dto: ChatDto,
   ): Promise<void> {
     if (dto.oportunidadeId) {
@@ -76,12 +70,7 @@ export class ChatService {
 
     try {
       if (dto.confirmacao) {
-        const seguir = await this.resolverConfirmacao(
-          res,
-          conversa,
-          credencial,
-          dto,
-        );
+        const seguir = await this.resolverConfirmacao(res, conversa, dto);
         if (!seguir) return;
       } else if (dto.mensagem) {
         if (conversa.pendencia) {
@@ -91,7 +80,7 @@ export class ChatService {
         await this.registrar(conversa, { papel: 'user', conteudo: dto.mensagem });
       }
 
-      await this.laco(res, conversa, credencial, modo);
+      await this.laco(res, conversa, modo);
     } catch (err) {
       await this.registrarErro(conversa, 'interno', this.mensagemErro(err));
       this.enviar(res, 'erro', {
@@ -106,7 +95,6 @@ export class ChatService {
   private async resolverConfirmacao(
     res: Response,
     conversa: ConversaCopilotoDoc,
-    credencial: Record<string, string>,
     dto: ChatDto,
   ): Promise<boolean> {
     const pend = conversa.pendencia;
@@ -158,13 +146,14 @@ export class ChatService {
       mensagens: conversa.mensagens,
     });
     const args = preparados.args;
-    if (preparados.erro) {
+    const erroArgs = preparados.erro ?? (await validarArgs(tool, args));
+    if (erroArgs) {
       await this.conversas.definirPendencia(conversa._id, null);
       await this.conversas.registrarConfirmacao(conversa._id, {
         callId: pend.callId,
         tool: pend.tool,
         decisao: 'confirmar',
-        erro: preparados.erro,
+        erro: erroArgs,
         concluidaEm: new Date(),
       });
       this.enviar(res, 'tool_resultado', {
@@ -172,7 +161,7 @@ export class ChatService {
         tool: tool.nome,
         ok: false,
         resultado: null,
-        erro: { mensagem: preparados.erro, recuperavel: true },
+        erro: { mensagem: erroArgs, recuperavel: true },
       });
       await this.registrarResultado(conversa, {
         callId: pend.callId,
@@ -180,7 +169,7 @@ export class ChatService {
         efeito: tool.efeito,
         args,
         ok: false,
-        erro: preparados.erro,
+        erro: erroArgs,
       });
       return true;
     }
@@ -191,7 +180,7 @@ export class ChatService {
       args,
       exigeConfirmacao: false,
     });
-    const resultado = await this.executarTool(res, conversa, credencial, tool, pend.callId, args);
+    const resultado = await this.executarTool(res, conversa, tool, pend.callId, args);
     const geracaoEmAndamento = tool.nome === 'gerar_curriculo'
       && resultado.ok
       && this.geracaoEmAndamento(resultado.valor);
@@ -214,7 +203,6 @@ export class ChatService {
   private async laco(
     res: Response,
     conversa: ConversaCopilotoDoc,
-    credencial: Record<string, string>,
     modo: 'assistido' | 'autopiloto',
   ): Promise<void> {
     for (let passo = 0; passo < MAX_PASSOS; passo++) {
@@ -306,13 +294,14 @@ export class ChatService {
         mensagens: conversa.mensagens,
       });
       const args = preparados.args;
-      if (preparados.erro) {
+      const erroArgs = preparados.erro ?? (await validarArgs(tool, args));
+      if (erroArgs) {
         this.enviar(res, 'tool_resultado', {
           callId,
           tool: tool.nome,
           ok: false,
           resultado: null,
-          erro: { mensagem: preparados.erro, recuperavel: true },
+          erro: { mensagem: erroArgs, recuperavel: true },
         });
         await this.registrarResultado(conversa, {
           callId,
@@ -320,7 +309,7 @@ export class ChatService {
           efeito: tool.efeito,
           args,
           ok: false,
-          erro: preparados.erro,
+          erro: erroArgs,
         });
         continue;
       }
@@ -363,14 +352,7 @@ export class ChatService {
           args,
           exigeConfirmacao: false,
         });
-        const entregue = await this.entregar(
-          res,
-          conversa,
-          credencial,
-          tool,
-          callId,
-          args,
-        );
+        const entregue = await this.entregar(res, conversa, tool, callId, args);
         this.finalizar(
           res,
           conversa._id,
@@ -386,7 +368,7 @@ export class ChatService {
         args,
         exigeConfirmacao: false,
       });
-      const execucao = await this.executarTool(res, conversa, credencial, tool, callId, args);
+      const execucao = await this.executarTool(res, conversa, tool, callId, args);
       if (execucao.ok) {
         await this.aplicarResultadoTool(conversa, tool.nome, execucao.valor);
       }
@@ -447,7 +429,6 @@ export class ChatService {
   private async executarTool(
     res: Response,
     conversa: ConversaCopilotoDoc,
-    credencial: Record<string, string>,
     tool: ToolDef,
     callId: string,
     args: Record<string, unknown>,
@@ -456,14 +437,14 @@ export class ChatService {
       const resultado =
         tool.nome === 'registrar_oportunidade' && conversa.oportunidadeId
           ? {
-              ...((await this.requisitar(
+              ...((await this.executor.executar(
+                conversa.usuarioId,
                 TOOLS_POR_NOME.get('buscar_oportunidade')!,
                 { oportunidadeId: conversa.oportunidadeId },
-                credencial,
               )) as Record<string, unknown>),
               reaproveitada: true,
             }
-          : await this.requisitar(tool, args, credencial);
+          : await this.executor.executar(conversa.usuarioId, tool, args);
       this.enviar(res, 'tool_resultado', {
         callId,
         tool: tool.nome,
@@ -504,13 +485,12 @@ export class ChatService {
   private async entregar(
     res: Response,
     conversa: ConversaCopilotoDoc,
-    credencial: Record<string, string>,
     tool: ToolDef,
     callId: string,
     args: Record<string, unknown>,
   ): Promise<boolean> {
     try {
-      const r = (await this.requisitar(tool, args, credencial)) as {
+      const r = (await this.executor.executar(conversa.usuarioId, tool, args)) as {
         tipo: string;
         titulo: string;
         texto: string;
@@ -545,37 +525,6 @@ export class ChatService {
       });
       return false;
     }
-  }
-
-  private async requisitar(
-    tool: ToolDef,
-    args: Record<string, unknown>,
-    credencial: Record<string, string>,
-  ): Promise<unknown> {
-    const req = tool.requisicao(args);
-    const { data } = await firstValueFrom(
-      this.http.request({
-        method: req.metodo,
-        url: `${this.selfUrl}${req.caminho}`,
-        params: req.query,
-        data: req.corpo,
-        headers: credencial,
-        timeout: 120000,
-      }),
-    );
-    return this.desembrulhar(data);
-  }
-
-  private desembrulhar(data: unknown): unknown {
-    if (
-      data !== null &&
-      typeof data === 'object' &&
-      Array.isArray((data as { itens?: unknown }).itens) &&
-      typeof (data as { total?: unknown }).total === 'number'
-    ) {
-      return (data as { itens: unknown }).itens;
-    }
-    return data;
   }
 
   private streamTokens(res: Response, texto: string): void {
@@ -695,6 +644,12 @@ export class ChatService {
   }
 
   private mensagemErro(err: unknown): string {
+    if (err instanceof HttpException) {
+      const corpo = err.getResponse() as string | { message?: string | string[] };
+      const mensagem = typeof corpo === 'string' ? corpo : corpo?.message;
+      if (Array.isArray(mensagem)) return mensagem.join('; ');
+      return mensagem ? String(mensagem) : err.message;
+    }
     if (err instanceof AxiosError) {
       const data = err.response?.data as { message?: string; detail?: string } | undefined;
       if (data?.message) return String(data.message);

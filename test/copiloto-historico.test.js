@@ -1,6 +1,5 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { of, throwError } = require('rxjs');
 const { turnoTexto, turnoTool } = require('./helpers/turnos');
 const { ChatService } = require('../dist/copiloto/chat.service');
 const { paraMensagensNativas } = require('../dist/copiloto/historico');
@@ -90,10 +89,10 @@ test('persiste o par tool_use e tool_result com o id do modelo e reenvia nativo'
   const enviados = [];
   const turnos = [turnoTool('ler_perfil', {}, 'toolu_perfil_1'), turnoTexto('Li seu perfil.')];
   const ai = { copilotoTurn: async (payload) => { enviados.push(structuredClone(payload)); return turnos.shift(); } };
-  const http = { request: () => of({ data: { nome: 'Pessoa', resumo: 'Back-end' } }) };
+  const executor = { executar: async () => ({ nome: 'Pessoa', resumo: 'Back-end' }) };
   const res = resposta();
 
-  await new ChatService(conversas, ai, http).chat(res, { userId: 'usuario-1' }, {}, { mensagem: 'leia meu perfil' });
+  await new ChatService(conversas, ai, executor).chat(res, { userId: 'usuario-1' }, { mensagem: 'leia meu perfil' });
 
   const assistente = conversa.mensagens.find((m) => m.papel === 'assistant' && m.blocos?.some((b) => b.type === 'tool_use'));
   assert.deepEqual(assistente.blocos, [{ type: 'tool_use', id: 'toolu_perfil_1', name: 'ler_perfil', input: {} }]);
@@ -116,9 +115,9 @@ test('falha da tool volta como tool_result com is_error', async () => {
   const enviados = [];
   const turnos = [turnoTool('ler_perfil', {}, 'toolu_falha'), turnoTexto('Nao consegui ler.')];
   const ai = { copilotoTurn: async (payload) => { enviados.push(structuredClone(payload)); return turnos.shift(); } };
-  const http = { request: () => throwError(() => new Error('banco fora do ar')) };
+  const executor = { executar: async () => { throw new Error('banco fora do ar'); } };
 
-  await new ChatService(conversas, ai, http).chat(resposta(), { userId: 'usuario-1' }, {}, { mensagem: 'leia' });
+  await new ChatService(conversas, ai, executor).chat(resposta(), { userId: 'usuario-1' }, { mensagem: 'leia' });
 
   const resultado = enviados[1].mensagens[2].content[0];
   assert.equal(resultado.tool_use_id, 'toolu_falha');
@@ -135,11 +134,11 @@ test('recusa da escrita fecha o tool_use pendente com o mesmo id', async () => {
     turnoTexto('Tudo bem, nao registrei.'),
   ];
   const ai = { copilotoTurn: async (payload) => { enviados.push(structuredClone(payload)); return turnos.shift(); } };
-  const service = new ChatService(conversas, ai, { request: () => { throw new Error('nao deve escrever'); } });
+  const service = new ChatService(conversas, ai, { executar: () => { throw new Error('nao deve escrever'); } });
 
-  await service.chat(resposta(), { userId: 'usuario-1' }, {}, { mensagem: 'registre' });
+  await service.chat(resposta(), { userId: 'usuario-1' }, { mensagem: 'registre' });
   assert.equal(conversa.pendencia.callId, 'toolu_escrita');
-  await service.chat(resposta(), { userId: 'usuario-1' }, {}, { conversaId: 'conversa-1', confirmacao: { callId: 'toolu_escrita', decisao: 'recusar' } });
+  await service.chat(resposta(), { userId: 'usuario-1' }, { conversaId: 'conversa-1', confirmacao: { callId: 'toolu_escrita', decisao: 'recusar' } });
 
   const ultimo = enviados[1].mensagens;
   assertPareado(ultimo);

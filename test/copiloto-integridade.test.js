@@ -1,7 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { turnoTexto, turnoTool } = require('./helpers/turnos');
-const { of } = require('rxjs');
 const { ChatService, exigeConfirmacao } = require('../dist/copiloto/chat.service');
 const { TOOLS_POR_NOME } = require('../dist/copiloto/tools');
 
@@ -52,10 +51,10 @@ test('chat sem modo roda em assistido e pede confirmacao antes de escrever', asy
   const conversa = conversaFalsa('assistido');
   const chamadas = [];
   const ai = { copilotoTurn: async () => turnoTool('registrar_oportunidade', { titulo: 'Vaga', empresa: 'Acme', descricao: 'Descricao' }) };
-  const http = { request: (request) => { chamadas.push(request); return of({ data: {} }); } };
+  const executor = { executar: async (_u, tool) => { chamadas.push(tool.nome); return {}; } };
   const res = response();
 
-  await new ChatService(conversasFalsas(conversa, modos), ai, http).chat(res, { userId: 'usuario-1' }, {}, { mensagem: 'Registre a vaga.' });
+  await new ChatService(conversasFalsas(conversa, modos), ai, executor).chat(res, { userId: 'usuario-1' }, { mensagem: 'Registre a vaga.' });
 
   assert.deepEqual(modos, ['assistido']);
   assert.equal(chamadas.length, 0);
@@ -71,24 +70,23 @@ test('reaproveita oportunidade na mesma conversa no segundo registro confirmado'
   ];
   const chamadas = [];
   const ai = { copilotoTurn: async () => turnos.shift() };
-  const http = {
-    request: (request) => {
-      chamadas.push(request);
-      return of({ data: { id: 'vaga-1', titulo: 'Vaga', empresa: 'Acme' } });
+  const executor = {
+    executar: async (_u, tool) => {
+      chamadas.push(tool.nome);
+      return { id: 'vaga-1', titulo: 'Vaga', empresa: 'Acme' };
     },
   };
-  const service = new ChatService(conversasFalsas(conversa, []), ai, http);
+  const service = new ChatService(conversasFalsas(conversa, []), ai, executor);
   const usuario = { userId: 'usuario-1' };
 
   const primeiro = response();
-  await service.chat(primeiro, usuario, {}, { mensagem: 'Registre duas vezes por engano.' });
+  await service.chat(primeiro, usuario, { mensagem: 'Registre duas vezes por engano.' });
   const segundo = response();
-  await service.chat(segundo, usuario, {}, { conversaId: conversa._id, confirmacao: { callId: confirmacaoPendente(primeiro), decisao: 'confirmar' } });
+  await service.chat(segundo, usuario, { conversaId: conversa._id, confirmacao: { callId: confirmacaoPendente(primeiro), decisao: 'confirmar' } });
   const terceiro = response();
-  await service.chat(terceiro, usuario, {}, { conversaId: conversa._id, confirmacao: { callId: confirmacaoPendente(segundo), decisao: 'confirmar' } });
+  await service.chat(terceiro, usuario, { conversaId: conversa._id, confirmacao: { callId: confirmacaoPendente(segundo), decisao: 'confirmar' } });
 
-  assert.equal(chamadas.filter((request) => request.method === 'POST').length, 1);
-  assert.equal(chamadas.filter((request) => request.method === 'GET').length, 1);
+  assert.deepEqual(chamadas, ['registrar_oportunidade', 'buscar_oportunidade']);
   assert.match(terceiro.eventos.join(''), /reaproveitada/);
   assert.equal(conversa.oportunidadeId, 'vaga-1');
 });
@@ -110,10 +108,10 @@ test('gerar_curriculo pede confirmacao inclusive no autopiloto', async () => {
   };
   const chamadas = [];
   const ai = { copilotoTurn: async () => turnoTool('gerar_curriculo', { oportunidadeId: 'vaga-1' }) };
-  const http = { request: (request) => { chamadas.push(request); return of({ data: {} }); } };
+  const executor = { executar: async (_u, tool) => { chamadas.push(tool.nome); return {}; } };
   const res = response();
 
-  await new ChatService(conversasFalsas(conversa, []), ai, http).chat(res, { userId: 'usuario-1' }, {}, { modo: 'autopiloto', mensagem: 'Gere o curriculo.' });
+  await new ChatService(conversasFalsas(conversa, []), ai, executor).chat(res, { userId: 'usuario-1' }, { modo: 'autopiloto', mensagem: 'Gere o curriculo.' });
 
   assert.equal(chamadas.length, 0);
   assert.ok(confirmacaoPendente(res));

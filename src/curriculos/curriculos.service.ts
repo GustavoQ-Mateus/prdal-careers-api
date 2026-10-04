@@ -530,17 +530,20 @@ export class CurriculosService implements OnModuleInit {
         where: { id },
         data: { status: 'GERANDO' },
       });
-      const pipeline = await this.aiClient.generateCvPipeline({
-        perfilMestre: perfilParaIa(perfil),
-        vaga: {
-          titulo: geracao.vaga.titulo,
-          empresa: geracao.vaga.empresa,
-          descricao: geracao.vaga.descricao,
+      const pipeline = await this.aiClient.generateCvPipeline(
+        {
+          perfilMestre: perfilParaIa(perfil),
+          vaga: {
+            titulo: geracao.vaga.titulo,
+            empresa: geracao.vaga.empresa,
+            descricao: geracao.vaga.descricao,
+            keywords,
+          },
           keywords,
+          contexto,
         },
-        keywords,
-        contexto,
-      });
+        { operacao: `geracao:${id}` },
+      );
       await this.prisma.geracaoCurriculo.update({
         where: { id },
         data: {
@@ -563,6 +566,8 @@ export class CurriculosService implements OnModuleInit {
       let markdown = pipeline.markdown;
       let analiseFinal = pipeline.analiseFinal;
       let degradacao = pipeline.degradacao;
+      let modelo = pipeline.modelo ?? null;
+      let promptVersion = pipeline.promptVersion ?? null;
       let { docxPath, pdfPath, paginas, falhou } = await this.renderizar(
         curriculoId,
         markdown,
@@ -575,24 +580,29 @@ export class CurriculosService implements OnModuleInit {
           `curriculo ${curriculoId} com ${paginas} paginas; rodada ${rodadas} de corte de conteudo`,
         );
         try {
-          const reducao = await this.aiClient.reduzirCurriculo({
-            perfilMestre: perfilParaIa(perfil),
-            vaga: {
-              titulo: geracao.vaga.titulo,
-              empresa: geracao.vaga.empresa,
-              descricao: geracao.vaga.descricao,
+          const reducao = await this.aiClient.reduzirCurriculo(
+            {
+              perfilMestre: perfilParaIa(perfil),
+              vaga: {
+                titulo: geracao.vaga.titulo,
+                empresa: geracao.vaga.empresa,
+                descricao: geracao.vaga.descricao,
+                keywords,
+              },
               keywords,
+              contexto,
+              markdownAtual: markdown,
             },
-            keywords,
-            contexto,
-            markdownAtual: markdown,
-          });
+            { operacao: `geracao:${id}` },
+          );
           if (reducao.degradacao || reducao.markdown === markdown) {
             degradacao = mesclarDegradacao(degradacao, reducao.degradacao);
             break;
           }
           markdown = reducao.markdown;
           analiseFinal = reducao.analiseFinal;
+          modelo = reducao.modelo ?? modelo;
+          promptVersion = reducao.promptVersion ?? promptVersion;
           ({ docxPath, pdfPath, paginas, falhou } = await this.renderizar(
             curriculoId,
             markdown,
@@ -629,6 +639,8 @@ export class CurriculosService implements OnModuleInit {
               pipeline.analiseInicial as unknown as Prisma.InputJsonValue,
             analiseFinal: analiseFinal as unknown as Prisma.InputJsonValue,
             degradacao,
+            modelo,
+            promptVersion,
           },
         });
         await tx.geracaoCurriculo.update({

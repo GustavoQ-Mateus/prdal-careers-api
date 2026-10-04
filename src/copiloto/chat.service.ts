@@ -207,12 +207,15 @@ export class ChatService {
     for (let passo = 0; passo < MAX_PASSOS; passo++) {
       let turno: CopilotoTurno;
       try {
-        turno = await this.ai.copilotoTurn({
-          modo,
-          oportunidadeId: conversa.oportunidadeId,
-          mensagens: conversa.mensagens,
-          tools: CATALOGO_TOOLS,
-        });
+        turno = await this.ai.copilotoTurn(
+          {
+            modo,
+            oportunidadeId: conversa.oportunidadeId,
+            mensagens: conversa.mensagens,
+            tools: CATALOGO_TOOLS,
+          },
+          { operacao: `conversa:${conversa._id}` },
+        );
       } catch (err) {
         await this.registrarErro(conversa, 'ai-service', this.mensagemErro(err));
         this.enviar(res, 'erro', {

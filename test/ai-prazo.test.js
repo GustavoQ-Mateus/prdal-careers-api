@@ -7,7 +7,7 @@ const { NestFactory } = require('@nestjs/core');
 function servidorQueRegistra() {
   const recebidas = [];
   const servidor = http.createServer((req, res) => {
-    recebidas.push({ url: req.url, prazo: req.headers['x-prdal-prazo-ms'] });
+    recebidas.push({ url: req.url, prazo: req.headers['x-prdal-prazo-ms'], operacao: req.headers['x-prdal-operacao'] });
     res.setHeader('Content-Type', 'application/json');
     const corpos = {
       '/keywords': { keywords: [{ termo: 'Python', peso: 1 }], status: 'VALIDAS', degradacao: null },
@@ -21,7 +21,7 @@ function servidorQueRegistra() {
   });
 }
 
-test('chamadas de LLM enviam ao ai-service o prazo restante e as demais nao', async (t) => {
+test('chamadas de LLM enviam ao ai-service o prazo restante e a operacao, as demais nao', async (t) => {
   const { servidor, recebidas, url } = await servidorQueRegistra();
   t.after(() => servidor.close());
   process.env.AI_SERVICE_URL = url;
@@ -35,14 +35,14 @@ test('chamadas de LLM enviam ao ai-service o prazo restante e as demais nao', as
   const ai = app.get(AiClient);
 
   await ai.keywords('Vaga Python');
-  await ai.copilotoTurn({ modo: 'assistido', oportunidadeId: null, mensagens: [], tools: [] });
-  await ai.generateCvPipeline({ perfilMestre: {}, vaga: {}, keywords: [], contexto: [] });
+  await ai.copilotoTurn({ modo: 'assistido', oportunidadeId: null, mensagens: [], tools: [] }, { operacao: 'conversa:c1' });
+  await ai.generateCvPipeline({ perfilMestre: {}, vaga: {}, keywords: [], contexto: [] }, { operacao: 'geracao:g1' });
   await ai.contextQuery('usuario-1', 'consulta');
 
   assert.deepEqual(recebidas, [
-    { url: '/keywords', prazo: '44000' },
-    { url: '/copiloto/turn', prazo: '44000' },
-    { url: '/generate-cv-pipeline', prazo: '199000' },
-    { url: '/context/query', prazo: undefined },
+    { url: '/keywords', prazo: '44000', operacao: undefined },
+    { url: '/copiloto/turn', prazo: '44000', operacao: 'conversa:c1' },
+    { url: '/generate-cv-pipeline', prazo: '199000', operacao: 'geracao:g1' },
+    { url: '/context/query', prazo: undefined, operacao: undefined },
   ]);
 });

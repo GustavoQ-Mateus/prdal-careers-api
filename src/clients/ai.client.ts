@@ -6,12 +6,30 @@ const DEFAULT_GENERATE_TIMEOUT_MS = 300000;
 const DEFAULT_LLM_TIMEOUT_MS = 60000;
 const MARGEM_PRAZO_MS = 1000;
 export const HEADER_PRAZO = 'X-Prdal-Prazo-Ms';
+export const HEADER_OPERACAO = 'X-Prdal-Operacao';
 export const DEGRADACAO_KEYWORDS_INDISPONIVEIS =
   'A extração de keywords da vaga está indisponível no momento. Tente novamente em instantes.';
 
 function envMs(nome: string, fallback: number): number {
   const valor = Number(process.env[nome]);
   return Number.isFinite(valor) && valor > 0 ? valor : fallback;
+}
+
+export interface UsoLlm {
+  entrada: number;
+  saida: number;
+  cacheLida: number;
+  cacheEscrita: number;
+  chamadas: number;
+}
+
+export interface ComUso {
+  uso?: UsoLlm | null;
+  modelo?: string | null;
+}
+
+export interface OpcoesIa {
+  operacao?: string;
 }
 
 export interface Keyword {
@@ -21,7 +39,7 @@ export interface Keyword {
 
 export type KeywordStatus = 'VALIDAS' | 'PENDENTE';
 
-export interface KeywordExtraction {
+export interface KeywordExtraction extends ComUso {
   keywords: Keyword[];
   status: KeywordStatus;
   degradacao: string | null;
@@ -50,7 +68,7 @@ export interface AtsAnalysis {
   breakdown: ScoreBreakdown;
 }
 
-export interface GeneratePipelineResult {
+export interface GeneratePipelineResult extends ComUso {
   markdown: string;
   analiseInicial: AtsAnalysis;
   analiseFinal: AtsAnalysis;
@@ -71,10 +89,13 @@ export class AiClient {
 
   constructor(private readonly http: HttpService) {}
 
-  private comPrazo(timeoutMs: number) {
+  private comPrazo(timeoutMs: number, opcoes: OpcoesIa = {}) {
     return {
       timeout: timeoutMs,
-      headers: { [HEADER_PRAZO]: String(Math.max(1, timeoutMs - MARGEM_PRAZO_MS)) },
+      headers: {
+        [HEADER_PRAZO]: String(Math.max(1, timeoutMs - MARGEM_PRAZO_MS)),
+        ...(opcoes.operacao ? { [HEADER_OPERACAO]: opcoes.operacao } : {}),
+      },
     };
   }
 
@@ -91,6 +112,8 @@ export class AiClient {
         keywords: data.keywords ?? [],
         status: data.status === 'VALIDAS' && data.keywords?.length ? 'VALIDAS' : 'PENDENTE',
         degradacao: data.degradacao ?? null,
+        uso: data.uso ?? null,
+        modelo: data.modelo ?? null,
       };
     } catch (err) {
       this.logger.warn(
@@ -120,34 +143,40 @@ export class AiClient {
     return data.markdown;
   }
 
-  async generateCvPipeline(payload: {
-    perfilMestre: unknown;
-    vaga: unknown;
-    keywords: Keyword[];
-    contexto: string[];
-  }): Promise<GeneratePipelineResult> {
+  async generateCvPipeline(
+    payload: {
+      perfilMestre: unknown;
+      vaga: unknown;
+      keywords: Keyword[];
+      contexto: string[];
+    },
+    opcoes: OpcoesIa = {},
+  ): Promise<GeneratePipelineResult> {
     const { data } = await firstValueFrom(
       this.http.post<GeneratePipelineResult>(
         `${this.baseUrl}/generate-cv-pipeline`,
         payload,
-        this.comPrazo(this.generateTimeoutMs),
+        this.comPrazo(this.generateTimeoutMs, opcoes),
       ),
     );
     return data;
   }
 
-  async reduzirCurriculo(payload: {
-    perfilMestre: unknown;
-    vaga: unknown;
-    keywords: Keyword[];
-    contexto: string[];
-    markdownAtual: string;
-  }): Promise<GeneratePipelineResult> {
+  async reduzirCurriculo(
+    payload: {
+      perfilMestre: unknown;
+      vaga: unknown;
+      keywords: Keyword[];
+      contexto: string[];
+      markdownAtual: string;
+    },
+    opcoes: OpcoesIa = {},
+  ): Promise<GeneratePipelineResult> {
     const { data } = await firstValueFrom(
       this.http.post<GeneratePipelineResult>(
         `${this.baseUrl}/reduzir-curriculo`,
         payload,
-        this.comPrazo(this.generateTimeoutMs),
+        this.comPrazo(this.generateTimeoutMs, opcoes),
       ),
     );
     return data;
@@ -227,22 +256,25 @@ export class AiClient {
     return data;
   }
 
-  async copilotoTurn(payload: {
-    modo: string;
-    oportunidadeId: string | null;
-    mensagens: { papel: string; conteudo: string; tool?: string | null }[];
-    tools: {
-      nome: string;
-      efeito: string;
-      descricao: string;
-      parametros: Record<string, unknown>;
-    }[];
-  }): Promise<CopilotoTurno> {
+  async copilotoTurn(
+    payload: {
+      modo: string;
+      oportunidadeId: string | null;
+      mensagens: { papel: string; conteudo: string; tool?: string | null }[];
+      tools: {
+        nome: string;
+        efeito: string;
+        descricao: string;
+        parametros: Record<string, unknown>;
+      }[];
+    },
+    opcoes: OpcoesIa = {},
+  ): Promise<CopilotoTurno> {
     const { data } = await firstValueFrom(
       this.http.post<CopilotoTurno>(
         `${this.baseUrl}/copiloto/turn`,
         payload,
-        this.comPrazo(this.llmTimeoutMs),
+        this.comPrazo(this.llmTimeoutMs, opcoes),
       ),
     );
     return data;
@@ -287,7 +319,7 @@ export class AiClient {
   }
 }
 
-export interface CopilotoTurno {
+export interface CopilotoTurno extends ComUso {
   tipo: 'texto' | 'tool_call';
   texto: string | null;
   tool: string | null;

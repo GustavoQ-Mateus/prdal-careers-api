@@ -117,6 +117,8 @@ model Curriculo {
   analiseInicial Json?                  @map("analise_inicial")
   analiseFinal   Json?                  @map("analise_final")
   degradacao     String?
+  modelo         String?
+  promptVersion  String?                @map("prompt_version")
   geradoEm       DateTime               @default(now()) @map("gerado_em")
   candidaturas   Candidatura[]
   eventos        EventoOportunidade[]

@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { cabecalhoServico } from '../config/servico';
 import { cabecalhoRequestId } from '../observabilidade/contexto';
+import { Fila } from '../jobs/fila';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type EstadoDependencia = 'ok' | 'indisponivel' | 'desconhecido';
@@ -45,16 +46,20 @@ export class SaudeService {
 
   constructor(
     private readonly prisma: PrismaService,
+    @Optional() private readonly fila?: Fila,
   ) {}
 
   async prontidao(): Promise<Prontidao> {
     const ms = prazoMs();
-    const [postgres, ia, doc] = await Promise.all([
+    const [postgres, ia, doc, fila] = await Promise.all([
       this.verificar('postgres', true, () => this.prisma.$queryRaw`SELECT 1`, ms),
       this.aiService(ms),
       this.verificar('doc-service', false, () => this.http(`${this.docUrl()}/health`, ms), ms),
+      this.fila
+        ? this.verificar('fila', false, () => this.fila!.verificar(), ms)
+        : Promise.resolve<SituacaoDependencia>({ nome: 'fila', obrigatoria: false, estado: 'desconhecido' }),
     ]);
-    const dependencias = [postgres, ...ia, doc];
+    const dependencias = [postgres, ...ia, doc, fila];
     const pronto = dependencias.every((d) => !d.obrigatoria || d.estado === 'ok');
     for (const { nome, obrigatoria, estado, detalhe } of dependencias) {
       if (estado !== 'ok') this.logger.warn({ mensagem: 'dependencia fora', dependencia: nome, obrigatoria, estado, detalhe });

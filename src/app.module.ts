@@ -19,6 +19,7 @@ import { PerfilModule } from './perfil/perfil.module';
 import { EventosModule } from './eventos/eventos.module';
 import { HojeModule } from './hoje/hoje.module';
 import { JANELAS } from './limites/limite-requisicoes';
+import { JobsModule } from './jobs/jobs.module';
 import { OportunidadesModule } from './oportunidades/oportunidades.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { PipelineAtsModule } from './pipeline-ats/pipeline-ats.module';
@@ -36,6 +37,7 @@ import { VagasModule } from './vagas/vagas.module';
     }),
     ThrottlerModule.forRoot(JANELAS),
     PrismaModule,
+    JobsModule,
     PipelineAtsModule,
     CotaModule,
     RepositoriosModule,

@@ -30,6 +30,7 @@ model Usuario {
   notas         NotaObsidian[]
   bancoVagas    BancoVaga[]
   chunksRag     ChunkRag[]
+  jobs          Job[]
 
   @@map("usuarios")
 }
@@ -575,4 +576,44 @@ model ChunkRag {
   @@unique([documentoId, indice])
   @@index([usuarioId, modelo])
   @@map("chunks_rag")
+}
+
+enum TipoJob {
+  gerar_curriculo
+  extrair_keywords
+  importar_lote
+  reindexar_contexto
+}
+
+enum StatusJob {
+  PENDENTE
+  PROCESSANDO
+  CONCLUIDO
+  ERRO
+}
+
+model Job {
+  id            String    @id @default(uuid())
+  tipo          TipoJob
+  status        StatusJob @default(PENDENTE)
+  tentativas    Int       @default(0)
+  lockedUntil   DateTime? @map("locked_until")
+  lockedBy      String?   @map("locked_by")
+  erro          String?
+  entrada       Json?
+  resultado     Json?
+  usuarioId     String    @map("usuario_id")
+  usuario       Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  referenciaId  String    @map("referencia_id")
+  requestId     String?   @map("request_id")
+  enfileiradoEm DateTime? @map("enfileirado_em")
+  iniciadoEm    DateTime? @map("iniciado_em")
+  concluidoEm   DateTime? @map("concluido_em")
+  criadoEm      DateTime  @default(now()) @map("criado_em")
+  atualizadoEm  DateTime  @default(now()) @updatedAt @map("atualizado_em")
+
+  @@index([status, criadoEm])
+  @@index([tipo, referenciaId])
+  @@index([usuarioId])
+  @@map("jobs")
 }

@@ -35,7 +35,8 @@ const AI_PRONTO = {
   corpo: { servico: 'ai-service', status: 'pronto', dependencias: [{ nome: 'embeddings', obrigatoria: false, estado: 'ok' }] },
 };
 
-async function subir(t, { ai, doc, prisma, prefixo } = {}) {
+async function subir(t, { ai, doc, prisma, prefixo, fila } = {}) {
+  const { Fila } = require('../dist/jobs/fila');
   const { SaudeController } = require('../dist/saude/saude.controller');
   const { SaudeService } = require('../dist/saude/saude.service');
   const { PrismaService } = require('../dist/prisma/prisma.service');
@@ -63,6 +64,7 @@ async function subir(t, { ai, doc, prisma, prefixo } = {}) {
     providers: [
       SaudeService,
       { provide: PrismaService, useValue: prisma ?? { $queryRaw: async () => [{ '?column?': 1 }] } },
+      { provide: Fila, useValue: fila ?? { verificar: async () => {} } },
     ],
     configurar: (app) => {
       app.useLogger(logger);
@@ -91,12 +93,21 @@ test('tudo no ar: ready 200 com cada dependencia e se e obrigatoria', async (t) 
   const { status, corpo, deps } = await ready(url);
   assert.equal(status, 200);
   assert.equal(corpo.status, 'pronto');
-  assert.deepEqual(Object.keys(deps), ['postgres', 'ai-service', 'embeddings', 'doc-service']);
+  assert.deepEqual(Object.keys(deps), ['postgres', 'ai-service', 'embeddings', 'doc-service', 'fila']);
   for (const d of Object.values(deps)) assert.equal(d.estado, 'ok', d.nome);
   assert.equal(deps.postgres.obrigatoria, true);
   assert.equal(deps['ai-service'].obrigatoria, false);
   assert.equal(deps['doc-service'].obrigatoria, false);
   assert.equal(deps.embeddings.obrigatoria, false);
+  assert.equal(deps.fila.obrigatoria, false);
+});
+
+test('fila fora nao derruba o ready da api: o job fica pendente para a varredura do worker', async (t) => {
+  const { url } = await subir(t, { fila: { verificar: async () => { throw new Error('fila fora'); } } });
+  const { status, deps } = await ready(url);
+  assert.equal(status, 200);
+  assert.equal(deps.fila.estado, 'indisponivel');
+  assert.match(motivoNoLog('fila').detalhe, /fila fora/);
 });
 
 test('ai-service fora: api segue pronta e aponta ai-service e embeddings', async (t) => {

@@ -15,7 +15,7 @@
     "baseUrl": "./",
     "strict": true,
     "paths": {
-      "@prdal/shared-types": ["../../packages/shared-types/dist"]
+      "@prdal/contracts": ["../../packages/contracts/dist"]
     }
   },
   "include": ["src"]

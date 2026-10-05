@@ -1,6 +1,6 @@
 import { Controller, Get, Res } from '@nestjs/common';
 import type { Response } from 'express';
-import type { HealthResponse } from '@prdal/shared-types';
+import type { HealthResponse } from '@prdal/contracts';
 import { Prontidao, SaudeService } from './saude.service';
 
 @Controller()

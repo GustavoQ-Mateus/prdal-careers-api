@@ -66,6 +66,14 @@ function mesclarDegradacao(
   return partes.length ? partes.join('; ') : null;
 }
 
+export const DEGRADACAO_CONTEXTO =
+  'O histórico de notas e candidaturas não pôde ser consultado agora; o currículo foi gerado só com o perfil-mestre.';
+
+interface ContextoRecuperado {
+  contexto: FonteContexto[];
+  degradacao: string | null;
+}
+
 export const DEGRADACAO_RENDERIZACAO =
   'Os arquivos PDF e DOCX não puderam ser gerados agora. O texto do currículo está salvo e você pode gerar os arquivos novamente.';
 
@@ -169,7 +177,7 @@ export class CurriculosService implements OnModuleInit {
     };
   }
 
-  async analisarAts(usuarioId: string, vagaId: string): Promise<AtsAnalysis> {
+  async analisarAts(usuarioId: string, vagaId: string): Promise<AtsAnalysis & { degradacao?: string }> {
     const vaga = await this.prisma.vaga.findFirst({
       where: { id: vagaId, usuarioId },
     });
@@ -191,7 +199,7 @@ export class CurriculosService implements OnModuleInit {
       );
     }
 
-    const contexto = await this.recuperarContexto(usuarioId, keywords);
+    const { contexto, degradacao } = await this.recuperarContexto(usuarioId, keywords);
     const analise = await this.aiClient.analisarAts({
       perfilMestre: perfilParaIa(perfil),
       vaga: {
@@ -207,7 +215,7 @@ export class CurriculosService implements OnModuleInit {
     if (resumo) {
       await this.pipelineAts.aplicar(usuarioId, vagaId, { tipo: 'analise_concluida', analise: resumo });
     }
-    return analise;
+    return degradacao ? { ...analise, degradacao } : analise;
   }
 
   async listar(usuarioId: string, query: {
@@ -506,7 +514,7 @@ export class CurriculosService implements OnModuleInit {
       }
 
       const keywords = normalizarKeywords(geracao.vaga.keywords);
-      const contexto = await this.recuperarContexto(geracao.usuarioId, keywords);
+      const { contexto, degradacao: degradacaoContexto } = await this.recuperarContexto(geracao.usuarioId, keywords);
 
       await this.prisma.geracaoCurriculo.update({
         where: { id },
@@ -530,7 +538,7 @@ export class CurriculosService implements OnModuleInit {
         where: { id },
         data: {
           analiseInicial: pipeline.analiseInicial as unknown as Prisma.InputJsonValue,
-          degradacao: pipeline.degradacao,
+          degradacao: mesclarDegradacao(degradacaoContexto, pipeline.degradacao),
         },
       });
       await this.prisma.geracaoCurriculo.update({
@@ -547,7 +555,7 @@ export class CurriculosService implements OnModuleInit {
 
       let markdown = pipeline.markdown;
       let analiseFinal = pipeline.analiseFinal;
-      let degradacao = pipeline.degradacao;
+      let degradacao = mesclarDegradacao(degradacaoContexto, pipeline.degradacao);
       const modelo = pipeline.modelo ?? null;
       const promptVersion = pipeline.promptVersion ?? null;
       let { docxPath, pdfPath, paginas, falhou } = await this.renderizar(
@@ -728,17 +736,19 @@ export class CurriculosService implements OnModuleInit {
   private async recuperarContexto(
     usuarioId: string,
     keywords: Keyword[],
-  ): Promise<FonteContexto[]> {
+  ): Promise<ContextoRecuperado> {
     const consultas = [...keywords]
       .sort((a, b) => b.peso - a.peso)
       .map((keyword) => keyword.termo);
-    if (!consultas.length) return [];
+    if (!consultas.length) return { contexto: [], degradacao: null };
     try {
       const { chunks } = await this.aiClient.contextQuery(usuarioId, consultas);
-      return chunks;
+      return { contexto: chunks, degradacao: null };
     } catch (err) {
-      this.logger.warn(`contexto indisponivel: ${(err as Error).message}`);
-      return [];
+      this.logger.warn(
+        `degradacao codigo=contexto_rag_indisponivel usuario=${usuarioId} causa=${(err as Error).message}`,
+      );
+      return { contexto: [], degradacao: DEGRADACAO_CONTEXTO };
     }
   }
 

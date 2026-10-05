@@ -53,3 +53,44 @@ test('o rag e consultado pelas keywords da vaga, nao pelo texto da vaga, e as fo
   assert.deepEqual(consultas, [['usuario-1', ['SQL', 'Power BI', 'Excel']]]);
   assert.deepEqual(payloads[0].contexto, [fonte]);
 });
+
+test('armazenamento de vetores fora gera com degradacao explicita, nunca contexto vazio em silencio', async () => {
+  const { DEGRADACAO_CONTEXTO } = require('../dist/curriculos/curriculos.service');
+  const criados = {};
+  const payloads = [];
+  const atualizacoes = [];
+  const banco = prisma(criados);
+  banco.geracaoCurriculo.update = async ({ data }) => { atualizacoes.push(data); };
+  const ai = {
+    contextQuery: async () => { throw new Error('connect ECONNREFUSED chroma:8000'); },
+    generateCvPipeline: async (payload) => {
+      payloads.push(payload);
+      return { markdown: '# Pessoa', analiseInicial: analise, analiseFinal: analise, degradacao: null };
+    },
+  };
+  const ok = async () => Buffer.from('%PDF /Type /Page');
+  const doc = { renderPdf: ok, renderDocx: ok };
+  const service = new CurriculosService(banco, ai, doc, { registrar: async () => {} }, null);
+  const avisos = [];
+  service.logger.warn = (mensagem) => avisos.push(mensagem);
+  await service.processar('job-1');
+
+  assert.deepEqual(payloads[0].contexto, []);
+  assert.equal(criados.curriculo.degradacao, DEGRADACAO_CONTEXTO);
+  assert.ok(atualizacoes.some((data) => data.degradacao === DEGRADACAO_CONTEXTO));
+  assert.ok(avisos.some((m) => /degradacao codigo=contexto_rag_indisponivel .*ECONNREFUSED/.test(m)));
+});
+
+test('degradacao do contexto se soma a da reescrita sem perder nenhuma', async () => {
+  const { DEGRADACAO_CONTEXTO } = require('../dist/curriculos/curriculos.service');
+  const criados = {};
+  const ai = {
+    contextQuery: async () => { throw new Error('fora'); },
+    generateCvPipeline: async () => ({ markdown: '# Pessoa', analiseInicial: analise, analiseFinal: analise, degradacao: 'A reescrita está indisponível no momento.' }),
+  };
+  const ok = async () => Buffer.from('%PDF /Type /Page');
+  const service = new CurriculosService(prisma(criados), ai, { renderPdf: ok, renderDocx: ok }, { registrar: async () => {} }, null);
+  service.logger.warn = () => {};
+  await service.processar('job-1');
+  assert.equal(criados.curriculo.degradacao, `${DEGRADACAO_CONTEXTO}; A reescrita está indisponível no momento.`);
+});

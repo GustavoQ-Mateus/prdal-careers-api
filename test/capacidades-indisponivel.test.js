@@ -11,10 +11,11 @@ function erroAxios(status) {
 
 function servico(erro) {
   const falhar = async () => { throw erro; };
-  const ai = { redigirMensagem: falhar, redigirFormulario: falhar, score: falhar, contextQuery: falhar };
+  const ai = { redigirMensagem: falhar, redigirFormulario: falhar, score: falhar };
+  const rag = { recuperar: falhar };
   const oportunidades = { buscar: async () => ({ id: 'vaga-1', titulo: 'Vaga', keywordsStatus: 'VALIDAS', keywords: [] }) };
   const perfil = { buscar: async () => null };
-  return new CapacidadesService(ai, oportunidades, perfil);
+  return new CapacidadesService(ai, oportunidades, perfil, rag);
 }
 
 test('503 do ai-service na mensagem ao recrutador vira 503 com frase de produto', async () => {

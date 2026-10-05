@@ -29,6 +29,7 @@ model Usuario {
   documentosRag DocumentoRag[]
   notas         NotaObsidian[]
   bancoVagas    BancoVaga[]
+  chunksRag     ChunkRag[]
 
   @@map("usuarios")
 }
@@ -522,6 +523,7 @@ model DocumentoRag {
   candidatura   Candidatura?       @relation(fields: [candidaturaId], references: [id], onDelete: Cascade)
   criadoEm      DateTime           @default(now()) @map("criado_em")
   loteItens     LoteItem[]
+  chunks        ChunkRag[]
 
   @@index([usuarioId, origem])
   @@index([notaId])
@@ -555,4 +557,22 @@ model BancoVaga {
   @@index([usuarioId, status, criadoEm(sort: Desc)])
   @@index([vagaId])
   @@map("banco_vagas")
+}
+
+model ChunkRag {
+  id          String                     @id @default(uuid())
+  documentoId String                     @map("documento_id")
+  documento   DocumentoRag               @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  usuarioId   String                     @map("usuario_id")
+  usuario     Usuario                    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  indice      Int
+  fonteId     String                     @map("fonte_id")
+  texto       String
+  modelo      String
+  embedding   Unsupported("vector(384)")
+  criadoEm    DateTime                   @default(now()) @map("criado_em")
+
+  @@unique([documentoId, indice])
+  @@index([usuarioId, modelo])
+  @@map("chunks_rag")
 }

@@ -32,11 +32,11 @@ test('clientes internos enviam o token de servico ao ai-service e ao doc-service
   const app = await NestFactory.createApplicationContext(ClientsModule, { logger: false });
   t.after(() => app.close());
 
-  await app.get(AiClient).contextQuery('usuario-1', 'consulta');
+  await app.get(AiClient).embeddingConsultas(['consulta']);
   await app.get(DocClient).renderPdf('# Nome');
 
   assert.deepEqual(recebidas, [
-    { url: '/context/query', servico: TOKEN },
+    { url: '/embeddings/consultas', servico: TOKEN },
     { url: '/render/pdf', servico: TOKEN },
   ]);
 });

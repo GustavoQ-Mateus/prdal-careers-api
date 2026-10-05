@@ -82,19 +82,19 @@ export class SaudeService {
     try {
       const resposta = await this.http(`${this.aiUrl()}/ready`, ms, true);
       const corpo = (await resposta.json().catch(() => ({}))) as { dependencias?: SituacaoDependencia[] };
-      const chroma = corpo.dependencias?.find((d) => d.nome === 'chroma');
+      const embeddings = corpo.dependencias?.find((d) => d.nome === 'embeddings');
       return [
         resposta.ok
           ? { nome: 'ai-service', obrigatoria: false, estado: 'ok' }
           : { nome: 'ai-service', obrigatoria: false, estado: 'indisponivel', detalhe: `ready respondeu ${resposta.status}` },
-        chroma
-          ? { nome: 'chroma', obrigatoria: false, estado: chroma.estado, detalhe: 'informado pelo ready do ai-service' }
-          : { nome: 'chroma', obrigatoria: false, estado: 'desconhecido', detalhe: 'ai-service nao informou' },
+        embeddings
+          ? { nome: 'embeddings', obrigatoria: false, estado: embeddings.estado, detalhe: 'informado pelo ready do ai-service' }
+          : { nome: 'embeddings', obrigatoria: false, estado: 'desconhecido', detalhe: 'ai-service nao informou' },
       ];
     } catch (err) {
       return [
         { nome: 'ai-service', obrigatoria: false, estado: 'indisponivel', detalhe: motivo(err) },
-        { nome: 'chroma', obrigatoria: false, estado: 'desconhecido', detalhe: 'ai-service indisponivel' },
+        { nome: 'embeddings', obrigatoria: false, estado: 'desconhecido', detalhe: 'ai-service indisponivel' },
       ];
     }
   }

@@ -40,12 +40,12 @@ test('chamadas de LLM enviam ao ai-service o prazo restante e a operacao, as dem
   await ai.keywords('Vaga Python');
   await ai.copilotoTurnStream({ modo: 'assistido', oportunidadeId: null, trocas: [], resumo: null, tools: [] }, { operacao: 'conversa:c1' }, () => {});
   await ai.generateCvPipeline({ perfilMestre: {}, vaga: {}, keywords: [], contexto: [] }, { operacao: 'geracao:g1' });
-  await ai.contextQuery('usuario-1', 'consulta');
+  await ai.embeddingConsultas(['consulta']);
 
   assert.deepEqual(recebidas, [
     { url: '/keywords', prazo: '44000', operacao: undefined },
     { url: '/copiloto/turn/stream', prazo: '44000', operacao: 'conversa:c1' },
     { url: '/generate-cv-pipeline', prazo: '199000', operacao: 'geracao:g1' },
-    { url: '/context/query', prazo: undefined, operacao: undefined },
+    { url: '/embeddings/consultas', prazo: undefined, operacao: undefined },
   ]);
 });

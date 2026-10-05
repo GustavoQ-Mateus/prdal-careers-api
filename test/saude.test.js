@@ -32,7 +32,7 @@ function portaFechada() {
 
 const AI_PRONTO = {
   status: 200,
-  corpo: { servico: 'ai-service', status: 'pronto', dependencias: [{ nome: 'chroma', obrigatoria: false, estado: 'ok' }] },
+  corpo: { servico: 'ai-service', status: 'pronto', dependencias: [{ nome: 'embeddings', obrigatoria: false, estado: 'ok' }] },
 };
 
 async function subir(t, { ai, doc, prisma, mongo, prefixo } = {}) {
@@ -93,20 +93,20 @@ test('tudo no ar: ready 200 com cada dependencia e se e obrigatoria', async (t) 
   const { status, corpo, deps } = await ready(url);
   assert.equal(status, 200);
   assert.equal(corpo.status, 'pronto');
-  assert.deepEqual(Object.keys(deps), ['postgres', 'mongo', 'ai-service', 'chroma', 'doc-service']);
+  assert.deepEqual(Object.keys(deps), ['postgres', 'mongo', 'ai-service', 'embeddings', 'doc-service']);
   for (const d of Object.values(deps)) assert.equal(d.estado, 'ok', d.nome);
   assert.equal(deps.postgres.obrigatoria, true);
   assert.equal(deps['ai-service'].obrigatoria, false);
   assert.equal(deps['doc-service'].obrigatoria, false);
-  assert.equal(deps.chroma.obrigatoria, false);
+  assert.equal(deps.embeddings.obrigatoria, false);
 });
 
-test('ai-service fora: api segue pronta e aponta ai-service e chroma', async (t) => {
+test('ai-service fora: api segue pronta e aponta ai-service e embeddings', async (t) => {
   const { url } = await subir(t, { ai: await portaFechada() });
   const { status, deps, requestId } = await ready(url);
   assert.equal(status, 200);
   assert.equal(deps['ai-service'].estado, 'indisponivel');
-  assert.equal(deps.chroma.estado, 'desconhecido');
+  assert.equal(deps.embeddings.estado, 'desconhecido');
   const motivo = motivoNoLog('ai-service');
   assert.match(motivo.detalhe, /fetch failed|ECONNREFUSED|aborted/);
   assert.equal(motivo.requestId, requestId);
@@ -122,15 +122,15 @@ test('doc-service fora: api segue pronta e aponta o doc-service', async (t) => {
   assert.equal(deps['ai-service'].estado, 'ok');
 });
 
-test('chroma fora: vem do ready do ai-service e a api segue pronta', async (t) => {
+test('embeddings fora: vem do ready do ai-service e a api segue pronta', async (t) => {
   const ai = await servidor(t, {
-    '/ready': { status: 200, corpo: { dependencias: [{ nome: 'chroma', obrigatoria: false, estado: 'indisponivel', detalhe: 'conexao recusada' }] } },
+    '/ready': { status: 200, corpo: { dependencias: [{ nome: 'embeddings', obrigatoria: false, estado: 'indisponivel', detalhe: 'modelo nao carregado' }] } },
   });
   const { url } = await subir(t, { ai });
   const { status, deps } = await ready(url);
   assert.equal(status, 200);
-  assert.equal(deps.chroma.estado, 'indisponivel');
-  assert.equal(motivoNoLog('chroma').estado, 'indisponivel');
+  assert.equal(deps.embeddings.estado, 'indisponivel');
+  assert.equal(motivoNoLog('embeddings').estado, 'indisponivel');
   assert.equal(deps['ai-service'].estado, 'ok');
 });
 

@@ -9,6 +9,7 @@ import { AiClient, Keyword } from '../clients/ai.client';
 import { OportunidadesService } from '../oportunidades/oportunidades.service';
 import { PerfilService } from '../perfil/perfil.service';
 import { perfilParaIa } from '../perfil/perfil.normalizacao';
+import { RagService } from '../rag/rag.service';
 
 export const MENSAGEM_IA_INDISPONIVEL =
   'O assistente está indisponível no momento. Tente novamente em instantes.';
@@ -27,6 +28,7 @@ export class CapacidadesService {
     private readonly ai: AiClient,
     private readonly oportunidades: OportunidadesService,
     private readonly perfil: PerfilService,
+    private readonly rag: RagService,
   ) {}
 
   async keywordsPrevia(usuarioId: string, descricao: string) {
@@ -34,7 +36,10 @@ export class CapacidadesService {
   }
 
   async consultarRag(usuarioId: string, query: string, k = 5) {
-    return this.chamarIa('rag', () => this.ai.contextQuery(usuarioId, query, k));
+    return this.chamarIa('rag', async () => {
+      const { chunks, degradacao } = await this.rag.recuperar(usuarioId, [query], k);
+      return degradacao ? { chunks, degradacao } : { chunks };
+    });
   }
 
   async score(

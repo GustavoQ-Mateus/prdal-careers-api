@@ -37,11 +37,11 @@ function prismaDaGeracao(criados) {
 test('falha do doc-service conclui o curriculo com degradacao explicita e sem arquivos', async () => {
   const criados = {};
   const ai = {
-    contextQuery: async () => ({ chunks: [] }),
+    recuperar: async () => ({ chunks: [], degradacao: null }),
     generateCvPipeline: async () => ({ markdown: '# Pessoa', analiseInicial: analise, analiseFinal: analise, degradacao: null }),
   };
   const eventos = { registrar: async () => {} };
-  const service = new CurriculosService(prismaDaGeracao(criados), ai, docClientFalhando(), eventos, null);
+  const service = new CurriculosService(prismaDaGeracao(criados), ai, docClientFalhando(), eventos, null, null, ai);
 
   await service.processar('job-1');
 

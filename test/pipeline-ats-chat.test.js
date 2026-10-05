@@ -62,7 +62,7 @@ function ambiente({ falharGeracao = false } = {}) {
       if (!turno) throw new Error('turno nao programado');
       return turno;
     },
-    contextQuery: async () => ({ chunks: [] }),
+    recuperar: async () => ({ chunks: [], degradacao: null }),
     analisarAts: async () => analiseInicial,
     generateCvPipeline: async () => {
       if (falharGeracao) throw new Error('ai-service indisponivel');
@@ -76,7 +76,7 @@ function ambiente({ falharGeracao = false } = {}) {
   };
   const anexos = [];
   const repositorioConversas = { anexarConclusaoGeracao: async (...args) => anexos.push(args) };
-  const servicoCurriculos = new CurriculosService(banco, ai, doc, { registrar: async () => {} }, repositorioConversas, pipelineAts);
+  const servicoCurriculos = new CurriculosService(banco, ai, doc, { registrar: async () => {} }, repositorioConversas, pipelineAts, ai);
   const capacidades = {
     mensagemRecrutador: async () => ({ tipo: 'mensagem_recrutador', titulo: 'Mensagem', texto: 'Ola', destino: '' }),
   };

@@ -39,13 +39,13 @@ async function gerar(pipeline) {
   const criados = {};
   const chamadas = [];
   const ai = {
-    contextQuery: async () => ({ chunks: [] }),
+    recuperar: async () => ({ chunks: [], degradacao: null }),
     generateCvPipeline: async (payload, opcoes) => {
       chamadas.push(opcoes);
       return { markdown: '# Pessoa', analiseInicial: analise, analiseFinal: analise, degradacao: null, ...pipeline };
     },
   };
-  const service = new CurriculosService(prismaDaGeracao(criados), ai, docUmaPagina(), { registrar: async () => {} }, null);
+  const service = new CurriculosService(prismaDaGeracao(criados), ai, docUmaPagina(), { registrar: async () => {} }, null, null, ai);
   await service.processar('job-1');
   return { criados, chamadas };
 }

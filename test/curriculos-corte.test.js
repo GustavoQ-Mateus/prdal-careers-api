@@ -41,7 +41,7 @@ async function gerar(paginasPorMarkdown, reducoes) {
   const criados = {};
   const chamadas = { geracao: 0, cortes: [] };
   const ai = {
-    contextQuery: async () => ({ chunks: [] }),
+    recuperar: async () => ({ chunks: [], degradacao: null }),
     generateCvPipeline: async () => {
       chamadas.geracao += 1;
       return { markdown: 'longo', estrutura, analiseInicial: analise, analiseFinal: analise, degradacao: null, modelo: 'claude-teste', promptVersion: 'reescrita.v2' };
@@ -51,7 +51,7 @@ async function gerar(paginasPorMarkdown, reducoes) {
       return reducoes[payload.nivel - 1];
     },
   };
-  const service = new CurriculosService(prisma(criados), ai, docComPaginas(paginasPorMarkdown), { registrar: async () => {} }, null);
+  const service = new CurriculosService(prisma(criados), ai, docComPaginas(paginasPorMarkdown), { registrar: async () => {} }, null, null, ai);
   await service.processar('job-1');
   return { criados, chamadas };
 }

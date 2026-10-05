@@ -81,6 +81,27 @@ export interface FonteContexto {
   titulo: string;
   texto: string;
   origem?: string;
+  similaridade?: number;
+}
+
+export interface DocumentoParaEmbedding {
+  id: string;
+  origemId: string;
+  tipo: string;
+  texto: string;
+}
+
+export interface EmbeddingDocumentos {
+  modelo: string;
+  dimensao: number;
+  chunks: { documentoId: string; indice: number; fonteId: string; texto: string; vetor: number[] }[];
+}
+
+export interface EmbeddingConsultas {
+  modelo: string;
+  dimensao: number;
+  limiar: number;
+  vetores: number[][];
 }
 
 export interface GeneratePipelineResult extends ComUso {
@@ -273,35 +294,16 @@ export class AiClient {
     return data;
   }
 
-  async contextIngest(
-    documentos: {
-      usuarioId: string;
-      origem: string;
-      origemId: string;
-      tipo: string;
-      factual: boolean;
-      titulo: string;
-      texto: string;
-    }[],
-  ): Promise<{ indexados: number }> {
+  async embeddingDocumentos(documentos: DocumentoParaEmbedding[]): Promise<EmbeddingDocumentos> {
     const { data } = await firstValueFrom(
-      this.http.post<{ indexados: number }>(`${this.baseUrl}/context/ingest`, {
-        documentos,
-      }),
+      this.http.post<EmbeddingDocumentos>(`${this.baseUrl}/embeddings/documentos`, { documentos }),
     );
     return data;
   }
 
-  async contextQuery(
-    usuarioId: string,
-    consulta: string | string[],
-    k = 5,
-  ): Promise<{ chunks: FonteContexto[] }> {
-    const corpo = Array.isArray(consulta)
-      ? { usuarioId, consultas: consulta, k }
-      : { usuarioId, query: consulta, k };
+  async embeddingConsultas(consultas: string[]): Promise<EmbeddingConsultas> {
     const { data } = await firstValueFrom(
-      this.http.post<{ chunks: FonteContexto[] }>(`${this.baseUrl}/context/query`, corpo),
+      this.http.post<EmbeddingConsultas>(`${this.baseUrl}/embeddings/consultas`, { consultas }),
     );
     return data;
   }

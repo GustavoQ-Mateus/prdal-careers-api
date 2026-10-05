@@ -12,6 +12,7 @@ import archiver from 'archiver';
 import { AiClient, AtsAnalysis, FonteContexto, Keyword } from '../clients/ai.client';
 import { DocClient } from '../clients/doc.client';
 import { EventosService } from '../eventos/eventos.service';
+import { RagService } from '../rag/rag.service';
 import { ConversasRepositorio } from '../repositorios/conversas.repositorio';
 import { perfilParaIa } from '../perfil/perfil.normalizacao';
 import type { OrigemGeracao } from '../pipeline-ats/maquina';
@@ -103,6 +104,7 @@ export class CurriculosService implements OnModuleInit {
     private readonly eventos: EventosService,
     private readonly conversas: ConversasRepositorio,
     private readonly pipelineAts: PipelineAtsService,
+    private readonly rag: RagService,
   ) {}
 
   async onModuleInit() {
@@ -742,8 +744,8 @@ export class CurriculosService implements OnModuleInit {
       .map((keyword) => keyword.termo);
     if (!consultas.length) return { contexto: [], degradacao: null };
     try {
-      const { chunks } = await this.aiClient.contextQuery(usuarioId, consultas);
-      return { contexto: chunks, degradacao: null };
+      const { chunks, degradacao } = await this.rag.recuperar(usuarioId, consultas);
+      return { contexto: chunks, degradacao };
     } catch (err) {
       this.logger.warn(
         `degradacao codigo=contexto_rag_indisponivel usuario=${usuarioId} causa=${(err as Error).message}`,

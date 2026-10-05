@@ -4,6 +4,7 @@ import { AiClient } from '../clients/ai.client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BancoVagasRepositorio } from '../repositorios/banco-vagas.repositorio';
 import { DocumentosRagRepositorio } from '../repositorios/documentos-rag.repositorio';
+import { RagService } from '../rag/rag.service';
 
 const CONCORRENCIA = Number(process.env.BATCH_CONCURRENCY ?? 3);
 const MAX_TENTATIVAS = 3;
@@ -22,6 +23,7 @@ export class LotesService implements OnModuleInit {
     private readonly bancoVagas: BancoVagasRepositorio,
     private readonly documentos: DocumentosRagRepositorio,
     private readonly ai: AiClient,
+    private readonly rag: RagService,
   ) {}
 
   async onModuleInit() {
@@ -160,17 +162,7 @@ export class LotesService implements OnModuleInit {
   private async indexarDocumento(documentoId: string) {
     const doc = await this.documentos.buscar(documentoId);
     if (!doc) throw new Error('documento nao encontrado');
-    await this.ai.contextIngest([
-      {
-        usuarioId: doc.usuarioId,
-        origem: doc.origem,
-        origemId: doc.origemId,
-        tipo: doc.tipo,
-        factual: doc.factual,
-        titulo: doc.titulo,
-        texto: doc.texto,
-      },
-    ]);
+    await this.rag.indexar(doc);
   }
 
   private async executarComConcorrencia<T>(

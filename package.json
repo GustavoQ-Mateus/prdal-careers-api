@@ -15,6 +15,7 @@
     "start:prod": "node dist/main.js",
     "backfill:taxonomia": "nest build && node dist/scripts/backfill-taxonomia.js",
     "reprocessar:keywords": "nest build && node dist/scripts/reprocessar-keywords.js",
+    "rag:reindexar": "nest build && node dist/scripts/reindexar-vetores.js",
     "tools:exportar": "nest build && node dist/scripts/exportar-tools.js ../ai-service/evals/agente/tools.json",
     "prisma:generate": "prisma generate",
     "migracao:aplicar": "prisma migrate deploy",

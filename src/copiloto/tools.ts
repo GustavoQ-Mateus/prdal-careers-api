@@ -125,7 +125,7 @@ export const TOOLS: ToolDef[] = [
   {
     nome: 'listar_banco_vagas',
     efeito: 'leitura',
-    descricao: 'Lista o banco de vagas importadas',
+    descricao: 'Lista o banco de vagas importadas que ainda estao em entrada, sem ativar',
     dto: SemArgumentosDto,
   },
   {
@@ -160,7 +160,7 @@ export const TOOLS: ToolDef[] = [
   {
     nome: 'ativar_banco_vaga',
     efeito: 'escrita',
-    descricao: 'Ativa uma vaga do banco de vagas como oportunidade',
+    descricao: 'Ativa uma vaga do banco de vagas, que esta em entrada, como oportunidade',
     dto: BancoVagaAlvoDto,
     resumo: () => 'Ativar a vaga do banco como oportunidade',
   },

@@ -126,6 +126,9 @@ export class CurriculosService {
       where: { id: vagaId, usuarioId },
     });
     if (!vaga) throw new NotFoundException('vaga nao encontrada');
+    if (vaga.estagio === 'ENTRADA') {
+      throw new BadRequestException('ative a entrada antes de usar a oportunidade');
+    }
 
     const perfil = await this.prisma.perfilMestre.findUnique({
       where: { usuarioId },
@@ -191,6 +194,9 @@ export class CurriculosService {
       where: { id: vagaId, usuarioId },
     });
     if (!vaga) throw new NotFoundException('vaga nao encontrada');
+    if (vaga.estagio === 'ENTRADA') {
+      throw new BadRequestException('ative a entrada antes de usar a oportunidade');
+    }
 
     const perfil = await this.prisma.perfilMestre.findUnique({
       where: { usuarioId },

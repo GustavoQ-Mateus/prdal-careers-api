@@ -266,14 +266,12 @@ test('as rotas que sempre chamam o Claude exigem a cota e o filtro e global', ()
   const { CopilotoController } = require('../dist/copiloto/copiloto.controller');
   const { OportunidadesController } = require('../dist/oportunidades/oportunidades.controller');
   const { VagasController } = require('../dist/vagas/vagas.controller');
-  const { BancoVagasController } = require('../dist/banco-vagas/banco-vagas.controller');
   const { CotaModule } = require('../dist/cota/cota.module');
   const { APP_FILTER } = require('@nestjs/core');
   const rotas = [
     [CopilotoController, ['keywordsPrevia', 'mensagemRecrutador', 'respostasFormulario']],
     [OportunidadesController, ['criar', 'reprocessarKeywords', 'importar', 'gerarCv']],
     [VagasController, ['criar', 'gerarCv']],
-    [BancoVagasController, ['importar']],
   ];
   for (const [controller, metodos] of rotas) {
     for (const metodo of metodos) {

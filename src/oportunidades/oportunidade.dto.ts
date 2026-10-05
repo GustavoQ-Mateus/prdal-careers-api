@@ -13,9 +13,30 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { ItemImportacaoDto } from '../banco-vagas/banco-vaga.dto';
 import { LIMITE } from '../dominio/limites';
 import { DestinoTransicao } from '../dominio/transicoes';
+
+export class ItemImportacaoDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(LIMITE.titulo)
+  titulo!: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(LIMITE.empresa)
+  empresa!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(LIMITE.url)
+  fonte?: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(LIMITE.descricaoVaga)
+  descricao!: string;
+}
 
 export class CriarOportunidadeDto {
   @IsString()

@@ -1,4 +1,4 @@
-import { StatusCandidatura } from '@prisma/client';
+import { EstagioOportunidade, StatusCandidatura } from '@prisma/client';
 
 export type ApresentacaoOportunidade = 'ENTRADA' | 'ATIVA' | 'ENCERRADA';
 
@@ -15,7 +15,9 @@ const ENCERRADOS: StatusCandidatura[] = ['REJEITADA', 'DESISTIU'];
 export function apresentacaoRelacional(
   arquivadaEm: Date | null,
   status: StatusCandidatura | null,
+  estagio: EstagioOportunidade = 'ATIVA',
 ): ApresentacaoOportunidade {
+  if (estagio === 'ENTRADA') return 'ENTRADA';
   if (arquivadaEm || (status && ENCERRADOS.includes(status))) return 'ENCERRADA';
   return 'ATIVA';
 }

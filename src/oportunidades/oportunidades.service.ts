@@ -21,14 +21,20 @@ import {
   STATUS_ATIVOS,
   transicaoPermitida,
 } from '../dominio/transicoes';
+import { randomUUID } from 'node:crypto';
 import { EventosService } from '../eventos/eventos.service';
 import { JobsService } from '../jobs/jobs.service';
-import { BancoVagasRepositorio } from '../repositorios/banco-vagas.repositorio';
+import { LotesService } from '../lotes/lotes.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AtualizarOportunidadeDto,
   CriarOportunidadeDto,
+  ImportarOportunidadesDto,
 } from './oportunidade.dto';
+
+function literal(texto: string): string {
+  return texto.replace(/[\\%_]/g, '\\$&');
+}
 
 type VagaComPrincipal = Vaga & {
   candidaturas: Candidatura[];
@@ -52,10 +58,10 @@ export class OportunidadesService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly bancoVagas: BancoVagasRepositorio,
     private readonly ai: AiClient,
     private readonly eventos: EventosService,
     private readonly jobs: JobsService,
+    private readonly lotes: LotesService,
   ) {}
 
   private async classificar(titulo: string, descricao: string) {
@@ -107,6 +113,27 @@ export class OportunidadesService {
     });
     await this.jobs.enfileirar([job]);
     return vaga;
+  }
+
+  async importar(usuarioId: string, dto: ImportarOportunidadesDto) {
+    const ids = dto.itens.map(() => randomUUID());
+    await this.prisma.vaga.createMany({
+      data: dto.itens.map((item, indice) => ({
+        id: ids[indice],
+        usuarioId,
+        titulo: item.titulo,
+        empresa: item.empresa,
+        fonte: item.fonte ?? null,
+        descricao: item.descricao,
+        keywords: [],
+        keywordsStatus: 'PENDENTE',
+        keywordsExtracao: 'PENDENTE',
+        origem: 'IMPORTACAO',
+        estagio: 'ENTRADA',
+      })),
+    });
+    const lote = await this.lotes.criar(usuarioId, 'IMPORTACAO', ids);
+    return { loteId: lote.id, total: ids.length };
   }
 
   async listar(
@@ -224,6 +251,7 @@ export class OportunidadesService {
 
     return {
       usuarioId,
+      estagio: 'ATIVA',
       AND: busca ? [estado, busca] : [estado],
       ...(query.categoria ? { categoria: query.categoria } : {}),
       ...(query.nivel ? { nivel: query.nivel } : {}),
@@ -247,7 +275,7 @@ export class OportunidadesService {
     limit: number,
     offset: number,
   ): Promise<string[]> {
-    const filtros: Prisma.Sql[] = [Prisma.sql`v.usuario_id = ${usuarioId}`];
+    const filtros: Prisma.Sql[] = [Prisma.sql`v.usuario_id = ${usuarioId}`, Prisma.sql`v.estagio = 'ATIVA'`];
     if (visao === 'encerradas') {
       filtros.push(
         Prisma.sql`(v.arquivada_em IS NOT NULL OR principal.status::text IN ('REJEITADA', 'DESISTIU'))`,
@@ -332,7 +360,7 @@ export class OportunidadesService {
 
   async reprocessarKeywords(usuarioId: string) {
     const vagas = await this.prisma.vaga.findMany({
-      where: { usuarioId, keywordsStatus: 'PENDENTE' },
+      where: { usuarioId, estagio: 'ATIVA', keywordsStatus: 'PENDENTE' },
       select: { id: true, descricao: true },
     });
     let reprocessadas = 0;
@@ -361,7 +389,7 @@ export class OportunidadesService {
 
   async atualizar(usuarioId: string, id: string, dto: AtualizarOportunidadeDto) {
     const atual = await this.garantirVaga(usuarioId, id);
-    const extrair = dto.descricao !== undefined && dto.descricao !== atual.descricao;
+    const extrair = atual.estagio !== 'ENTRADA' && dto.descricao !== undefined && dto.descricao !== atual.descricao;
     const mudouTexto =
       (dto.titulo !== undefined && dto.titulo !== atual.titulo) ||
       (dto.descricao !== undefined && dto.descricao !== atual.descricao);
@@ -445,50 +473,24 @@ export class OportunidadesService {
   }
 
   async ativarEntrada(usuarioId: string, entradaId: string) {
-    const existente = await this.prisma.vaga.findFirst({
-      where: { usuarioId, origemImportacaoId: entradaId },
-    });
-    if (existente) {
-      await this.vincularEntrada(entradaId, usuarioId, existente.id);
-      return existente;
-    }
+    const entrada = await this.garantirVaga(usuarioId, entradaId);
+    if (entrada.estagio !== 'ENTRADA') return entrada;
 
-    const doc = await this.bancoVagas.buscar(entradaId, usuarioId);
-    if (!doc) throw new NotFoundException('entrada nao encontrada');
-
-    const prontas = doc.keywordsStatus === 'VALIDAS' && Array.isArray(doc.keywords) && doc.keywords.length > 0;
-    const { vaga, job } = await this.prisma.$transaction(async (tx) => {
-      const criada = await tx.vaga.create({
-        data: {
-          usuarioId,
-          titulo: doc.titulo,
-          empresa: doc.empresa,
-          descricao: doc.descricao,
-          fonte: doc.fonte,
-          keywords: (doc.keywords ?? []) as unknown as Prisma.InputJsonValue,
-          keywordsStatus: prontas ? 'VALIDAS' : 'PENDENTE',
-          keywordsExtracao: prontas ? 'PRONTAS' : 'PENDENTE',
-          categoria: doc.categoria,
-          nivel: doc.nivel,
-          origem: 'IMPORTACAO',
-          origemImportacaoId: entradaId,
-        },
-      });
+    const prontas = entrada.keywordsStatus === 'VALIDAS' && Array.isArray(entrada.keywords) && entrada.keywords.length > 0;
+    const job = await this.prisma.$transaction(async (tx) => {
+      await tx.vaga.update({ where: { id: entradaId }, data: { estagio: 'ATIVA' } });
       await this.eventos.registrar(tx, {
         usuarioId,
-        vagaId: criada.id,
+        vagaId: entradaId,
         tipo: 'OPORTUNIDADE_ATIVADA',
         origem: 'SISTEMA',
         descricao: 'Entrada ativada',
-        dados: { entradaId },
       });
-      const job = prontas ? null : await this.jobs.criar(tx, { tipo: 'extrair_keywords', usuarioId, referenciaId: criada.id });
-      return { vaga: criada, job };
+      return prontas ? null : await this.jobs.criar(tx, { tipo: 'extrair_keywords', usuarioId, referenciaId: entradaId });
     });
     if (job) await this.jobs.enfileirar([job]);
 
-    await this.vincularEntrada(entradaId, usuarioId, vaga.id);
-    return vaga;
+    return this.prisma.vaga.findUniqueOrThrow({ where: { id: entradaId } });
   }
 
   async workspace(usuarioId: string, id: string) {
@@ -557,6 +559,9 @@ export class OportunidadesService {
     });
     if (!vaga) throw new NotFoundException('oportunidade nao encontrada');
 
+    if (vaga.estagio === 'ENTRADA') {
+      throw new ConflictException('ative a entrada antes de mover a oportunidade');
+    }
     const principal = vaga.candidaturas[0] ?? null;
     const origem = origemTransicao(vaga.arquivadaEm, principal?.status ?? null);
     if (!transicaoPermitida(origem, destino)) {
@@ -737,7 +742,28 @@ export class OportunidadesService {
   ) {
     const paginar = query.limit !== undefined;
     const offset = query.offset ?? 0;
-    const { itens: docs, total } = await this.bancoVagas.listarEntradas(usuarioId, query);
+    const where: Prisma.VagaWhereInput = {
+      usuarioId,
+      estagio: 'ENTRADA',
+      ...(query.categoria ? { categoria: query.categoria } : {}),
+      ...(query.nivel ? { nivel: query.nivel } : {}),
+      ...(query.busca
+        ? {
+            OR: [
+              { titulo: { contains: literal(query.busca), mode: 'insensitive' } },
+              { empresa: { contains: literal(query.busca), mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+    const [total, docs] = await Promise.all([
+      paginar ? this.prisma.vaga.count({ where }) : Promise.resolve(null),
+      this.prisma.vaga.findMany({
+        where,
+        orderBy: { criadoEm: 'desc' },
+        ...(paginar ? { skip: offset, take: query.limit } : {}),
+      }),
+    ]);
     const itens = docs.map((d) => ({
         tipo: 'ENTRADA' as const,
         id: d.id,
@@ -753,7 +779,7 @@ export class OportunidadesService {
         proximoPasso: null,
         ultimaAtividade: d.criadoEm,
         origem: 'IMPORTACAO' as const,
-        keywords: d.keywords ?? [],
+        keywords: d.keywords,
         keywordsStatus: d.keywordsStatus,
       }));
     return {
@@ -785,6 +811,7 @@ export class OportunidadesService {
       apresentacao: apresentacaoRelacional(
         vaga.arquivadaEm,
         candidatura?.status ?? null,
+        vaga.estagio,
       ),
       curriculoVinculado: curriculo
         ? { id: curriculo.id, rotulo: curriculo.rotulo, score: curriculo.score }
@@ -908,13 +935,5 @@ export class OportunidadesService {
     const vaga = await this.prisma.vaga.findFirst({ where: { id, usuarioId } });
     if (!vaga) throw new NotFoundException('oportunidade nao encontrada');
     return vaga;
-  }
-
-  private async vincularEntrada(
-    entradaId: string,
-    usuarioId: string,
-    vagaId: string,
-  ) {
-    await this.bancoVagas.marcarAtivada(entradaId, usuarioId, vagaId);
   }
 }

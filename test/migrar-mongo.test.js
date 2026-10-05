@@ -18,7 +18,7 @@ test('migracao do mongo: grava tudo uma vez, explica o que nao migrou e liga os 
   const usuario = await novoUsuario(prisma);
   const vaga = await prisma.vaga.create({ data: { usuarioId: usuario.id, titulo: 'Dev', empresa: 'E', descricao: 'd', keywords: [] } });
   const id = () => randomUUID();
-  const ids = { nota: id(), notaOrfa: id(), banco: id(), docPerfil: id(), docNota: id(), docCand: id(), conversa: id(), conversaOrfa: id() };
+  const ids = { nota: id(), notaOrfa: id(), banco: id(), bancoAtivada: id(), docPerfil: id(), docNota: id(), docCand: id(), conversa: id(), conversaOrfa: id() };
   const quando = new Date('2026-09-01T12:00:00Z');
   const colecoes = {
     notas_obsidian: [
@@ -26,7 +26,8 @@ test('migracao do mongo: grava tudo uma vez, explica o que nao migrou e liga os 
       { _id: ids.notaOrfa, usuarioId: 'usuario-apagado', titulo: 'x', corpo: 'y', criadoEm: quando },
     ],
     banco_vagas: [
-      { _id: ids.banco, usuarioId: usuario.id, titulo: 'Analista', empresa: 'B', fonte: null, descricao: 'desc', status: 'ATIVADA', categoria: null, nivel: null, keywords: [{ termo: 'SQL', peso: 3 }], origemRelacionalId: 'vaga-apagada', criadoEm: quando },
+      { _id: ids.banco, usuarioId: usuario.id, titulo: 'Analista', empresa: 'B', fonte: null, descricao: 'desc', status: 'CRUA', categoria: 'dados', nivel: null, keywords: [{ termo: 'SQL', peso: 3 }], keywordsStatus: 'VALIDAS', criadoEm: quando },
+      { _id: ids.bancoAtivada, usuarioId: usuario.id, titulo: 'Antiga', empresa: 'C', fonte: null, descricao: 'desc', status: 'ATIVADA', categoria: null, nivel: null, keywords: null, origemRelacionalId: 'vaga-apagada', criadoEm: quando },
     ],
     documentos_rag: [
       { _id: ids.docPerfil, usuarioId: usuario.id, origem: 'perfil', origemId: 'formacao-0', titulo: 'Formacao', texto: 'ADS', criadoEm: quando },
@@ -65,14 +66,14 @@ test('migracao do mongo: grava tudo uma vez, explica o que nao migrou e liga os 
   const rag = { modeloAtual: async () => 'modelo-teste', indexar: async (doc) => { if (doc.usuarioId === usuario.id) indexados.push(doc.id); return 1; } };
 
   const primeira = await migrar(prisma, mongoFalso(colecoes), rag);
-  assert.deepEqual(primeira.antes.mongo, { notas_obsidian: 2, banco_vagas: 1, documentos_rag: 3, copiloto_conversas: 2 });
+  assert.deepEqual(primeira.antes.mongo, { notas_obsidian: 2, banco_vagas: 2, documentos_rag: 3, copiloto_conversas: 2 });
   assert.deepEqual(primeira.migrados, { notas_obsidian: 1, banco_vagas: 1, documentos_rag: 2, copiloto_conversas: 1 });
   assert.deepEqual(primeira.naoMigrados.map((n) => [n.colecao, n.id]).sort(), [
     ['copiloto_conversas', ids.conversaOrfa],
     ['documentos_rag', ids.docCand],
     ['notas_obsidian', ids.notaOrfa],
   ].sort());
-  assert.ok(primeira.avisos.some((a) => a.id === ids.banco && /vaga-apagada/.test(a.aviso)));
+  assert.ok(primeira.avisos.some((a) => a.id === ids.bancoAtivada && /vaga-apagada/.test(a.aviso)));
   assert.ok(primeira.avisos.some((a) => a.id === ids.docPerfil && /tipo formacao/.test(a.aviso)));
   assert.deepEqual(indexados.sort(), [ids.docNota, ids.docPerfil].sort());
 
@@ -82,10 +83,10 @@ test('migracao do mongo: grava tudo uma vez, explica o que nao migrou e liga os 
   const perfil = await prisma.documentoRag.findUnique({ where: { id: ids.docPerfil } });
   assert.equal(perfil.tipo, 'formacao');
   assert.equal(perfil.factual, true);
-  const banco = await prisma.bancoVaga.findUnique({ where: { id: ids.banco } });
-  assert.equal(banco.vagaId, null);
-  assert.equal(banco.status, 'ATIVADA');
-  assert.deepEqual(banco.keywords, [{ termo: 'SQL', peso: 3 }]);
+  const entrada = await prisma.vaga.findUnique({ where: { id: ids.banco } });
+  assert.deepEqual([entrada.estagio, entrada.origem, entrada.keywordsStatus, entrada.keywordsExtracao, entrada.categoria], ['ENTRADA', 'IMPORTACAO', 'VALIDAS', 'PRONTAS', 'dados']);
+  assert.deepEqual(entrada.keywords, [{ termo: 'SQL', peso: 3 }]);
+  assert.equal(await prisma.vaga.findUnique({ where: { id: ids.bancoAtivada } }), null);
 
   const conversa = await prisma.copilotoConversa.findUnique({ where: { id: ids.conversa }, include: { mensagens: { orderBy: { ordem: 'asc' } }, confirmacoes: true } });
   assert.equal(conversa.totalMensagens, 3);
@@ -97,7 +98,7 @@ test('migracao do mongo: grava tudo uma vez, explica o que nao migrou e liga os 
   assert.equal(conversa.criadoEm.toISOString(), quando.toISOString());
 
   const itens = await prisma.loteItem.findMany({ where: { loteId: { in: [lote.id, loteBanco.id] } } });
-  assert.deepEqual(itens.map((i) => [i.referenciaLegada, i.documentoRagId, i.bancoVagaId]).sort(), [
+  assert.deepEqual(itens.map((i) => [i.referenciaLegada, i.documentoRagId, i.vagaId]).sort(), [
     ['documento-sumido', null, null],
     [ids.banco, null, ids.banco],
     [ids.docNota, ids.docNota, null],

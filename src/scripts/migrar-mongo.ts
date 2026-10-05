@@ -16,7 +16,7 @@ class MigrarMongoModule {}
 export const COLECOES = ['notas_obsidian', 'banco_vagas', 'documentos_rag', 'copiloto_conversas'] as const;
 type Colecao = (typeof COLECOES)[number];
 
-const TABELAS = ['notas_obsidian', 'banco_vagas', 'documentos_rag', 'copiloto_conversas', 'copiloto_mensagens', 'copiloto_confirmacoes', 'chunks_rag'] as const;
+const TABELAS = ['notas_obsidian', 'vagas', 'documentos_rag', 'copiloto_conversas', 'copiloto_mensagens', 'copiloto_confirmacoes', 'chunks_rag'] as const;
 const ORIGENS: OrigemDocumentoRag[] = ['perfil', 'candidatura', 'nota'];
 const TIPOS: TipoDocumentoRag[] = ['experiencia', 'resumo', 'skills', 'formacao', 'certificacao', 'idiomas', 'nota', 'candidatura'];
 const PAPEIS = ['user', 'assistant', 'tool', 'evento'] as const;
@@ -30,7 +30,7 @@ export interface Relatorio {
   jaExistentes: Record<Colecao, number>;
   naoMigrados: { colecao: Colecao; id: string; motivo: string }[];
   avisos: { colecao: Colecao; id: string; aviso: string }[];
-  loteItens: { pendentes: number; documentoRag: number; bancoVaga: number; semReferencia: number };
+  loteItens: { pendentes: number; documentoRag: number; vaga: number; semReferencia: number };
   reindexacao: ResultadoReindexacao | { pulada: string };
 }
 
@@ -74,7 +74,7 @@ export async function migrar(prisma: PrismaClient, mongo: Db, rag: RagService | 
     jaExistentes: { notas_obsidian: 0, banco_vagas: 0, documentos_rag: 0, copiloto_conversas: 0 },
     naoMigrados: [],
     avisos: [],
-    loteItens: { pendentes: 0, documentoRag: 0, bancoVaga: 0, semReferencia: 0 },
+    loteItens: { pendentes: 0, documentoRag: 0, vaga: 0, semReferencia: 0 },
     reindexacao: { pulada: 'nao executada' },
   };
   const recusar = (colecao: Colecao, id: string, motivo: string) => relatorio.naoMigrados.push({ colecao, id, motivo });
@@ -98,16 +98,20 @@ export async function migrar(prisma: PrismaClient, mongo: Db, rag: RagService | 
     relatorio.migrados.notas_obsidian += 1;
   }
 
-  const bancoExistentes = await conjunto(prisma.bancoVaga.findMany({ select: { id: true } }));
   for (const doc of await ler('banco_vagas')) {
     const id = texto(doc._id);
-    if (bancoExistentes.has(id)) { relatorio.jaExistentes.banco_vagas += 1; continue; }
+    if (vagas.has(id)) { relatorio.jaExistentes.banco_vagas += 1; continue; }
     const usuarioId = texto(doc.usuarioId);
     if (!usuarios.has(usuarioId)) { recusar('banco_vagas', id, 'usuario inexistente no postgres'); continue; }
-    const vagaLegada = texto(doc.origemRelacionalId) || null;
-    const vagaId = vagaLegada && vagas.has(vagaLegada) ? vagaLegada : null;
-    if (vagaLegada && !vagaId) avisar('banco_vagas', id, `oportunidade ${vagaLegada} nao existe mais; ligacao removida`);
-    await prisma.bancoVaga.create({
+    if (doc.status === 'ATIVADA') {
+      const vagaLegada = texto(doc.origemRelacionalId) || null;
+      if (vagaLegada && !vagas.has(vagaLegada)) avisar('banco_vagas', id, `oportunidade ${vagaLegada} nao existe mais; entrada ativada nao recriada`);
+      else relatorio.jaExistentes.banco_vagas += 1;
+      continue;
+    }
+    const keywords = Array.isArray(doc.keywords) ? doc.keywords : [];
+    const validas = doc.keywordsStatus === 'VALIDAS' && keywords.length > 0;
+    await prisma.vaga.create({
       data: {
         id,
         usuarioId,
@@ -115,16 +119,18 @@ export async function migrar(prisma: PrismaClient, mongo: Db, rag: RagService | 
         empresa: texto(doc.empresa),
         fonte: texto(doc.fonte) || null,
         descricao: texto(doc.descricao),
-        status: doc.status === 'ATIVADA' ? 'ATIVADA' : 'CRUA',
         categoria: texto(doc.categoria) || null,
         nivel: texto(doc.nivel) || null,
-        keywords: json(doc.keywords),
-        keywordsStatus: doc.keywordsStatus === 'VALIDAS' ? 'VALIDAS' : 'PENDENTE',
-        vagaId,
+        keywords: JSON.parse(JSON.stringify(keywords)) as Prisma.InputJsonValue,
+        keywordsStatus: validas ? 'VALIDAS' : 'PENDENTE',
+        keywordsExtracao: validas ? 'PRONTAS' : 'PENDENTE',
+        origem: 'IMPORTACAO',
+        estagio: 'ENTRADA',
         criadoEm: data(doc.criadoEm),
+        atualizadoEm: data(doc.criadoEm),
       },
     });
-    bancoExistentes.add(id);
+    vagas.add(id);
     relatorio.migrados.banco_vagas += 1;
   }
 
@@ -230,7 +236,7 @@ export async function migrar(prisma: PrismaClient, mongo: Db, rag: RagService | 
   }
 
   const itens = await prisma.loteItem.findMany({
-    where: { referenciaLegada: { not: null }, bancoVagaId: null, documentoRagId: null },
+    where: { referenciaLegada: { not: null }, vagaId: null, documentoRagId: null },
     include: { lote: { select: { tipo: true } } },
   });
   relatorio.loteItens.pendentes = itens.length;
@@ -239,9 +245,9 @@ export async function migrar(prisma: PrismaClient, mongo: Db, rag: RagService | 
     if (item.lote.tipo === 'INGESTAO' && documentosExistentes.has(referencia)) {
       await prisma.loteItem.update({ where: { id: item.id }, data: { documentoRagId: referencia } });
       relatorio.loteItens.documentoRag += 1;
-    } else if (item.lote.tipo !== 'INGESTAO' && bancoExistentes.has(referencia)) {
-      await prisma.loteItem.update({ where: { id: item.id }, data: { bancoVagaId: referencia } });
-      relatorio.loteItens.bancoVaga += 1;
+    } else if (item.lote.tipo !== 'INGESTAO' && vagas.has(referencia)) {
+      await prisma.loteItem.update({ where: { id: item.id }, data: { vagaId: referencia } });
+      relatorio.loteItens.vaga += 1;
     } else {
       relatorio.loteItens.semReferencia += 1;
     }

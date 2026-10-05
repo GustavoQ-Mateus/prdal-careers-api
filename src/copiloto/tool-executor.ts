@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate, ValidationError } from 'class-validator';
 import { AcoesService } from '../acoes/acoes.service';
-import { BancoVagasService } from '../banco-vagas/banco-vagas.service';
 import { CandidaturasService } from '../candidaturas/candidaturas.service';
 import { CotaTokensService } from '../cota/cota-tokens.service';
 import { CurriculosService } from '../curriculos/curriculos.service';
@@ -101,7 +100,6 @@ export class ToolExecutor {
     private readonly acoes: AcoesService,
     private readonly curriculos: CurriculosService,
     private readonly perfil: PerfilService,
-    private readonly bancoVagas: BancoVagasService,
     private readonly hoje: HojeService,
     private readonly candidaturas: CandidaturasService,
     private readonly capacidades: CapacidadesService,
@@ -134,7 +132,7 @@ export class ToolExecutor {
         ),
       buscar_curriculo: (u, a) => this.curriculos.buscar(u, a.curriculoId),
       status_geracao: (u, a) => this.curriculos.statusGeracao(u, a.jobId),
-      listar_banco_vagas: (u) => this.bancoVagas.listar(u),
+      listar_banco_vagas: async (u) => semPaginacao(await this.oportunidades.listar(u, { visao: 'entrada' })),
       ler_agenda: async (u, a) => {
         await this.hoje.garantirPreferencia(u);
         return this.hoje.agenda(u, a.de, a.ate, a.periodo);
@@ -147,7 +145,7 @@ export class ToolExecutor {
           fonte: a.fonte,
         }),
       ativar_entrada: (u, a) => this.oportunidades.ativarEntrada(u, a.entradaId),
-      ativar_banco_vaga: (u, a) => this.bancoVagas.ativar(u, a.bancoVagaId),
+      ativar_banco_vaga: (u, a) => this.oportunidades.ativarEntrada(u, a.bancoVagaId),
       analisar_ats: (u, a) => this.curriculos.analisarAts(u, a.oportunidadeId),
       gerar_curriculo: (u, a) => this.curriculos.gerar(u, a.oportunidadeId, 'confirmacao'),
       editar_curriculo: (u, a) =>

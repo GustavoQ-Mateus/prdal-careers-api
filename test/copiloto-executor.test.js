@@ -22,7 +22,6 @@ function executorComServicos() {
     servico('acoes', { id: 'acao-1' }),
     servico('curriculos', { jobId: 'job-1', status: 'GERANDO' }),
     servico('perfil', { nome: 'Pessoa' }),
-    servico('bancoVagas'),
     servico('hoje', { itens: [] }),
     servico('candidaturas'),
     servico('capacidades'),
@@ -54,6 +53,13 @@ test('listagens paginadas chegam como lista e a agenda garante a preferencia ant
   assert.deepEqual(await executor.executar('u', TOOLS_POR_NOME.get('listar_oportunidades'), { visao: 'ativas' }), [{ id: 'v1' }]);
   await executor.executar('u', TOOLS_POR_NOME.get('ler_agenda'), { periodo: '7' });
   assert.deepEqual(chamadas.slice(1).map((c) => c[0]), ['hoje.garantirPreferencia', 'hoje.agenda']);
+});
+
+test('tools do banco de vagas operam sobre a oportunidade em entrada', async () => {
+  const { executor, chamadas } = executorComServicos();
+  assert.deepEqual(await executor.executar('u', TOOLS_POR_NOME.get('listar_banco_vagas'), {}), [{ id: 'v1' }]);
+  await executor.executar('u', TOOLS_POR_NOME.get('ativar_banco_vaga'), { bancoVagaId: 'e1' });
+  assert.deepEqual(chamadas, [['oportunidades.listar', 'u', { visao: 'entrada' }], ['oportunidades.ativarEntrada', 'u', 'e1']]);
 });
 
 test('args fora do DTO nao chegam ao service', async () => {

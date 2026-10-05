@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { BancoVagasModule } from '../banco-vagas/banco-vagas.module';
 import { CandidaturasModule } from '../candidaturas/candidaturas.module';
 import { ClientsModule } from '../clients/clients.module';
 import { CurriculosModule } from '../curriculos/curriculos.module';
@@ -20,7 +19,6 @@ import { TurnosService } from './turnos.service';
     OportunidadesModule,
     PerfilModule,
     CurriculosModule,
-    BancoVagasModule,
     CandidaturasModule,
     HojeModule,
     RagModule,

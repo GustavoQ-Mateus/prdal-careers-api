@@ -8,7 +8,6 @@ import { ArquivosModule } from './arquivos/arquivos.module';
 import { AuthModule } from './auth/auth.module';
 import { validarAmbiente } from './config/ambiente';
 import { cabecalhoServico } from './config/servico';
-import { BancoVagasModule } from './banco-vagas/banco-vagas.module';
 import { CandidaturasModule } from './candidaturas/candidaturas.module';
 import { ContextoModule } from './contexto/contexto.module';
 import { CopilotoModule } from './copiloto/copiloto.module';
@@ -50,7 +49,6 @@ import { VagasModule } from './vagas/vagas.module';
     CurriculosModule,
     DashboardModule,
     LotesModule,
-    BancoVagasModule,
     CandidaturasModule,
     ContextoModule,
     OportunidadesModule,

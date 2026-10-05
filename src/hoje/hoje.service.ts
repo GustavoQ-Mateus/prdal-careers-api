@@ -93,7 +93,7 @@ export class HojeService {
     proximosDias.sort(porData);
 
     const ativas = await this.prisma.vaga.findMany({
-      where: { usuarioId, arquivadaEm: null },
+      where: { usuarioId, estagio: 'ATIVA', arquivadaEm: null },
       include: {
         candidaturas: { where: { principal: true } },
         acoes: {
@@ -138,7 +138,7 @@ export class HojeService {
     const periodoDias = periodoValido(periodo);
     const [oportunidades, acoesConcluidas, curriculosGerados] = await Promise.all([
       this.prisma.vaga.findMany({
-        where: { usuarioId },
+        where: { usuarioId, estagio: 'ATIVA' },
         select: { criadoEm: true },
       }),
       this.prisma.acaoOportunidade.findMany({

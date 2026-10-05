@@ -234,6 +234,7 @@ export class PipelineService {
     const vagas = await this.prisma.vaga.findMany({
       where: {
         usuarioId,
+        estagio: 'ATIVA',
         ...(filtros.categoria ? { categoria: filtros.categoria } : {}),
         ...(filtros.nivel ? { nivel: filtros.nivel } : {}),
         ...(filtros.empresa

@@ -6,12 +6,10 @@ const { paraTrocas } = require('../dist/copiloto/historico');
 
 function repositorios(prisma) {
   const { ConversasRepositorio } = require('../dist/repositorios/conversas.repositorio');
-  const { BancoVagasRepositorio } = require('../dist/repositorios/banco-vagas.repositorio');
   const { DocumentosRagRepositorio } = require('../dist/repositorios/documentos-rag.repositorio');
   const { NotasRepositorio } = require('../dist/repositorios/notas.repositorio');
   return {
     conversas: new ConversasRepositorio(prisma),
-    bancoVagas: new BancoVagasRepositorio(prisma),
     documentos: new DocumentosRagRepositorio(prisma),
     notas: new NotasRepositorio(prisma),
   };
@@ -107,39 +105,6 @@ test('conversa: pendencia confirmada uma vez so e confirmacao duplicada mantem a
   assert.equal((await conversas.buscarCompleta(usuario.id, conversa.id)).pendencia, null);
 });
 
-test('banco de vagas: busca literal sem diferenciar maiusculas, paginacao e ativacao com chave estrangeira', { skip: SEM_PG }, async (t) => {
-  const prisma = prismaDoBanco(t);
-  const { bancoVagas } = repositorios(prisma);
-  const usuario = await novoUsuario(prisma);
-  const base = { usuarioId: usuario.id, fonte: null, descricao: 'd', status: 'CRUA', categoria: null, nivel: null, keywords: null, keywordsStatus: 'PENDENTE', vagaId: null };
-  const ids = [randomUUID(), randomUUID(), randomUUID()];
-  await bancoVagas.inserir([
-    { ...base, id: ids[0], titulo: 'Bonus de 50% em C++', empresa: 'A' },
-    { ...base, id: ids[1], titulo: 'Bonus de 500 reais', empresa: 'B' },
-    { ...base, id: ids[2], titulo: 'Analista', empresa: 'c++ LTDA' },
-  ]);
-
-  const porcento = await bancoVagas.listarEntradas(usuario.id, { busca: '50%' });
-  assert.deepEqual(porcento.itens.map((i) => i.id), [ids[0]]);
-  const cmais = await bancoVagas.listarEntradas(usuario.id, { busca: 'C++' });
-  assert.deepEqual(cmais.itens.map((i) => i.id).sort(), [ids[0], ids[2]].sort());
-  const pagina = await bancoVagas.listarEntradas(usuario.id, { limit: 2, offset: 0 });
-  assert.equal(pagina.itens.length, 2);
-  assert.equal(pagina.total, 3);
-  assert.equal((await bancoVagas.listarEntradas(usuario.id, {})).total, null);
-
-  const vaga = await novaVaga(prisma, usuario.id);
-  await bancoVagas.marcarAtivada(ids[0], 'outro-usuario', vaga.id);
-  assert.equal((await bancoVagas.buscar(ids[0])).status, 'CRUA');
-  await bancoVagas.marcarAtivada(ids[0], usuario.id, vaga.id);
-  const ativada = await bancoVagas.buscar(ids[0], usuario.id);
-  assert.equal(ativada.status, 'ATIVADA');
-  assert.equal(ativada.vagaId, vaga.id);
-  assert.equal((await bancoVagas.listarEntradas(usuario.id, {})).itens.length, 2);
-  await prisma.vaga.delete({ where: { id: vaga.id } });
-  assert.equal((await bancoVagas.buscar(ids[0])).vagaId, null);
-});
-
 test('documentos: reindexar preserva notas, nota apagada leva o documento e item de lote perde so a referencia', { skip: SEM_PG }, async (t) => {
   const prisma = prismaDoBanco(t);
   const { documentos, notas } = repositorios(prisma);
@@ -163,9 +128,9 @@ test('documentos: reindexar preserva notas, nota apagada leva o documento e item
   const item = await prisma.loteItem.findUnique({ where: { id: lote.itens[0].id } });
   assert.equal(item.documentoRagId, null);
   const docPerfil = segunda.find((id) => id !== docNota.id);
-  const bancoVaga = await prisma.bancoVaga.create({ data: { usuarioId: usuario.id, titulo: 't', empresa: 'e', descricao: 'd' } });
+  const vaga = await novaVaga(prisma, usuario.id);
   await assert.rejects(
-    prisma.loteItem.update({ where: { id: item.id }, data: { documentoRagId: docPerfil, bancoVagaId: bancoVaga.id } }),
+    prisma.loteItem.update({ where: { id: item.id }, data: { documentoRagId: docPerfil, vagaId: vaga.id } }),
     /lote_itens_uma_referencia_chk/,
   );
 });

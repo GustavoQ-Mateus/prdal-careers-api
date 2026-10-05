@@ -143,6 +143,7 @@ model Curriculo {
   eventos        EventoOportunidade[]
   geracoes       GeracaoCurriculo[]
 
+  @@index([vagaId])
   @@map("curriculos")
 }
 
@@ -173,6 +174,8 @@ model Candidatura {
   acoes              AcaoOportunidade[]
   eventos            EventoOportunidade[]
 
+  @@index([vagaId])
+  @@index([curriculoId])
   @@map("candidaturas")
 }
 
@@ -200,6 +203,7 @@ model Lote {
   criadoEm    DateTime    @default(now()) @map("criado_em")
   itens       LoteItem[]
 
+  @@index([usuarioId])
   @@map("lotes")
 }
 
@@ -212,6 +216,7 @@ model LoteItem {
   tentativas  Int            @default(0)
   erro        String?
 
+  @@index([loteId])
   @@map("lote_itens")
 }
 
@@ -245,6 +250,8 @@ model AcaoOportunidade {
   atualizadoEm  DateTime             @updatedAt @map("atualizado_em")
 
   @@index([usuarioId, venceEm])
+  @@index([vagaId])
+  @@index([candidaturaId])
   @@map("acoes_oportunidade")
 }
 
@@ -271,6 +278,9 @@ model EventoOportunidade {
   registradoEm  DateTime     @default(now()) @map("registrado_em")
 
   @@index([usuarioId, vagaId, ocorridoEm])
+  @@index([vagaId])
+  @@index([candidaturaId])
+  @@index([curriculoId])
   @@map("eventos_oportunidade")
 }
 
@@ -287,6 +297,7 @@ model PipelineLayout {
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
 
   @@unique([usuarioId, vagaId, modo])
+  @@index([vagaId])
   @@map("pipeline_layouts")
 }
 
@@ -328,6 +339,9 @@ model GeracaoCurriculo {
   criadoEm     DateTime                @default(now()) @map("criado_em")
   atualizadoEm DateTime                @updatedAt @map("atualizado_em")
 
+  @@index([usuarioId])
+  @@index([vagaId])
+  @@index([curriculoId])
   @@map("geracoes_curriculo")
 }
 

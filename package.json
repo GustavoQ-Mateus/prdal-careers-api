@@ -17,6 +17,8 @@
     "reprocessar:keywords": "nest build && node dist/scripts/reprocessar-keywords.js",
     "tools:exportar": "nest build && node dist/scripts/exportar-tools.js ../ai-service/evals/agente/tools.json",
     "prisma:generate": "prisma generate",
+    "migracao:aplicar": "prisma migrate deploy",
+    "migracao:marcar-baseline": "prisma migrate resolve --applied 20261005000000_baseline",
     "postinstall": "prisma generate"
   },
   "prisma": {

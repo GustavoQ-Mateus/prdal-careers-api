@@ -22,4 +22,4 @@ COPY --from=deps /repo/apps/api/node_modules ./node_modules
 COPY --from=deps /repo/apps/api/prisma ./prisma
 COPY --from=build /repo/apps/api/dist ./dist
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && node dist/main.js"]
+CMD ["node", "dist/main.js"]

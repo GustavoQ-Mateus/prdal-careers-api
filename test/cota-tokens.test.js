@@ -229,7 +229,7 @@ test('no chat SSE a cota estourada sai como evento de erro', async (t) => {
   comLimite(t, 1000);
   const { ChatService } = require('../dist/copiloto/chat.service');
   const eventos = [];
-  const conversa = { _id: 'c1', usuarioId: 'u1', modo: 'assistido', oportunidadeId: null, mensagens: [], pendencia: null };
+  const conversa = { id: 'c1', usuarioId: 'u1', modo: 'assistido', oportunidadeId: null, mensagens: [], pendencia: null };
   const conversas = {
     abrir: async () => conversa,
     adicionarMensagem: async () => {},

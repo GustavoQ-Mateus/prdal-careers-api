@@ -83,7 +83,7 @@ test('ChatService nao depende de HttpService nem de credencial do usuario', () =
 });
 
 test('argumento invalido do modelo vira tool_result com is_error e nao pede confirmacao', async () => {
-  const conversa = { _id: 'c1', usuarioId: 'u1', modo: 'assistido', oportunidadeId: 'v1', mensagens: [], pendencia: null };
+  const conversa = { id: 'c1', usuarioId: 'u1', modo: 'assistido', oportunidadeId: 'v1', mensagens: [], pendencia: null };
   const conversas = { abrir: async () => conversa, anexar: async () => {}, definirPendencia: async () => { throw new Error('sem pendencia'); } };
   const enviados = [];
   const turnos = [turnoTool('mover_estagio', { destino: 'CONTRATADO' }, 'toolu_x'), turnoTexto('Vou corrigir.')];

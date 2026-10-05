@@ -5,7 +5,7 @@ import { StringDecoder } from 'node:string_decoder';
 import { firstValueFrom } from 'rxjs';
 import { CotaTokensEsgotada, CotaTokensService } from '../cota/cota-tokens.service';
 import type { BlocoNativo, Troca } from '../copiloto/historico';
-import type { ResumoConversa } from '../mongo/mongo.service';
+import type { ResumoConversa } from '../repositorios/tipos';
 
 const DEFAULT_GENERATE_TIMEOUT_MS = 300000;
 const DEFAULT_LLM_TIMEOUT_MS = 60000;

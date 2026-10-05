@@ -1,11 +1,17 @@
 import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { LoteItem } from '@prisma/client';
 import { AiClient } from '../clients/ai.client';
-import { MongoService, tipoPadraoRag } from '../mongo/mongo.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { BancoVagasRepositorio } from '../repositorios/banco-vagas.repositorio';
+import { DocumentosRagRepositorio } from '../repositorios/documentos-rag.repositorio';
 
 const CONCORRENCIA = Number(process.env.BATCH_CONCURRENCY ?? 3);
 const MAX_TENTATIVAS = 3;
+const TIPO_INGESTAO = 'INGESTAO';
+
+function referenciaDoItem(item: Pick<LoteItem, 'bancoVagaId' | 'documentoRagId' | 'referenciaLegada'>): string | null {
+  return item.documentoRagId ?? item.bancoVagaId ?? item.referenciaLegada;
+}
 
 @Injectable()
 export class LotesService implements OnModuleInit {
@@ -13,7 +19,8 @@ export class LotesService implements OnModuleInit {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mongo: MongoService,
+    private readonly bancoVagas: BancoVagasRepositorio,
+    private readonly documentos: DocumentosRagRepositorio,
     private readonly ai: AiClient,
   ) {}
 
@@ -35,13 +42,14 @@ export class LotesService implements OnModuleInit {
     }, 3000);
   }
 
-  async criar(usuarioId: string, tipo: string, bancoVagaIds: string[]) {
+  async criar(usuarioId: string, tipo: string, referencias: string[]) {
+    const itens = referencias.map((id) => (tipo === TIPO_INGESTAO ? { documentoRagId: id } : { bancoVagaId: id }));
     const lote = await this.prisma.lote.create({
       data: {
         usuarioId,
         tipo,
-        total: bancoVagaIds.length,
-        itens: { create: bancoVagaIds.map((id) => ({ bancoVagaId: id })) },
+        total: referencias.length,
+        itens: { create: itens },
       },
     });
     void this.processar(lote.id).catch((err) =>
@@ -64,7 +72,7 @@ export class LotesService implements OnModuleInit {
       processados: lote.processados,
       itens: lote.itens.map((i) => ({
         id: i.id,
-        bancoVagaId: i.bancoVagaId,
+        bancoVagaId: referenciaDoItem(i),
         status: i.status,
         erro: i.erro,
       })),
@@ -83,7 +91,7 @@ export class LotesService implements OnModuleInit {
       where: { loteId, status: 'PENDENTE' },
     });
     const acao =
-      lote.tipo === 'INGESTAO'
+      lote.tipo === TIPO_INGESTAO
         ? (ref: string) => this.indexarDocumento(ref)
         : (ref: string) => this.processarBancoVaga(ref, lote.usuarioId);
     await this.executarComConcorrencia(pendentes, CONCORRENCIA, (item) =>
@@ -114,7 +122,9 @@ export class LotesService implements OnModuleInit {
     while (tentativas < MAX_TENTATIVAS) {
       tentativas += 1;
       try {
-        await acao(item.bancoVagaId);
+        const referencia = referenciaDoItem(item);
+        if (!referencia) throw new Error('o registro deste item foi removido antes do processamento');
+        await acao(referencia);
         await this.prisma.loteItem.update({
           where: { id: item.id },
           data: { status: 'CONCLUIDO', tentativas },
@@ -135,28 +145,28 @@ export class LotesService implements OnModuleInit {
   }
 
   private async processarBancoVaga(bancoVagaId: string, usuarioId: string) {
-    const doc = await this.mongo.bancoVagas().findOne({ _id: bancoVagaId });
+    const doc = await this.bancoVagas.buscar(bancoVagaId);
     if (!doc) throw new Error('postagem nao encontrada no banco de vagas');
     const extracao = await this.ai.keywords(doc.descricao, { usuarioId });
     const { categoria, nivel } = await this.ai.classify(doc.titulo, doc.descricao);
-    await this.mongo
-      .bancoVagas()
-      .updateOne(
-        { _id: bancoVagaId },
-        { $set: { keywords: extracao.keywords, keywordsStatus: extracao.status, categoria, nivel } },
-      );
+    await this.bancoVagas.registrarExtracao(bancoVagaId, {
+      keywords: extracao.keywords,
+      keywordsStatus: extracao.status,
+      categoria,
+      nivel,
+    });
   }
 
   private async indexarDocumento(documentoId: string) {
-    const doc = await this.mongo.documentosRag().findOne({ _id: documentoId });
+    const doc = await this.documentos.buscar(documentoId);
     if (!doc) throw new Error('documento nao encontrado');
     await this.ai.contextIngest([
       {
         usuarioId: doc.usuarioId,
         origem: doc.origem,
         origemId: doc.origemId,
-        tipo: doc.tipo ?? tipoPadraoRag(doc.origem, doc.origemId),
-        factual: doc.factual ?? doc.origem === 'perfil',
+        tipo: doc.tipo,
+        factual: doc.factual,
         titulo: doc.titulo,
         texto: doc.texto,
       },

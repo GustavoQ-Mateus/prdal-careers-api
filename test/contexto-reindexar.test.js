@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { ContextoService } = require('../dist/contexto/contexto.service');
-const { tipoPadraoRag } = require('../dist/mongo/mongo.service');
+const { tipoPadraoRag } = require('../dist/repositorios/tipos');
 
 function servico(perfil, candidaturas = []) {
   const inseridos = [];
@@ -9,15 +9,14 @@ function servico(perfil, candidaturas = []) {
     perfilMestre: { findUnique: async () => perfil },
     candidatura: { findMany: async () => candidaturas },
   };
-  const mongo = {
-    documentosRag: () => ({
-      deleteMany: async () => {},
-      insertMany: async (docs) => inseridos.push(...docs),
-      find: () => ({ toArray: async () => inseridos }),
-    }),
+  const documentos = {
+    substituirPerfilECandidaturas: async (_usuario, docs) => {
+      inseridos.push(...docs);
+      return inseridos.map((d) => d.id);
+    },
   };
   const lotes = { criar: async () => ({ id: 'lote-1' }) };
-  return { service: new ContextoService(prisma, mongo, lotes), inseridos };
+  return { service: new ContextoService(prisma, documentos, lotes), inseridos };
 }
 
 test('cada unidade do perfil vira um documento factual com tipo e a experiencia usa o id do perfil', async () => {
@@ -42,6 +41,8 @@ test('cada unidade do perfil vira um documento factual com tipo e a experiencia 
   assert.equal(porTipo.skills.factual, true);
   assert.equal(porTipo.idiomas.factual, true);
   assert.equal(porTipo.candidatura.factual, false);
+  assert.equal(porTipo.candidatura.candidaturaId, 'cand-1');
+  assert.equal(porTipo.experiencia.candidaturaId, null);
 });
 
 test('documento antigo sem tipo recebe tipo pela origem', () => {

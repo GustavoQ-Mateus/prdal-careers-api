@@ -30,7 +30,7 @@ function montar(url) {
   const usos = [];
   const cota = { verificar: async () => {}, registrar: async (usuarioId, uso) => usos.push([usuarioId, uso]) };
   const ai = new AiClient(new HttpService(axios.create()), cota);
-  const conversa = { _id: 'c1', usuarioId: 'u1', modo: 'assistido', oportunidadeId: null, mensagens: [], pendencia: null };
+  const conversa = { id: 'c1', usuarioId: 'u1', modo: 'assistido', oportunidadeId: null, mensagens: [], pendencia: null };
   const conversas = {
     abrir: async () => conversa,
     anexar: async (_id, mensagem) => conversa.mensagens.push(mensagem),
@@ -216,7 +216,7 @@ test('web desconecta durante a tool: a api nao pede o passo seguinte', async () 
       return { nome: 'Pessoa' };
     },
   };
-  const conversa = { _id: 'c2', usuarioId: 'u1', modo: 'assistido', oportunidadeId: null, mensagens: [], pendencia: null };
+  const conversa = { id: 'c2', usuarioId: 'u1', modo: 'assistido', oportunidadeId: null, mensagens: [], pendencia: null };
   const conversas = { abrir: async () => conversa, anexar: async () => {}, definirPendencia: async () => {}, definirResumo: async () => {} };
   const chat = new ChatService(conversas, ai, executor, { garantirVaga: async () => {} }, null);
 

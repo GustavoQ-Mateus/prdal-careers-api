@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { LotesService } from '../lotes/lotes.service';
-import { DocumentoRagDoc, MongoService, TipoDocumentoRag } from '../mongo/mongo.service';
 import {
   listaCertificacoes,
   listaFormacao,
@@ -11,13 +10,15 @@ import {
   tituloExperiencia,
 } from '../perfil/perfil.normalizacao';
 import { PrismaService } from '../prisma/prisma.service';
+import { DocumentosRagRepositorio, NovoDocumentoRag } from '../repositorios/documentos-rag.repositorio';
+import { NotaObsidianRegistro, OrigemDocumentoRag, TipoDocumentoRag } from '../repositorios/tipos';
 import { ArquivoTexto } from './upload-texto';
 
 @Injectable()
 export class ContextoService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mongo: MongoService,
+    private readonly documentos: DocumentosRagRepositorio,
     private readonly lotes: LotesService,
   ) {}
 
@@ -26,15 +27,15 @@ export class ContextoService {
       where: { usuarioId },
     });
 
-    const novos: DocumentoRagDoc[] = [];
+    const novos: NovoDocumentoRag[] = [];
     const doc = (
-      origem: DocumentoRagDoc['origem'],
+      origem: OrigemDocumentoRag,
       tipo: TipoDocumentoRag,
       origemId: string,
       titulo: string,
       texto: string,
-    ): DocumentoRagDoc => ({
-      _id: randomUUID(),
+    ): NovoDocumentoRag => ({
+      id: randomUUID(),
       usuarioId,
       origem,
       origemId,
@@ -42,7 +43,8 @@ export class ContextoService {
       factual: origem === 'perfil',
       titulo,
       texto,
-      criadoEm: new Date(),
+      notaId: null,
+      candidaturaId: origem === 'candidatura' ? origemId : null,
     });
 
     if (perfil) {
@@ -81,71 +83,49 @@ export class ContextoService {
       }
     }
 
-    await this.mongo.documentosRag().deleteMany({
-      usuarioId,
-      origem: { $in: ['perfil', 'candidatura'] },
-    });
-    if (novos.length) await this.mongo.documentosRag().insertMany(novos);
-
-    const todos = await this.mongo
-      .documentosRag()
-      .find({ usuarioId })
-      .toArray();
-    const ids = todos.map((d) => d._id);
+    const ids = await this.documentos.substituirPerfilECandidaturas(usuarioId, novos);
     const lote = await this.lotes.criar(usuarioId, 'INGESTAO', ids);
     return { loteId: lote.id, total: ids.length };
   }
 
   async upload(usuarioId: string, arquivos: ArquivoTexto[], historico = false) {
-    const documentos: DocumentoRagDoc[] = [];
-    for (const { titulo, corpo } of arquivos) {
-      const notaId = randomUUID();
-      await this.mongo.notasObsidian().insertOne({
-        _id: notaId,
-        usuarioId,
-        titulo,
-        corpo,
-        historico,
-        criadoEm: new Date(),
-      });
-      documentos.push({
-        _id: randomUUID(),
+    const notas = arquivos.map(({ titulo, corpo }) => {
+      const nota: NotaObsidianRegistro = { id: randomUUID(), usuarioId, titulo, corpo, historico, criadoEm: new Date() };
+      const documento: NovoDocumentoRag = {
+        id: randomUUID(),
         usuarioId,
         origem: 'nota',
-        origemId: notaId,
+        origemId: nota.id,
         tipo: 'nota',
         factual: historico,
         titulo,
         texto: corpo,
-        criadoEm: new Date(),
-      });
-    }
-    if (documentos.length) {
-      await this.mongo.documentosRag().insertMany(documentos);
-    }
+        notaId: nota.id,
+        candidaturaId: null,
+      };
+      return { nota, documento };
+    });
+    await this.documentos.inserirNotas(notas);
+    const documentos = notas.map(({ documento }) => documento);
     const lote = await this.lotes.criar(
       usuarioId,
       'INGESTAO',
-      documentos.map((d) => d._id),
+      documentos.map((d) => d.id),
     );
     return { loteId: lote.id, total: documentos.length };
   }
 
   async status(usuarioId: string) {
-    const documentos = await this.mongo
-      .documentosRag()
-      .countDocuments({ usuarioId });
+    const documentos = await this.documentos.contar(usuarioId);
     const ultimo = await this.prisma.lote.findFirst({
       where: { usuarioId, tipo: 'INGESTAO' },
       orderBy: { criadoEm: 'desc' },
       select: { criadoEm: true },
     });
     const [perfil, candidatura, nota] = await Promise.all([
-      this.mongo.documentosRag().countDocuments({ usuarioId, origem: 'perfil' }),
-      this.mongo
-        .documentosRag()
-        .countDocuments({ usuarioId, origem: 'candidatura' }),
-      this.mongo.documentosRag().countDocuments({ usuarioId, origem: 'nota' }),
+      this.documentos.contar(usuarioId, 'perfil'),
+      this.documentos.contar(usuarioId, 'candidatura'),
+      this.documentos.contar(usuarioId, 'nota'),
     ]);
     return {
       documentos,

@@ -22,7 +22,7 @@ import {
   transicaoPermitida,
 } from '../dominio/transicoes';
 import { EventosService } from '../eventos/eventos.service';
-import { MongoService } from '../mongo/mongo.service';
+import { BancoVagasRepositorio } from '../repositorios/banco-vagas.repositorio';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AtualizarOportunidadeDto,
@@ -51,7 +51,7 @@ export class OportunidadesService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mongo: MongoService,
+    private readonly bancoVagas: BancoVagasRepositorio,
     private readonly ai: AiClient,
     private readonly eventos: EventosService,
   ) {}
@@ -448,9 +448,7 @@ export class OportunidadesService {
       return existente;
     }
 
-    const doc = await this.mongo
-      .bancoVagas()
-      .findOne({ _id: entradaId, usuarioId });
+    const doc = await this.bancoVagas.buscar(entradaId, usuarioId);
     if (!doc) throw new NotFoundException('entrada nao encontrada');
 
     const vaga = await this.prisma.$transaction(async (tx) => {
@@ -462,7 +460,7 @@ export class OportunidadesService {
           descricao: doc.descricao,
           fonte: doc.fonte,
           keywords: (doc.keywords ?? []) as unknown as Prisma.InputJsonValue,
-          keywordsStatus: doc.keywordsStatus ?? 'PENDENTE',
+          keywordsStatus: doc.keywordsStatus,
           categoria: doc.categoria,
           nivel: doc.nivel,
           origem: 'IMPORTACAO',
@@ -728,28 +726,12 @@ export class OportunidadesService {
       offset?: number;
     },
   ) {
-    const filtro: Record<string, unknown> = { usuarioId, status: 'CRUA' };
-    if (query.categoria) filtro.categoria = query.categoria;
-    if (query.nivel) filtro.nivel = query.nivel;
-    if (query.busca) {
-      const busca = query.busca.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      filtro.$or = [
-        { titulo: { $regex: busca, $options: 'i' } },
-        { empresa: { $regex: busca, $options: 'i' } },
-      ];
-    }
-
     const paginar = query.limit !== undefined;
     const offset = query.offset ?? 0;
-    const cursor = this.mongo.bancoVagas().find(filtro).sort({ criadoEm: -1 });
-    if (paginar) cursor.skip(offset).limit(query.limit!);
-    const [total, docs] = await Promise.all([
-      paginar ? this.mongo.bancoVagas().countDocuments(filtro) : Promise.resolve(null),
-      cursor.toArray(),
-    ]);
+    const { itens: docs, total } = await this.bancoVagas.listarEntradas(usuarioId, query);
     const itens = docs.map((d) => ({
         tipo: 'ENTRADA' as const,
-        id: d._id,
+        id: d.id,
         titulo: d.titulo,
         empresa: d.empresa,
         categoria: d.categoria,
@@ -763,7 +745,7 @@ export class OportunidadesService {
         ultimaAtividade: d.criadoEm,
         origem: 'IMPORTACAO' as const,
         keywords: d.keywords ?? [],
-        keywordsStatus: d.keywordsStatus ?? 'PENDENTE',
+        keywordsStatus: d.keywordsStatus,
       }));
     return {
       itens,
@@ -922,9 +904,6 @@ export class OportunidadesService {
     usuarioId: string,
     vagaId: string,
   ) {
-    await this.mongo.bancoVagas().updateOne(
-      { _id: entradaId, usuarioId },
-      { $set: { status: 'ATIVADA', origemRelacionalId: vagaId } },
-    );
+    await this.bancoVagas.marcarAtivada(entradaId, usuarioId, vagaId);
   }
 }

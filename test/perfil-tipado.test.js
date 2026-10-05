@@ -28,14 +28,14 @@ async function documentosIndexados(perfil) {
     perfilMestre: { findUnique: async () => perfil },
     candidatura: { findMany: async () => [] },
   };
-  const colecao = {
-    deleteMany: async () => {},
-    insertMany: async (docs) => { inseridos = docs; },
-    find: () => ({ toArray: async () => inseridos }),
+  const documentos = {
+    substituirPerfilECandidaturas: async (_usuario, docs) => {
+      inseridos = docs;
+      return docs.map((d) => d.id);
+    },
   };
-  const mongo = { documentosRag: () => colecao };
   const lotes = { criar: async () => ({ id: 'lote-1' }) };
-  await new ContextoService(prisma, mongo, lotes).reindexar('usuario-1');
+  await new ContextoService(prisma, documentos, lotes).reindexar('usuario-1');
   return inseridos;
 }
 

@@ -46,7 +46,7 @@ function cenario(conversa) {
 }
 
 test('resumo devolvido e persistido e o proximo turno so manda as trocas depois dele', async () => {
-  const conversa = { _id: 'c1', usuarioId: 'u1', modo: 'assistido', oportunidadeId: null, mensagens: historico.slice(0, 4), pendencia: null };
+  const conversa = { id: 'c1', usuarioId: 'u1', modo: 'assistido', oportunidadeId: null, mensagens: historico.slice(0, 4), pendencia: null };
   const { conversas, resumos, res } = cenario(conversa);
   const payloads = [];
   const turnos = [
@@ -67,7 +67,7 @@ test('resumo devolvido e persistido e o proximo turno so manda as trocas depois 
 });
 
 test('resultado de tool fica inteiro no historico, sem corte por caractere', async () => {
-  const conversa = { _id: 'c1', usuarioId: 'u1', modo: 'assistido', oportunidadeId: null, mensagens: [], pendencia: null };
+  const conversa = { id: 'c1', usuarioId: 'u1', modo: 'assistido', oportunidadeId: null, mensagens: [], pendencia: null };
   const { conversas, res } = cenario(conversa);
   const grande = { nome: 'Pessoa', resumo: 'a'.repeat(9000) };
   const turnos = [turnoTool('ler_perfil', {}, 'toolu_g'), turnoTexto('Li.')];

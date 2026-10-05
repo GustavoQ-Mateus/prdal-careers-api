@@ -37,7 +37,7 @@ test('preparar args nao le o historico da conversa', () => {
 
 test('ChatService nao emite confirmacao para escrita invalida', async () => {
   const conversa = {
-    _id: 'conversa-1',
+    id: 'conversa-1',
     usuarioId: 'usuario-1',
     modo: 'assistido',
     oportunidadeId: 'vaga-1',

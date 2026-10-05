@@ -12,7 +12,7 @@ import archiver from 'archiver';
 import { AiClient, AtsAnalysis, FonteContexto, Keyword } from '../clients/ai.client';
 import { DocClient } from '../clients/doc.client';
 import { EventosService } from '../eventos/eventos.service';
-import { MongoService } from '../mongo/mongo.service';
+import { ConversasRepositorio } from '../repositorios/conversas.repositorio';
 import { perfilParaIa } from '../perfil/perfil.normalizacao';
 import type { OrigemGeracao } from '../pipeline-ats/maquina';
 import { DadosNarracao, dadosDaNarracao, narrar, resumoDaAnalise } from '../pipeline-ats/narracao';
@@ -101,7 +101,7 @@ export class CurriculosService implements OnModuleInit {
     private readonly aiClient: AiClient,
     private readonly docClient: DocClient,
     private readonly eventos: EventosService,
-    private readonly mongo: MongoService,
+    private readonly conversas: ConversasRepositorio,
     private readonly pipelineAts: PipelineAtsService,
   ) {}
 
@@ -727,7 +727,7 @@ export class CurriculosService implements OnModuleInit {
         analiseFinal: curriculo.analiseFinal,
         degradacao: curriculo.degradacao,
       };
-      await this.mongo.anexarConclusaoGeracao(usuarioId, jobId, persistido, narrar(narracao), narracao);
+      await this.conversas.anexarConclusaoGeracao(usuarioId, jobId, persistido, narrar(narracao), narracao);
     } catch (err) {
       this.logger.warn(`narracao da geracao ${jobId} adiada: ${(err as Error).message}`);
     }

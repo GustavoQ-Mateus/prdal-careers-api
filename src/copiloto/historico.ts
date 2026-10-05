@@ -1,4 +1,4 @@
-import type { MensagemCopiloto } from '../mongo/mongo.service';
+import type { MensagemCopiloto } from '../repositorios/tipos';
 
 export type BlocoNativo =
   | { type: 'text'; text: string; [extra: string]: unknown }
@@ -99,15 +99,15 @@ export function paraMensagensNativas(mensagens: MensagemCopiloto[], deslocamento
   return saida;
 }
 
-export function paraTrocas(mensagens: MensagemCopiloto[], desde = 0): Troca[] {
+export function paraTrocas(mensagens: MensagemCopiloto[], desde = 0, base = 0): Troca[] {
   const inicios: number[] = [];
   mensagens.forEach((mensagem, indice) => {
-    if (indice >= desde && (mensagem.papel === 'user' || inicios.length === 0)) inicios.push(indice);
+    if (base + indice >= desde && (mensagem.papel === 'user' || inicios.length === 0)) inicios.push(indice);
   });
   return inicios
     .map((inicio, posicao) => ({
-      indice: inicio,
-      mensagens: paraMensagensNativas(mensagens.slice(inicio, inicios[posicao + 1] ?? mensagens.length), inicio),
+      indice: base + inicio,
+      mensagens: paraMensagensNativas(mensagens.slice(inicio, inicios[posicao + 1] ?? mensagens.length), base + inicio),
     }))
     .filter((troca) => troca.mensagens.length > 0);
 }

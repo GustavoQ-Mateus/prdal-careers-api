@@ -28,7 +28,7 @@ function conversasFalsas() {
   return {
     abrir: async (usuarioId, conversaId, modo) => {
       const id = conversaId ?? 'nova';
-      if (!conversas.has(id)) conversas.set(id, { _id: id, usuarioId, modo, oportunidadeId: null, mensagens: [], pendencia: null });
+      if (!conversas.has(id)) conversas.set(id, { id: id, usuarioId, modo, oportunidadeId: null, mensagens: [], pendencia: null });
       return conversas.get(id);
     },
     anexar: async (id, mensagem) => conversas.get(id).mensagens.push(mensagem),

@@ -23,7 +23,7 @@ async function subir(t) {
   };
   const oportunidades = { garantirVaga: OportunidadesService.prototype.garantirVaga.bind({ prisma }) };
 
-  const conversaExistente = { _id: 'conversa-1', usuarioId: 'atacante', modo: 'assistido', oportunidadeId: 'vaga-do-atacante', mensagens: [], pendencia: null };
+  const conversaExistente = { id: 'conversa-1', usuarioId: 'atacante', modo: 'assistido', oportunidadeId: 'vaga-do-atacante', mensagens: [], pendencia: null };
   const registro = { abertas: 0, alteracoes: 0 };
   const conversas = {
     abrir: async (_usuario, conversaId, modo, oportunidadeId) => {
@@ -33,7 +33,7 @@ async function subir(t) {
         Object.assign(conversaExistente, { modo, ...(oportunidadeId ? { oportunidadeId } : {}) });
         return conversaExistente;
       }
-      return { _id: 'nova', usuarioId: 'atacante', modo, oportunidadeId, mensagens: [], pendencia: null };
+      return { id: 'nova', usuarioId: 'atacante', modo, oportunidadeId, mensagens: [], pendencia: null };
     },
     anexar: async () => {},
     definirPendencia: async () => {},

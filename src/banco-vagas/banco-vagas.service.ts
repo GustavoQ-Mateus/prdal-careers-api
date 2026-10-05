@@ -2,23 +2,24 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { EventosService } from '../eventos/eventos.service';
-import { BancoVagaDoc, MongoService } from '../mongo/mongo.service';
 import { LotesService } from '../lotes/lotes.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { BancoVagasRepositorio } from '../repositorios/banco-vagas.repositorio';
+import { BancoVagaRegistro } from '../repositorios/tipos';
 import { ImportarBancoVagasDto } from './banco-vaga.dto';
 
 @Injectable()
 export class BancoVagasService {
   constructor(
-    private readonly mongo: MongoService,
+    private readonly bancoVagas: BancoVagasRepositorio,
     private readonly prisma: PrismaService,
     private readonly lotes: LotesService,
     private readonly eventos: EventosService,
   ) {}
 
   async importar(usuarioId: string, dto: ImportarBancoVagasDto) {
-    const docs: BancoVagaDoc[] = dto.itens.map((item) => ({
-      _id: randomUUID(),
+    const docs: Omit<BancoVagaRegistro, 'criadoEm'>[] = dto.itens.map((item) => ({
+      id: randomUUID(),
       usuarioId,
       titulo: item.titulo,
       empresa: item.empresa,
@@ -29,33 +30,29 @@ export class BancoVagasService {
       nivel: null,
       keywords: null,
       keywordsStatus: 'PENDENTE',
-      criadoEm: new Date(),
+      vagaId: null,
     }));
-    await this.mongo.bancoVagas().insertMany(docs);
+    await this.bancoVagas.inserir(docs);
 
     const lote = await this.lotes.criar(
       usuarioId,
       'IMPORTACAO',
-      docs.map((d) => d._id),
+      docs.map((d) => d.id),
     );
     return { loteId: lote.id, total: docs.length };
   }
 
   async listar(usuarioId: string) {
-    const docs = await this.mongo
-      .bancoVagas()
-      .find({ usuarioId })
-      .sort({ criadoEm: -1 })
-      .toArray();
+    const docs = await this.bancoVagas.listar(usuarioId);
     return docs.map((d) => ({
-      id: d._id,
+      id: d.id,
       titulo: d.titulo,
       empresa: d.empresa,
       fonte: d.fonte,
       categoria: d.categoria,
       nivel: d.nivel,
       keywords: d.keywords,
-      keywordsStatus: d.keywordsStatus ?? 'PENDENTE',
+      keywordsStatus: d.keywordsStatus,
       status: d.status,
       criadoEm: d.criadoEm,
     }));
@@ -66,14 +63,11 @@ export class BancoVagasService {
       where: { usuarioId, origemImportacaoId: id },
     });
     if (existente) {
-      await this.mongo.bancoVagas().updateOne(
-        { _id: id, usuarioId },
-        { $set: { status: 'ATIVADA', origemRelacionalId: existente.id } },
-      );
+      await this.bancoVagas.marcarAtivada(id, usuarioId, existente.id);
       return existente;
     }
 
-    const doc = await this.mongo.bancoVagas().findOne({ _id: id, usuarioId });
+    const doc = await this.bancoVagas.buscar(id, usuarioId);
     if (!doc) throw new NotFoundException('postagem nao encontrada');
 
     const vaga = await this.prisma.$transaction(async (tx) => {
@@ -102,10 +96,7 @@ export class BancoVagasService {
       return criada;
     });
 
-    await this.mongo.bancoVagas().updateOne(
-      { _id: id, usuarioId },
-      { $set: { status: 'ATIVADA', origemRelacionalId: vaga.id } },
-    );
+    await this.bancoVagas.marcarAtivada(id, usuarioId, vaga.id);
     return vaga;
   }
 }

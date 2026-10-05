@@ -192,7 +192,7 @@ test('logger escreve uma linha JSON por evento com contexto e stack', () => {
 });
 
 function conversas() {
-  const conversa = { _id: 'c-desligar', usuarioId: 'u1', modo: 'assistido', oportunidadeId: null, mensagens: [], pendencia: null };
+  const conversa = { id: 'c-desligar', usuarioId: 'u1', modo: 'assistido', oportunidadeId: null, mensagens: [], pendencia: null };
   return {
     conversa,
     abrir: async () => conversa,

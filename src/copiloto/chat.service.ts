@@ -4,7 +4,7 @@ import type { Response } from 'express';
 import { AuthUser } from '../auth/current-user.decorator';
 import { AiClient, CopilotoTurno, TurnoCancelado, TurnoInterrompido } from '../clients/ai.client';
 import { CotaTokensEsgotada, MENSAGEM_COTA_ESGOTADA } from '../cota/cota-tokens.service';
-import { ConversaCopilotoDoc, MensagemCopiloto } from '../mongo/mongo.service';
+import { ConversaCopiloto, MensagemCopiloto } from '../repositorios/tipos';
 import { OportunidadesService } from '../oportunidades/oportunidades.service';
 import { semContato } from '../perfil/perfil.normalizacao';
 import { descreverParaAgente, SUGESTAO_GERAR_DE_NOVO, toolDependeDoPipeline } from '../pipeline-ats/maquina';
@@ -99,7 +99,7 @@ export class ChatService {
       modo,
       dto.oportunidadeId ?? null,
     );
-    const soltar = await travar(conversa._id);
+    const soltar = await travar(conversa.id);
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -111,10 +111,10 @@ export class ChatService {
     });
     const batimento = setInterval(() => this.batimento(res), intervaloHeartbeatMs());
     batimento.unref?.();
-    this.enviar(res, 'conversa', { conversaId: conversa._id });
+    this.enviar(res, 'conversa', { conversaId: conversa.id });
     const removerTurno = registrarTurnoAberto(() => {
       this.enviar(res, 'erro', { escopo: 'servidor', mensagem: MENSAGEM_DESLIGAMENTO, recuperavel: true });
-      this.finalizar(res, conversa._id, 'erro');
+      this.finalizar(res, conversa.id, 'erro');
       cancelamento.abort();
     });
 
@@ -124,7 +124,7 @@ export class ChatService {
         if (!seguir) return;
       } else if (dto.mensagem) {
         if (conversa.pendencia) {
-          await this.conversas.definirPendencia(conversa._id, null);
+          await this.conversas.definirPendencia(conversa.id, null);
           conversa.pendencia = null;
         }
         await this.registrar(conversa, { papel: 'user', conteudo: dto.mensagem });
@@ -138,7 +138,7 @@ export class ChatService {
         mensagem: this.mensagemErro(err),
         recuperavel: true,
       });
-      this.finalizar(res, conversa._id, 'erro');
+      this.finalizar(res, conversa.id, 'erro');
     } finally {
       clearInterval(batimento);
       removerTurno();
@@ -153,7 +153,7 @@ export class ChatService {
 
   private async resolverConfirmacao(
     res: Response,
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
     dto: ChatDto,
   ): Promise<boolean> {
     const pend = conversa.pendencia;
@@ -165,28 +165,28 @@ export class ChatService {
         mensagem: 'nao ha confirmacao pendente para este passo',
         recuperavel: true,
       });
-      this.finalizar(res, conversa._id, 'erro');
+      this.finalizar(res, conversa.id, 'erro');
       return false;
     }
 
-    const pendencia = await this.conversas.confirmarPendencia(conversa._id, confirmacao.callId);
+    const pendencia = await this.conversas.confirmarPendencia(conversa.id, confirmacao.callId);
     if (!pendencia) {
-      const anterior = await this.conversas.buscarConfirmacao(conversa._id, confirmacao.callId);
+      const anterior = await this.conversas.buscarConfirmacao(conversa.id, confirmacao.callId);
       if (anterior) {
         this.enviar(res, 'tool_resultado', { callId: anterior.callId, tool: anterior.tool, ok: !anterior.erro, resultado: anterior.resultado ?? null, erro: anterior.erro ? { mensagem: anterior.erro, recuperavel: true } : null });
-        this.finalizar(res, conversa._id, anterior.erro ? 'erro' : 'completo');
+        this.finalizar(res, conversa.id, anterior.erro ? 'erro' : 'completo');
         return false;
       }
       this.enviar(res, 'erro', { escopo: 'interno', mensagem: 'este passo ja esta em execucao; consulte o status antes de repetir', recuperavel: true });
-      this.finalizar(res, conversa._id, 'erro');
+      this.finalizar(res, conversa.id, 'erro');
       return false;
     }
     conversa.pendencia = pendencia;
 
     if (confirmacao.decisao === 'recusar') {
-      await this.conversas.definirPendencia(conversa._id, null);
+      await this.conversas.definirPendencia(conversa.id, null);
       if (pend.tool === 'gerar_curriculo') await this.recusarGeracao(conversa, pend.args);
-      await this.conversas.registrarConfirmacao(conversa._id, { callId: pend.callId, tool: pend.tool, decisao: 'recusar', concluidaEm: new Date() });
+      await this.conversas.registrarConfirmacao(conversa.id, { callId: pend.callId, tool: pend.tool, decisao: 'recusar', concluidaEm: new Date() });
       await this.registrar(conversa, {
         papel: 'tool',
         tool: pend.tool,
@@ -206,8 +206,8 @@ export class ChatService {
     });
     const { falha } = await this.conferir(conversa, tool, args);
     if (falha) {
-      await this.conversas.definirPendencia(conversa._id, null);
-      await this.conversas.registrarConfirmacao(conversa._id, {
+      await this.conversas.definirPendencia(conversa.id, null);
+      await this.conversas.registrarConfirmacao(conversa.id, {
         callId: pend.callId,
         tool: pend.tool,
         decisao: 'confirmar',
@@ -229,16 +229,16 @@ export class ChatService {
       && resultado.ok
       && (await this.estaGerando(conversa, args));
     if (resultado.ok) {
-      await this.conversas.definirPendencia(conversa._id, null);
-      await this.conversas.registrarConfirmacao(conversa._id, { callId: pend.callId, tool: pend.tool, decisao: 'confirmar', resultado: resultado.valor, concluidaEm: new Date() });
+      await this.conversas.definirPendencia(conversa.id, null);
+      await this.conversas.registrarConfirmacao(conversa.id, { callId: pend.callId, tool: pend.tool, decisao: 'confirmar', resultado: resultado.valor, concluidaEm: new Date() });
       if (tool.nome === 'registrar_oportunidade' && resultado.valor && typeof resultado.valor === 'object' && 'id' in resultado.valor) {
         await this.aplicarResultadoTool(conversa, tool.nome, resultado.valor);
       }
     } else {
-      await this.conversas.definirPendencia(conversa._id, { ...pend, executando: false });
+      await this.conversas.definirPendencia(conversa.id, { ...pend, executando: false });
     }
     if (geracaoEmAndamento) {
-      this.finalizar(res, conversa._id, 'completo');
+      this.finalizar(res, conversa.id, 'completo');
       return false;
     }
     return true;
@@ -246,7 +246,7 @@ export class ChatService {
 
   private async laco(
     res: Response,
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
     modo: 'assistido' | 'autopiloto',
     sinal: AbortSignal,
   ): Promise<void> {
@@ -263,11 +263,11 @@ export class ChatService {
             modo,
             oportunidadeId: conversa.oportunidadeId,
             pipelineAts: await this.contextoPipeline(conversa),
-            trocas: paraTrocas(conversa.mensagens, conversa.resumo?.ate ?? 0),
+            trocas: paraTrocas(conversa.mensagens, conversa.resumo?.ate ?? 0, conversa.inicioJanela),
             resumo: conversa.resumo ?? null,
             tools: TOOLS_NATIVAS,
           },
-          { operacao: `conversa:${conversa._id}`, usuarioId: conversa.usuarioId },
+          { operacao: `conversa:${conversa.id}`, usuarioId: conversa.usuarioId },
           (delta) => {
             transmitido = true;
             this.enviar(res, 'token', { delta });
@@ -286,7 +286,7 @@ export class ChatService {
             mensagem: 'A resposta foi interrompida antes de terminar. Repita para continuar.',
             recuperavel: true,
           });
-          this.finalizar(res, conversa._id, 'erro');
+          this.finalizar(res, conversa.id, 'erro');
           return;
         }
         if (err instanceof CotaTokensEsgotada) {
@@ -297,7 +297,7 @@ export class ChatService {
             recuperavel: false,
             retryAfter: err.retryAfterSegundos,
           });
-          this.finalizar(res, conversa._id, 'erro');
+          this.finalizar(res, conversa.id, 'erro');
           return;
         }
         await this.registrarErro(conversa, 'ai-service', this.mensagemErro(err));
@@ -306,13 +306,13 @@ export class ChatService {
           mensagem: this.mensagemErro(err),
           recuperavel: true,
         });
-        this.finalizar(res, conversa._id, 'erro');
+        this.finalizar(res, conversa.id, 'erro');
         return;
       }
 
       if (turno.resumo) {
         conversa.resumo = turno.resumo;
-        await this.conversas.definirResumo(conversa._id, turno.resumo);
+        await this.conversas.definirResumo(conversa.id, turno.resumo);
       }
 
       const blocos = turno.conteudo ?? [];
@@ -329,7 +329,7 @@ export class ChatService {
       if (!transmitido && texto) this.enviar(res, 'token', { delta: texto });
 
       if (chamadas.length === 0) {
-        this.finalizar(res, conversa._id, 'completo');
+        this.finalizar(res, conversa.id, 'completo');
         return;
       }
 
@@ -401,7 +401,7 @@ export class ChatService {
           args,
           ...(aviso ? { aviso } : {}),
         });
-        await this.conversas.definirPendencia(conversa._id, {
+        await this.conversas.definirPendencia(conversa.id, {
           callId,
           tool: tool.nome,
           efeito: 'escrita',
@@ -409,7 +409,7 @@ export class ChatService {
           resumo,
           ...(aviso ? { aviso } : {}),
         });
-        this.finalizar(res, conversa._id, 'aguardando_confirmacao');
+        this.finalizar(res, conversa.id, 'aguardando_confirmacao');
         return;
       }
 
@@ -424,7 +424,7 @@ export class ChatService {
         const entregue = await this.entregar(res, conversa, tool, callId, args, aviso);
         this.finalizar(
           res,
-          conversa._id,
+          conversa.id,
           entregue ? 'aguardando_acao_externa' : 'erro',
         );
         return;
@@ -450,11 +450,11 @@ export class ChatService {
       mensagem: 'O turno foi interrompido antes de concluir. Repita para continuar.',
       recuperavel: true,
     });
-    this.finalizar(res, conversa._id, 'erro');
+    this.finalizar(res, conversa.id, 'erro');
   }
 
   private async contextoPipeline(
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
   ): Promise<{ oportunidadeId: string; estado: string; descricao: string } | null> {
     if (!conversa.oportunidadeId) return null;
     try {
@@ -466,7 +466,7 @@ export class ChatService {
   }
 
   private async conferir(
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
     tool: ToolDef,
     args: Record<string, unknown>,
   ): Promise<Conferencia> {
@@ -484,7 +484,7 @@ export class ChatService {
 
   private async falharTool(
     res: Response,
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
     tool: ToolDef,
     callId: string,
     args: Record<string, unknown>,
@@ -510,7 +510,7 @@ export class ChatService {
 
   private async confirmarAposAnalise(
     res: Response,
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
     callIdAnalise: string,
     argsAnalise: Record<string, unknown>,
   ): Promise<boolean> {
@@ -533,14 +533,14 @@ export class ChatService {
     return true;
   }
 
-  private async estaGerando(conversa: ConversaCopilotoDoc, args: Record<string, unknown>): Promise<boolean> {
+  private async estaGerando(conversa: ConversaCopiloto, args: Record<string, unknown>): Promise<boolean> {
     const alvo = oportunidadeDosArgs(args);
     if (!alvo) return false;
     const situacao = await this.pipelineAts.situacao(conversa.usuarioId, alvo);
     return situacao.estado === 'GERANDO';
   }
 
-  private async recusarGeracao(conversa: ConversaCopilotoDoc, args: Record<string, unknown>): Promise<void> {
+  private async recusarGeracao(conversa: ConversaCopiloto, args: Record<string, unknown>): Promise<void> {
     const alvo = oportunidadeDosArgs(args) ?? conversa.oportunidadeId;
     if (!alvo) return;
     try {
@@ -552,7 +552,7 @@ export class ChatService {
 
   private async solicitarConfirmacaoGeracao(
     res: Response,
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
     tool: ToolDef,
     callId: string,
     args: Record<string, unknown>,
@@ -569,7 +569,7 @@ export class ChatService {
 
   private async pedirConfirmacaoGeracao(
     res: Response,
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
     tool: ToolDef,
     callId: string,
     args: Record<string, unknown>,
@@ -583,19 +583,19 @@ export class ChatService {
       exigeConfirmacao: true,
     });
     this.enviar(res, 'confirmacao', { callId, tool: tool.nome, resumo, args });
-    await this.conversas.definirPendencia(conversa._id, {
+    await this.conversas.definirPendencia(conversa.id, {
       callId,
       tool: tool.nome,
       efeito: 'escrita',
       args,
       resumo,
     });
-    this.finalizar(res, conversa._id, 'aguardando_confirmacao');
+    this.finalizar(res, conversa.id, 'aguardando_confirmacao');
   }
 
   private async executarTool(
     res: Response,
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
     tool: ToolDef,
     callId: string,
     args: Record<string, unknown>,
@@ -636,7 +636,7 @@ export class ChatService {
 
   private async entregar(
     res: Response,
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
     tool: ToolDef,
     callId: string,
     args: Record<string, unknown>,
@@ -693,7 +693,7 @@ export class ChatService {
     if (!res.writableEnded) res.end();
   }
 
-  private async registrarCancelamento(conversa: ConversaCopilotoDoc): Promise<void> {
+  private async registrarCancelamento(conversa: ConversaCopiloto): Promise<void> {
     await this.registrar(conversa, {
       papel: 'evento',
       conteudo: 'A resposta anterior foi interrompida porque a conversa foi fechada antes do fim.',
@@ -702,20 +702,19 @@ export class ChatService {
   }
 
   private async registrar(
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
     mensagem: MensagemCopiloto,
   ): Promise<void> {
     conversa.mensagens.push(mensagem);
-    await this.conversas.anexar(conversa._id, mensagem);
+    await this.conversas.anexar(conversa.id, mensagem);
   }
 
   private async registrarResultado(
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
     registro: ResultadoRegistrado,
   ): Promise<void> {
-    const conteudo = registro.ok
-      ? this.resumirResultado(registro.resultado, registro.tool)
-      : `falha: ${registro.erro}`;
+    const resumo = registro.ok ? this.resumirResultado(registro.resultado, registro.tool) : null;
+    const conteudo = resumo ?? `falha: ${registro.erro}`;
     await this.registrar(conversa, {
       papel: 'tool',
       tool: registro.tool,
@@ -727,14 +726,14 @@ export class ChatService {
         args: registro.args,
         ok: registro.ok,
         ...(registro.ok
-          ? { resultado: this.resultadoHistorico(registro.resultado, registro.tool) }
+          ? { resultado: JSON.parse(resumo ?? 'null') as unknown }
           : { erro: registro.erroCandidato ?? registro.erro }),
       },
     });
   }
 
   private async registrarErro(
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
     escopo: string,
     mensagem: string,
   ): Promise<void> {
@@ -746,7 +745,7 @@ export class ChatService {
   }
 
   private async aplicarResultadoTool(
-    conversa: ConversaCopilotoDoc,
+    conversa: ConversaCopiloto,
     tool: string,
     resultado: unknown,
   ): Promise<void> {
@@ -760,7 +759,7 @@ export class ChatService {
     }
     const oportunidadeId = String((resultado as { id: unknown }).id);
     conversa.oportunidadeId = oportunidadeId;
-    await this.conversas.atualizarOportunidade(conversa._id, oportunidadeId);
+    await this.conversas.atualizarOportunidade(conversa.id, oportunidadeId);
   }
 
   private resumirResultado(resultado: unknown, tool: string): string {
@@ -783,15 +782,6 @@ export class ChatService {
         ? semContato(resultado as Record<string, unknown>)
         : resultado;
     return JSON.stringify(resultadoSeguro ?? null);
-  }
-
-  private resultadoHistorico(resultado: unknown, tool: string): unknown {
-    const resumo = this.resumirResultado(resultado, tool);
-    try {
-      return JSON.parse(resumo);
-    } catch {
-      return resultado;
-    }
   }
 
   private falhaDoErro(err: unknown): Falha {

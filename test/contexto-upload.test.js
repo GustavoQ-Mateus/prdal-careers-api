@@ -4,27 +4,29 @@ const { subirApp, autenticado } = require('./helpers/app-teste');
 
 function falsos() {
   const gravados = { notas: [], rag: [], lotes: [] };
-  const mongo = {
-    notasObsidian: () => ({ insertOne: async (doc) => gravados.notas.push(doc) }),
-    documentosRag: () => ({ insertMany: async (docs) => gravados.rag.push(...docs) }),
+  const documentos = {
+    inserirNotas: async (itens) => {
+      gravados.notas.push(...itens.map(({ nota }) => nota));
+      gravados.rag.push(...itens.map(({ documento }) => documento));
+    },
   };
   const lotes = { criar: async (_usuario, _tipo, ids) => (gravados.lotes.push(ids), { id: 'lote-1' }) };
-  return { gravados, mongo, lotes };
+  return { gravados, documentos, lotes };
 }
 
 async function subir(t) {
   const { ContextoController } = require('../dist/contexto/contexto.controller');
   const { ContextoService } = require('../dist/contexto/contexto.service');
   const { PrismaService } = require('../dist/prisma/prisma.service');
-  const { MongoService } = require('../dist/mongo/mongo.service');
+  const { DocumentosRagRepositorio } = require('../dist/repositorios/documentos-rag.repositorio');
   const { LotesService } = require('../dist/lotes/lotes.service');
-  const { gravados, mongo, lotes } = falsos();
+  const { gravados, documentos, lotes } = falsos();
   const { url } = await subirApp(t, {
     controllers: [ContextoController],
     providers: [
       ContextoService,
       { provide: PrismaService, useValue: {} },
-      { provide: MongoService, useValue: mongo },
+      { provide: DocumentosRagRepositorio, useValue: documentos },
       { provide: LotesService, useValue: lotes },
     ],
   });
@@ -146,15 +148,15 @@ async function subirComUrl(t) {
   const { ContextoController } = require('../dist/contexto/contexto.controller');
   const { ContextoService } = require('../dist/contexto/contexto.service');
   const { PrismaService } = require('../dist/prisma/prisma.service');
-  const { MongoService } = require('../dist/mongo/mongo.service');
+  const { DocumentosRagRepositorio } = require('../dist/repositorios/documentos-rag.repositorio');
   const { LotesService } = require('../dist/lotes/lotes.service');
-  const { gravados, mongo, lotes } = falsos();
+  const { gravados, documentos, lotes } = falsos();
   const { url } = await subirApp(t, {
     controllers: [ContextoController],
     providers: [
       ContextoService,
       { provide: PrismaService, useValue: {} },
-      { provide: MongoService, useValue: mongo },
+      { provide: DocumentosRagRepositorio, useValue: documentos },
       { provide: LotesService, useValue: lotes },
     ],
   });

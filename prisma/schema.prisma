@@ -10,21 +10,25 @@ datasource db {
 }
 
 model Usuario {
-  id           String              @id @default(uuid())
-  email        String              @unique
-  senhaHash    String              @map("senha_hash")
-  criadoEm     DateTime            @default(now()) @map("criado_em")
-  perfil       PerfilMestre?
-  vagas        Vaga[]
-  lotes        Lote[]
-  acoes        AcaoOportunidade[]
-  eventos      EventoOportunidade[]
-  layouts      PipelineLayout[]
-  preferencia  PreferenciaUsuario?
-  geracoes     GeracaoCurriculo[]
-  sessoes      Sessao[]
-  usosTokens   UsoTokensDiario[]
-  pipelinesAts PipelineAts[]
+  id            String               @id @default(uuid())
+  email         String               @unique
+  senhaHash     String               @map("senha_hash")
+  criadoEm      DateTime             @default(now()) @map("criado_em")
+  perfil        PerfilMestre?
+  vagas         Vaga[]
+  lotes         Lote[]
+  acoes         AcaoOportunidade[]
+  eventos       EventoOportunidade[]
+  layouts       PipelineLayout[]
+  preferencia   PreferenciaUsuario?
+  geracoes      GeracaoCurriculo[]
+  sessoes       Sessao[]
+  usosTokens    UsoTokensDiario[]
+  pipelinesAts  PipelineAts[]
+  conversas     CopilotoConversa[]
+  documentosRag DocumentoRag[]
+  notas         NotaObsidian[]
+  bancoVagas    BancoVaga[]
 
   @@map("usuarios")
 }
@@ -62,18 +66,18 @@ model Sessao {
 }
 
 model PerfilMestre {
-  id           String   @id @default(uuid())
-  usuarioId    String   @unique @map("usuario_id")
-  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  nome         String
-  contato      Json
-  resumo       String
-  experiencias Json
-  formacao     Json
-  certificacoes Json    @default("[]")
-  idiomas       Json    @default("[]")
-  skills       Json
-  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+  id            String   @id @default(uuid())
+  usuarioId     String   @unique @map("usuario_id")
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  nome          String
+  contato       Json
+  resumo        String
+  experiencias  Json
+  formacao      Json
+  certificacoes Json     @default("[]")
+  idiomas       Json     @default("[]")
+  skills        Json
+  atualizadoEm  DateTime @updatedAt @map("atualizado_em")
 
   @@map("perfil_mestre")
 }
@@ -103,7 +107,7 @@ model Vaga {
   descricao          String
   fonte              String?
   keywords           Json
-  keywordsStatus     StatusKeywords       @default(PENDENTE) @map("keywords_status")
+  keywordsStatus     StatusKeywords         @default(PENDENTE) @map("keywords_status")
   categoria          String?
   nivel              String?
   prioridade         PrioridadeOportunidade @default(MEDIA)
@@ -119,28 +123,30 @@ model Vaga {
   layouts            PipelineLayout[]
   geracoes           GeracaoCurriculo[]
   pipelineAts        PipelineAts?
+  conversas          CopilotoConversa[]
+  entradas           BancoVaga[]
 
   @@unique([usuarioId, origemImportacaoId])
   @@map("vagas")
 }
 
 model Curriculo {
-  id             String                 @id @default(uuid())
-  vagaId         String                 @map("vaga_id")
-  vaga           Vaga                   @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  rotulo         String                 @default("Versao 1")
+  id             String               @id @default(uuid())
+  vagaId         String               @map("vaga_id")
+  vaga           Vaga                 @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  rotulo         String               @default("Versao 1")
   markdown       String
-  docxPath       String?                @map("docx_path")
-  pdfPath        String?                @map("pdf_path")
+  docxPath       String?              @map("docx_path")
+  pdfPath        String?              @map("pdf_path")
   score          Int?
-  scoreBreakdown Json?                  @map("score_breakdown")
-  analiseInicial Json?                  @map("analise_inicial")
-  analiseFinal   Json?                  @map("analise_final")
+  scoreBreakdown Json?                @map("score_breakdown")
+  analiseInicial Json?                @map("analise_inicial")
+  analiseFinal   Json?                @map("analise_final")
   degradacao     String?
   modelo         String?
-  promptVersion  String?                @map("prompt_version")
+  promptVersion  String?              @map("prompt_version")
   estrutura      Json?
-  geradoEm       DateTime               @default(now()) @map("gerado_em")
+  geradoEm       DateTime             @default(now()) @map("gerado_em")
   candidaturas   Candidatura[]
   eventos        EventoOportunidade[]
   geracoes       GeracaoCurriculo[]
@@ -160,21 +166,22 @@ enum StatusCandidatura {
 }
 
 model Candidatura {
-  id                 String              @id @default(uuid())
-  vagaId             String              @map("vaga_id")
-  vaga               Vaga                @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  curriculoId        String?             @map("curriculo_id")
-  curriculo          Curriculo?          @relation(fields: [curriculoId], references: [id], onDelete: Restrict)
-  status             StatusCandidatura   @default(RASCUNHO)
-  notas              String              @default("")
-  principal          Boolean             @default(false)
-  enviadaEm          DateTime?           @map("enviada_em")
-  encerradaEm        DateTime?           @map("encerrada_em")
-  motivoEncerramento String?             @map("motivo_encerramento")
-  criadoEm           DateTime            @default(now()) @map("criado_em")
-  atualizadoEm       DateTime            @updatedAt @map("atualizado_em")
+  id                 String               @id @default(uuid())
+  vagaId             String               @map("vaga_id")
+  vaga               Vaga                 @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  curriculoId        String?              @map("curriculo_id")
+  curriculo          Curriculo?           @relation(fields: [curriculoId], references: [id], onDelete: Restrict)
+  status             StatusCandidatura    @default(RASCUNHO)
+  notas              String               @default("")
+  principal          Boolean              @default(false)
+  enviadaEm          DateTime?            @map("enviada_em")
+  encerradaEm        DateTime?            @map("encerrada_em")
+  motivoEncerramento String?              @map("motivo_encerramento")
+  criadoEm           DateTime             @default(now()) @map("criado_em")
+  atualizadoEm       DateTime             @updatedAt @map("atualizado_em")
   acoes              AcaoOportunidade[]
   eventos            EventoOportunidade[]
+  documentosRag      DocumentoRag[]
 
   @@index([vagaId])
   @@index([curriculoId])
@@ -195,14 +202,14 @@ enum StatusLoteItem {
 }
 
 model Lote {
-  id          String      @id @default(uuid())
-  usuarioId   String      @map("usuario_id")
-  usuario     Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id          String     @id @default(uuid())
+  usuarioId   String     @map("usuario_id")
+  usuario     Usuario    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   tipo        String
-  status      StatusLote  @default(PENDENTE)
+  status      StatusLote @default(PENDENTE)
   total       Int
-  processados Int         @default(0)
-  criadoEm    DateTime    @default(now()) @map("criado_em")
+  processados Int        @default(0)
+  criadoEm    DateTime   @default(now()) @map("criado_em")
   itens       LoteItem[]
 
   @@index([usuarioId])
@@ -210,15 +217,21 @@ model Lote {
 }
 
 model LoteItem {
-  id          String         @id @default(uuid())
-  loteId      String         @map("lote_id")
-  lote        Lote           @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  bancoVagaId String         @map("banco_vaga_id")
-  status      StatusLoteItem @default(PENDENTE)
-  tentativas  Int            @default(0)
-  erro        String?
+  id               String         @id @default(uuid())
+  loteId           String         @map("lote_id")
+  lote             Lote           @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  bancoVagaId      String?        @map("banco_vaga_id")
+  bancoVaga        BancoVaga?     @relation(fields: [bancoVagaId], references: [id], onDelete: SetNull)
+  documentoRagId   String?        @map("documento_rag_id")
+  documentoRag     DocumentoRag?  @relation(fields: [documentoRagId], references: [id], onDelete: SetNull)
+  referenciaLegada String?        @map("referencia_legada")
+  status           StatusLoteItem @default(PENDENTE)
+  tentativas       Int            @default(0)
+  erro             String?
 
   @@index([loteId])
+  @@index([bancoVagaId])
+  @@index([documentoRagId])
   @@map("lote_itens")
 }
 
@@ -326,20 +339,20 @@ enum StatusGeracaoCurriculo {
 }
 
 model GeracaoCurriculo {
-  id           String                  @id @default(uuid())
-  usuarioId    String                  @map("usuario_id")
-  usuario      Usuario                 @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  vagaId       String                  @map("vaga_id")
-  vaga         Vaga                    @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  curriculoId  String?                 @map("curriculo_id")
-  curriculo    Curriculo?              @relation(fields: [curriculoId], references: [id], onDelete: SetNull)
-  status       StatusGeracaoCurriculo  @default(PENDENTE)
-  erro         String?
-  analiseInicial Json?                 @map("analise_inicial")
-  analiseFinal   Json?                 @map("analise_final")
+  id             String                 @id @default(uuid())
+  usuarioId      String                 @map("usuario_id")
+  usuario        Usuario                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  vagaId         String                 @map("vaga_id")
+  vaga           Vaga                   @relation(fields: [vagaId], references: [id], onDelete: Cascade)
+  curriculoId    String?                @map("curriculo_id")
+  curriculo      Curriculo?             @relation(fields: [curriculoId], references: [id], onDelete: SetNull)
+  status         StatusGeracaoCurriculo @default(PENDENTE)
+  erro           String?
+  analiseInicial Json?                  @map("analise_inicial")
+  analiseFinal   Json?                  @map("analise_final")
   degradacao     String?
-  criadoEm     DateTime                @default(now()) @map("criado_em")
-  atualizadoEm DateTime                @updatedAt @map("atualizado_em")
+  criadoEm       DateTime               @default(now()) @map("criado_em")
+  atualizadoEm   DateTime               @updatedAt @map("atualizado_em")
 
   @@index([usuarioId])
   @@index([vagaId])
@@ -397,4 +410,149 @@ model TurnoCopiloto {
   expiraEm   DateTime @map("expira_em")
 
   @@map("turnos_copiloto")
+}
+
+enum ModoConversaCopiloto {
+  assistido
+  autopiloto
+}
+
+enum PapelMensagemCopiloto {
+  user
+  assistant
+  tool
+  evento
+}
+
+model CopilotoConversa {
+  id             String                @id @default(uuid())
+  usuarioId      String                @map("usuario_id")
+  usuario        Usuario               @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  modo           ModoConversaCopiloto
+  oportunidadeId String?               @map("oportunidade_id")
+  oportunidade   Vaga?                 @relation(fields: [oportunidadeId], references: [id], onDelete: SetNull)
+  pendencia      Json?
+  resumo         Json?
+  totalMensagens Int                   @default(0) @map("total_mensagens")
+  criadoEm       DateTime              @default(now()) @map("criado_em")
+  atualizadoEm   DateTime              @default(now()) @map("atualizado_em")
+  mensagens      CopilotoMensagem[]
+  confirmacoes   CopilotoConfirmacao[]
+
+  @@index([usuarioId, atualizadoEm(sort: Desc)])
+  @@index([usuarioId, oportunidadeId])
+  @@index([oportunidadeId])
+  @@map("copiloto_conversas")
+}
+
+model CopilotoMensagem {
+  id         String                @id @default(uuid())
+  conversaId String                @map("conversa_id")
+  conversa   CopilotoConversa      @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  ordem      Int
+  papel      PapelMensagemCopiloto
+  conteudo   String
+  tool       String?
+  blocos     Json?
+  dados      Json?
+  criadoEm   DateTime              @default(now()) @map("criado_em")
+
+  @@unique([conversaId, ordem])
+  @@map("copiloto_mensagens")
+}
+
+model CopilotoConfirmacao {
+  conversaId  String           @map("conversa_id")
+  conversa    CopilotoConversa @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  callId      String           @map("call_id")
+  tool        String
+  decisao     String
+  resultado   Json?
+  erro        String?
+  concluidaEm DateTime         @map("concluida_em")
+
+  @@id([conversaId, callId])
+  @@map("copiloto_confirmacoes")
+}
+
+model NotaObsidian {
+  id         String         @id @default(uuid())
+  usuarioId  String         @map("usuario_id")
+  usuario    Usuario        @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  titulo     String
+  corpo      String
+  historico  Boolean        @default(false)
+  criadoEm   DateTime       @default(now()) @map("criado_em")
+  documentos DocumentoRag[]
+
+  @@index([usuarioId])
+  @@map("notas_obsidian")
+}
+
+enum OrigemDocumentoRag {
+  perfil
+  candidatura
+  nota
+}
+
+enum TipoDocumentoRag {
+  experiencia
+  resumo
+  skills
+  formacao
+  certificacao
+  idiomas
+  nota
+  candidatura
+}
+
+model DocumentoRag {
+  id            String             @id @default(uuid())
+  usuarioId     String             @map("usuario_id")
+  usuario       Usuario            @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  origem        OrigemDocumentoRag
+  origemId      String             @map("origem_id")
+  tipo          TipoDocumentoRag
+  factual       Boolean
+  titulo        String
+  texto         String
+  notaId        String?            @map("nota_id")
+  nota          NotaObsidian?      @relation(fields: [notaId], references: [id], onDelete: Cascade)
+  candidaturaId String?            @map("candidatura_id")
+  candidatura   Candidatura?       @relation(fields: [candidaturaId], references: [id], onDelete: Cascade)
+  criadoEm      DateTime           @default(now()) @map("criado_em")
+  loteItens     LoteItem[]
+
+  @@index([usuarioId, origem])
+  @@index([notaId])
+  @@index([candidaturaId])
+  @@map("documentos_rag")
+}
+
+enum StatusBancoVaga {
+  CRUA
+  ATIVADA
+}
+
+model BancoVaga {
+  id             String          @id @default(uuid())
+  usuarioId      String          @map("usuario_id")
+  usuario        Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  titulo         String
+  empresa        String
+  fonte          String?
+  descricao      String
+  status         StatusBancoVaga @default(CRUA)
+  categoria      String?
+  nivel          String?
+  keywords       Json?
+  keywordsStatus StatusKeywords  @default(PENDENTE) @map("keywords_status")
+  vagaId         String?         @map("vaga_id")
+  vaga           Vaga?           @relation(fields: [vagaId], references: [id], onDelete: SetNull)
+  criadoEm       DateTime        @default(now()) @map("criado_em")
+  loteItens      LoteItem[]
+
+  @@index([usuarioId, status, criadoEm(sort: Desc)])
+  @@index([vagaId])
+  @@map("banco_vagas")
 }

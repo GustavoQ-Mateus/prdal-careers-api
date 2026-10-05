@@ -24,6 +24,7 @@ import { OportunidadesModule } from './oportunidades/oportunidades.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { PipelineAtsModule } from './pipeline-ats/pipeline-ats.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { RepositoriosModule } from './repositorios/repositorios.module';
 import { SaudeModule } from './saude/saude.module';
 import { TaxonomiaModule } from './taxonomia/taxonomia.module';
 import { VagasModule } from './vagas/vagas.module';
@@ -38,6 +39,7 @@ import { VagasModule } from './vagas/vagas.module';
     PrismaModule,
     PipelineAtsModule,
     CotaModule,
+    RepositoriosModule,
     MongoModule,
     AuthModule,
     PerfilModule,

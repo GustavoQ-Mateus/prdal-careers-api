@@ -61,7 +61,7 @@ test('tool_use sem resultado ganha resultado de erro antes da proxima mensagem',
 
 function conversaFalsa() {
   const conversa = {
-    _id: 'conversa-1',
+    id: 'conversa-1',
     usuarioId: 'usuario-1',
     modo: 'assistido',
     oportunidadeId: null,

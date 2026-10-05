@@ -3,7 +3,7 @@ import { Prisma, PrioridadeOportunidade, StatusCandidatura } from '@prisma/clien
 import { apresentacaoRelacional, etapaPipeline } from '../dominio/apresentacao';
 import { normalizar } from '../dominio/normalizar';
 import { HojeService } from '../hoje/hoje.service';
-import { MongoService } from '../mongo/mongo.service';
+import { NotasRepositorio } from '../repositorios/notas.repositorio';
 import { PrismaService } from '../prisma/prisma.service';
 import { PipelineFiltrosDto, SalvarCanvasDto } from './pipeline.dto';
 
@@ -29,7 +29,7 @@ type VagaPipeline = {
 export class PipelineService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mongo: MongoService,
+    private readonly notasRepositorio: NotasRepositorio,
     private readonly hoje: HojeService,
   ) {}
 
@@ -115,10 +115,7 @@ export class PipelineService {
     const perfil = await this.prisma.perfilMestre.findUnique({
       where: { usuarioId },
     });
-    const notas = await this.mongo
-      .notasObsidian()
-      .find({ usuarioId })
-      .toArray();
+    const notas = await this.notasRepositorio.listar(usuarioId);
 
     const nodes = new Map<string, { id: string; tipo: string; rotulo: string }>();
     const edges: { id: string; origem: string; destino: string; tipo: string }[] = [];
@@ -188,7 +185,7 @@ export class PipelineService {
           const tituloN = normalizar(nota.titulo);
           const corpoN = normalizar(nota.corpo);
           if (tituloN.includes(chave) || corpoN.includes(chave)) {
-            const notaId = `conhecimento:nota:${nota._id}`;
+            const notaId = `conhecimento:nota:${nota.id}`;
             addNode(notaId, 'conhecimento', nota.titulo);
             addEdge(oppId, notaId, 'oportunidade-nota');
           }

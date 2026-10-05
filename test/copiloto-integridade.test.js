@@ -18,7 +18,7 @@ function response() {
 
 function conversaFalsa(modo) {
   return {
-    _id: 'conversa-1',
+    id: 'conversa-1',
     usuarioId: 'usuario-1',
     modo,
     oportunidadeId: null,
@@ -83,9 +83,9 @@ test('reaproveita oportunidade na mesma conversa no segundo registro confirmado'
   const primeiro = response();
   await service.chat(primeiro, usuario, { mensagem: 'Registre duas vezes por engano.' });
   const segundo = response();
-  await service.chat(segundo, usuario, { conversaId: conversa._id, confirmacao: { callId: confirmacaoPendente(primeiro), decisao: 'confirmar' } });
+  await service.chat(segundo, usuario, { conversaId: conversa.id, confirmacao: { callId: confirmacaoPendente(primeiro), decisao: 'confirmar' } });
   const terceiro = response();
-  await service.chat(terceiro, usuario, { conversaId: conversa._id, confirmacao: { callId: confirmacaoPendente(segundo), decisao: 'confirmar' } });
+  await service.chat(terceiro, usuario, { conversaId: conversa.id, confirmacao: { callId: confirmacaoPendente(segundo), decisao: 'confirmar' } });
 
   assert.deepEqual(chamadas, ['registrar_oportunidade', 'buscar_oportunidade']);
   assert.match(terceiro.eventos.join(''), /reaproveitada/);

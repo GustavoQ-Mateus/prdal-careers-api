@@ -277,12 +277,14 @@ model AcaoOportunidade {
   principal     Boolean              @default(false)
   venceEm       DateTime?            @map("vence_em")
   lembrarEm     DateTime?            @map("lembrar_em")
+  lembreteEnviadoEm DateTime?         @map("lembrete_enviado_em")
   concluidaEm   DateTime?            @map("concluida_em")
   canceladaEm   DateTime?            @map("cancelada_em")
   criadoEm      DateTime             @default(now()) @map("criado_em")
   atualizadoEm  DateTime             @updatedAt @map("atualizado_em")
 
   @@index([usuarioId, venceEm])
+  @@index([lembrarEm, lembreteEnviadoEm])
   @@index([vagaId])
   @@index([candidaturaId])
   @@map("acoes_oportunidade")
@@ -553,6 +555,7 @@ enum TipoJob {
   empacotar_curriculo
   exportar_dados
   excluir_conta
+  sincronizar_lembrete
 }
 
 enum StatusJob {

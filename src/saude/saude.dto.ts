@@ -1,9 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
+import type { HealthResponse } from '@prdal/contracts';
 
-export class HealthResponseDto {
+export class HealthResponseDto implements HealthResponse {
   @ApiProperty({ enum: ['api'] })
-  service!: 'api';
+  service!: HealthResponse['service'];
 
   @ApiProperty({ enum: ['ok'] })
-  status!: 'ok';
+  status!: HealthResponse['status'];
 }

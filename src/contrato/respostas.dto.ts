@@ -223,12 +223,6 @@ export class RespostaObjeto15Dto {
   @ApiProperty({"type":"string","enum":["PENDENTE","PROCESSANDO","ERRO"]})
   "status"!: unknown;
 
-  @ApiPropertyOptional({})
-  "url"!: unknown;
-
-  @ApiPropertyOptional({})
-  "expiraEm"!: unknown;
-
 }
 
 export class RespostaObjeto16Dto {
@@ -334,7 +328,7 @@ export class RespostaObjeto23Dto {
   @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto24Dto"}})
   "mensagens"!: unknown;
 
-  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto33Dto })
+  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto34Dto })
   "pendencia"!: unknown;
 
   @ApiProperty({"type":"string","format":"date-time"})
@@ -460,7 +454,7 @@ export class RespostaObjeto30Dto {
   @ApiPropertyOptional({"type":"number","enum":[1,3]})
   "etapa"!: unknown;
 
-  @ApiPropertyOptional({ ...{}, type: () => RespostaObjeto32Dto })
+  @ApiPropertyOptional({ ...{}, type: () => RespostaObjeto33Dto })
   "narracao"!: unknown;
 
 }
@@ -478,9 +472,24 @@ export class RespostaObjeto31Dto {
   @ApiPropertyOptional({"type":"string"})
   "destino"!: unknown;
 
+  @ApiPropertyOptional({ ...{}, type: () => AvisoAcao })
+  "aviso"!: unknown;
+
 }
 
-export class RespostaObjeto32Dto {
+export class AvisoAcao {
+  @ApiProperty({"type":"string"})
+  "tipo"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "mensagem"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "sugestao"!: unknown;
+
+}
+
+export class RespostaObjeto33Dto {
   @ApiProperty({"type":"number"})
   "scoreInicial"!: unknown;
 
@@ -510,7 +519,7 @@ export class RespostaObjeto32Dto {
 
 }
 
-export class RespostaObjeto33Dto {
+export class RespostaObjeto34Dto {
   @ApiProperty({"type":"string"})
   "callId"!: unknown;
 
@@ -531,7 +540,7 @@ export class RespostaObjeto33Dto {
 
 }
 
-export class RespostaObjeto34Dto {
+export class RespostaObjeto35Dto {
   @ApiProperty({"type":"string","enum":["mensagem_recrutador"]})
   "tipo"!: unknown;
 
@@ -546,14 +555,14 @@ export class RespostaObjeto34Dto {
 
 }
 
-export class RespostaObjeto35Dto {
+export class RespostaObjeto36Dto {
   @ApiProperty({"type":"string","enum":["resposta_formulario"]})
   "tipo"!: unknown;
 
   @ApiProperty({"type":"string"})
   "titulo"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto36Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto37Dto"}})
   "respostas"!: unknown;
 
   @ApiProperty({"type":"string"})
@@ -561,7 +570,7 @@ export class RespostaObjeto35Dto {
 
 }
 
-export class RespostaObjeto36Dto {
+export class RespostaObjeto37Dto {
   @ApiProperty({"type":"string"})
   "campo"!: unknown;
 
@@ -570,8 +579,8 @@ export class RespostaObjeto36Dto {
 
 }
 
-export class RespostaObjeto37Dto {
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto38Dto"}})
+export class RespostaObjeto38Dto {
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto39Dto"}})
   "itens"!: unknown;
 
   @ApiProperty({"type":"number"})
@@ -585,7 +594,7 @@ export class RespostaObjeto37Dto {
 
 }
 
-export class RespostaObjeto38Dto {
+export class RespostaObjeto39Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -595,13 +604,13 @@ export class RespostaObjeto38Dto {
   @ApiProperty({"type":"number","nullable":true})
   "score"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({ ...{"nullable":true}, type: () => ScoreBreakdown })
   "breakdown"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({ ...{"nullable":true}, type: () => AtsAnalysis })
   "analiseInicial"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({ ...{"nullable":true}, type: () => AtsAnalysis })
   "analiseFinal"!: unknown;
 
   @ApiProperty({"type":"string","nullable":true})
@@ -619,10 +628,10 @@ export class RespostaObjeto38Dto {
   @ApiProperty({"type":"string","nullable":true})
   "nivel"!: unknown;
 
-  @ApiProperty({ ...{}, type: () => RespostaObjeto39Dto })
+  @ApiProperty({ ...{}, type: () => RespostaObjeto42Dto })
   "oportunidade"!: unknown;
 
-  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto40Dto })
+  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto43Dto })
   "vinculo"!: unknown;
 
   @ApiProperty({"type":"string","nullable":true})
@@ -633,7 +642,46 @@ export class RespostaObjeto38Dto {
 
 }
 
-export class RespostaObjeto39Dto {
+export class ScoreBreakdown {
+  @ApiProperty({"type":"number"})
+  "keywordMatch"!: unknown;
+
+  @ApiProperty({"type":"number"})
+  "densidade"!: unknown;
+
+  @ApiProperty({"type":"number"})
+  "secoes"!: unknown;
+
+  @ApiProperty({"type":"array","items":{"type":"string"}})
+  "faltando"!: unknown;
+
+}
+
+export class AtsAnalysis {
+  @ApiProperty({"type":"number"})
+  "score"!: unknown;
+
+  @ApiPropertyOptional({"type":"number"})
+  "scoreVersao"!: unknown;
+
+  @ApiProperty({"type":"array","items":{"type":"string"}})
+  "keywordsEncontradas"!: unknown;
+
+  @ApiProperty({"type":"array","items":{"type":"string"}})
+  "keywordsCriticasAusentes"!: unknown;
+
+  @ApiProperty({"type":"array","items":{"type":"string"}})
+  "pontosEliminatorios"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "veredicto"!: unknown;
+
+  @ApiProperty({ ...{}, type: () => ScoreBreakdown })
+  "breakdown"!: unknown;
+
+}
+
+export class RespostaObjeto42Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -645,7 +693,7 @@ export class RespostaObjeto39Dto {
 
 }
 
-export class RespostaObjeto40Dto {
+export class RespostaObjeto43Dto {
   @ApiProperty({"type":"string"})
   "candidaturaId"!: unknown;
 
@@ -657,7 +705,7 @@ export class RespostaObjeto40Dto {
 
 }
 
-export class RespostaObjeto41Dto {
+export class RespostaObjeto44Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -673,19 +721,19 @@ export class RespostaObjeto41Dto {
   @ApiProperty({"type":"string","nullable":true})
   "curriculoId"!: unknown;
 
-  @ApiProperty({ ...{}, type: () => RespostaObjeto42Dto })
+  @ApiProperty({ ...{}, type: () => RespostaObjeto45Dto })
   "etapas"!: unknown;
 
 }
 
-export class RespostaObjeto42Dto {
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+export class RespostaObjeto45Dto {
+  @ApiProperty({ ...{"nullable":true}, type: () => AtsAnalysis })
   "analiseInicial"!: unknown;
 
   @ApiProperty({"type":"boolean","enum":[false,true]})
   "reescrita"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({ ...{"nullable":true}, type: () => AtsAnalysis })
   "analiseFinal"!: unknown;
 
   @ApiProperty({"type":"string","nullable":true})
@@ -693,7 +741,7 @@ export class RespostaObjeto42Dto {
 
 }
 
-export class RespostaObjeto43Dto {
+export class RespostaObjeto46Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -709,13 +757,13 @@ export class RespostaObjeto43Dto {
   @ApiProperty({"type":"number","nullable":true})
   "score"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({ ...{"nullable":true}, type: () => ScoreBreakdown })
   "breakdown"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({ ...{"nullable":true}, type: () => AtsAnalysis })
   "analiseInicial"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({ ...{"nullable":true}, type: () => AtsAnalysis })
   "analiseFinal"!: unknown;
 
   @ApiProperty({"type":"string","nullable":true})
@@ -724,10 +772,10 @@ export class RespostaObjeto43Dto {
   @ApiProperty({"type":"string","format":"date-time"})
   "geradoEm"!: unknown;
 
-  @ApiProperty({ ...{}, type: () => RespostaObjeto44Dto })
+  @ApiProperty({ ...{}, type: () => RespostaObjeto47Dto })
   "oportunidade"!: unknown;
 
-  @ApiProperty({ ...{}, type: () => RespostaObjeto45Dto })
+  @ApiProperty({ ...{}, type: () => RespostaObjeto48Dto })
   "vinculo"!: unknown;
 
   @ApiProperty({"type":"string","nullable":true})
@@ -738,13 +786,13 @@ export class RespostaObjeto43Dto {
 
 }
 
-export class RespostaObjeto44Dto {
+export class RespostaObjeto47Dto {
 }
 
-export class RespostaObjeto45Dto {
+export class RespostaObjeto48Dto {
 }
 
-export class RespostaObjeto46Dto {
+export class RespostaObjeto49Dto {
   @ApiProperty({"type":"string"})
   "url"!: unknown;
 
@@ -753,7 +801,7 @@ export class RespostaObjeto46Dto {
 
 }
 
-export class RespostaObjeto47Dto {
+export class RespostaObjeto50Dto {
   @ApiProperty({"type":"string"})
   "fusoHorario"!: unknown;
 
@@ -763,36 +811,66 @@ export class RespostaObjeto47Dto {
   @ApiProperty({"type":"string","format":"date-time"})
   "fimDia"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"oneOf":[{}]}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto51Dto"}})
   "atrasadas"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"oneOf":[{}]}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto51Dto"}})
   "hoje"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"oneOf":[{}]}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto51Dto"}})
   "proximosDias"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto48Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto53Dto"}})
   "semProximoPasso"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"oneOf":[{}]}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto54Dto"}})
   "atividadeRecente"!: unknown;
 
-  @ApiProperty({ ...{}, type: () => RespostaObjeto49Dto })
+  @ApiProperty({ ...{}, type: () => RespostaObjeto55Dto })
   "resumoAts"!: unknown;
 
-  @ApiProperty({ ...{}, type: () => RespostaObjeto50Dto })
+  @ApiProperty({ ...{}, type: () => RespostaObjeto56Dto })
   "serieTemporal"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto52Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto58Dto"}})
   "geracoesConcluidas"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto53Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto59Dto"}})
   "entrada"!: unknown;
 
 }
 
-export class RespostaObjeto48Dto {
+export class RespostaObjeto51Dto {
+  @ApiProperty({"type":"string"})
+  "id"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "vagaId"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "titulo"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "tipo"!: unknown;
+
+  @ApiProperty({"type":"boolean","enum":[false,true]})
+  "principal"!: unknown;
+
+  @ApiProperty({"type":"string","format":"date-time","nullable":true})
+  "venceEm"!: unknown;
+
+  @ApiProperty({"type":"string","format":"date-time","nullable":true})
+  "lembrarEm"!: unknown;
+
+  @ApiProperty({"type":"string","format":"date-time"})
+  "quando"!: unknown;
+
+  @ApiProperty({ ...{}, type: () => RespostaObjeto52Dto })
+  "oportunidade"!: unknown;
+
+}
+
+export class RespostaObjeto52Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -804,7 +882,43 @@ export class RespostaObjeto48Dto {
 
 }
 
-export class RespostaObjeto49Dto {
+export class RespostaObjeto53Dto {
+  @ApiProperty({"type":"string"})
+  "id"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "titulo"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "empresa"!: unknown;
+
+}
+
+export class RespostaObjeto54Dto {
+  @ApiProperty({"type":"string"})
+  "id"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "vagaId"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "titulo"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "empresa"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "tipo"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "descricao"!: unknown;
+
+  @ApiProperty({"type":"string","format":"date-time"})
+  "ocorridoEm"!: unknown;
+
+}
+
+export class RespostaObjeto55Dto {
   @ApiProperty({"type":"number"})
   "curriculos"!: unknown;
 
@@ -816,7 +930,7 @@ export class RespostaObjeto49Dto {
 
 }
 
-export class RespostaObjeto50Dto {
+export class RespostaObjeto56Dto {
   @ApiProperty({"type":"string"})
   "inicio"!: unknown;
 
@@ -826,12 +940,12 @@ export class RespostaObjeto50Dto {
   @ApiProperty({"type":"number","enum":[7,30,90]})
   "periodoDias"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto51Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto57Dto"}})
   "pontos"!: unknown;
 
 }
 
-export class RespostaObjeto51Dto {
+export class RespostaObjeto57Dto {
   @ApiProperty({"type":"string"})
   "data"!: unknown;
 
@@ -849,7 +963,7 @@ export class RespostaObjeto51Dto {
 
 }
 
-export class RespostaObjeto52Dto {
+export class RespostaObjeto58Dto {
   @ApiProperty({"type":"string"})
   "curriculoId"!: unknown;
 
@@ -870,7 +984,7 @@ export class RespostaObjeto52Dto {
 
 }
 
-export class RespostaObjeto53Dto {
+export class RespostaObjeto59Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -885,7 +999,7 @@ export class RespostaObjeto53Dto {
 
 }
 
-export class RespostaObjeto54Dto {
+export class RespostaObjeto60Dto {
   @ApiProperty({"type":"string"})
   "usuarioId"!: unknown;
 
@@ -897,7 +1011,7 @@ export class RespostaObjeto54Dto {
 
 }
 
-export class RespostaObjeto55Dto {
+export class RespostaObjeto61Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -913,12 +1027,12 @@ export class RespostaObjeto55Dto {
   @ApiProperty({"type":"number"})
   "processados"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto56Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto62Dto"}})
   "itens"!: unknown;
 
 }
 
-export class RespostaObjeto56Dto {
+export class RespostaObjeto62Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -933,8 +1047,8 @@ export class RespostaObjeto56Dto {
 
 }
 
-export class RespostaObjeto57Dto {
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto58Dto"}})
+export class RespostaObjeto63Dto {
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto64Dto"}})
   "itens"!: unknown;
 
   @ApiProperty({"type":"number"})
@@ -948,7 +1062,7 @@ export class RespostaObjeto57Dto {
 
 }
 
-export class RespostaObjeto58Dto {
+export class RespostaObjeto64Dto {
   @ApiProperty({"type":"string","enum":["ENTRADA"]})
   "tipo"!: unknown;
 
@@ -967,22 +1081,22 @@ export class RespostaObjeto58Dto {
   @ApiProperty({"type":"string","nullable":true})
   "nivel"!: unknown;
 
-  @ApiProperty({"nullable":true})
+  @ApiProperty({"type":"string","enum":[null],"nullable":true})
   "prioridade"!: unknown;
 
-  @ApiProperty({"nullable":true})
+  @ApiProperty({"type":"string","enum":[null],"nullable":true})
   "etapa"!: unknown;
 
   @ApiProperty({"type":"string","enum":["ENTRADA"]})
   "apresentacao"!: unknown;
 
-  @ApiProperty({"nullable":true})
+  @ApiProperty({"type":"string","enum":[null],"nullable":true})
   "curriculoVinculado"!: unknown;
 
-  @ApiProperty({"nullable":true})
+  @ApiProperty({"type":"string","enum":[null],"nullable":true})
   "score"!: unknown;
 
-  @ApiProperty({"nullable":true})
+  @ApiProperty({"type":"string","enum":[null],"nullable":true})
   "proximoPasso"!: unknown;
 
   @ApiProperty({"type":"string","format":"date-time"})
@@ -991,7 +1105,7 @@ export class RespostaObjeto58Dto {
   @ApiProperty({"type":"string","enum":["IMPORTACAO"]})
   "origem"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/Keyword"},"nullable":true})
   "keywords"!: unknown;
 
   @ApiProperty({"type":"string","enum":["PENDENTE","VALIDAS"]})
@@ -999,8 +1113,17 @@ export class RespostaObjeto58Dto {
 
 }
 
-export class RespostaObjeto59Dto {
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto60Dto"}})
+export class Keyword {
+  @ApiProperty({"type":"string"})
+  "termo"!: unknown;
+
+  @ApiProperty({"type":"number"})
+  "peso"!: unknown;
+
+}
+
+export class RespostaObjeto66Dto {
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto67Dto"}})
   "itens"!: unknown;
 
   @ApiProperty({"type":"number"})
@@ -1014,7 +1137,7 @@ export class RespostaObjeto59Dto {
 
 }
 
-export class RespostaObjeto60Dto {
+export class RespostaObjeto67Dto {
   @ApiProperty({"type":"string","enum":["OPORTUNIDADE"]})
   "tipo"!: unknown;
 
@@ -1042,13 +1165,13 @@ export class RespostaObjeto60Dto {
   @ApiProperty({"type":"string","enum":["ENTRADA","ATIVA","ENCERRADA"]})
   "apresentacao"!: unknown;
 
-  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto61Dto })
+  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto68Dto })
   "curriculoVinculado"!: unknown;
 
   @ApiProperty({"type":"number","nullable":true})
   "score"!: unknown;
 
-  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto62Dto })
+  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto69Dto })
   "proximoPasso"!: unknown;
 
   @ApiProperty({"type":"string","format":"date-time"})
@@ -1057,7 +1180,7 @@ export class RespostaObjeto60Dto {
   @ApiProperty({"type":"string","enum":["MANUAL","IMPORTACAO"]})
   "origem"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/Keyword"},"nullable":true})
   "keywords"!: unknown;
 
   @ApiProperty({"type":"string","enum":["PENDENTE","VALIDAS"]})
@@ -1077,7 +1200,7 @@ export class RespostaObjeto60Dto {
 
 }
 
-export class RespostaObjeto61Dto {
+export class RespostaObjeto68Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1089,7 +1212,7 @@ export class RespostaObjeto61Dto {
 
 }
 
-export class RespostaObjeto62Dto {
+export class RespostaObjeto69Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1116,14 +1239,14 @@ export class RespostaObjeto62Dto {
 
 }
 
-export class RespostaObjeto63Dto {
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto60Dto"}})
+export class RespostaObjeto70Dto {
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto67Dto"}})
   "itens"!: unknown;
 
   @ApiProperty({"type":"number"})
   "total"!: unknown;
 
-  @ApiProperty({"nullable":true})
+  @ApiProperty({"type":"string","enum":[null],"nullable":true})
   "limit"!: unknown;
 
   @ApiProperty({"type":"number"})
@@ -1131,7 +1254,7 @@ export class RespostaObjeto63Dto {
 
 }
 
-export class RespostaObjeto64Dto {
+export class RespostaObjeto71Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1156,7 +1279,7 @@ export class RespostaObjeto64Dto {
   @ApiProperty({"type":"string","nullable":true})
   "fonte"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/Keyword"},"nullable":true})
   "keywords"!: unknown;
 
   @ApiProperty({"type":"string","enum":["PENDENTE","VALIDAS"]})
@@ -1191,7 +1314,7 @@ export class RespostaObjeto64Dto {
 
 }
 
-export class RespostaObjeto65Dto {
+export class RespostaObjeto72Dto {
   @ApiProperty({"type":"string"})
   "loteId"!: unknown;
 
@@ -1200,14 +1323,14 @@ export class RespostaObjeto65Dto {
 
 }
 
-export class RespostaObjeto66Dto {
-  @ApiProperty({ ...{}, type: () => RespostaObjeto67Dto })
+export class RespostaObjeto73Dto {
+  @ApiProperty({ ...{}, type: () => RespostaObjeto74Dto })
   "oportunidade"!: unknown;
 
-  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto68Dto })
+  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto75Dto })
   "candidatura"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto72Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto79Dto"}})
   "curriculos"!: unknown;
 
   @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto1Dto })
@@ -1216,12 +1339,12 @@ export class RespostaObjeto66Dto {
   @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto1Dto"}})
   "acoes"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto73Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto80Dto"}})
   "timeline"!: unknown;
 
 }
 
-export class RespostaObjeto67Dto {
+export class RespostaObjeto74Dto {
   @ApiProperty({"type":"string"})
   "descricao"!: unknown;
 
@@ -1261,13 +1384,13 @@ export class RespostaObjeto67Dto {
   @ApiProperty({"type":"string","enum":["ENTRADA","ATIVA","ENCERRADA"]})
   "apresentacao"!: unknown;
 
-  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto61Dto })
+  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto68Dto })
   "curriculoVinculado"!: unknown;
 
   @ApiProperty({"type":"number","nullable":true})
   "score"!: unknown;
 
-  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto62Dto })
+  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto69Dto })
   "proximoPasso"!: unknown;
 
   @ApiProperty({"type":"string","format":"date-time"})
@@ -1276,7 +1399,7 @@ export class RespostaObjeto67Dto {
   @ApiProperty({"type":"string","enum":["MANUAL","IMPORTACAO"]})
   "origem"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/Keyword"},"nullable":true})
   "keywords"!: unknown;
 
   @ApiProperty({"type":"string","enum":["PENDENTE","VALIDAS"]})
@@ -1296,7 +1419,7 @@ export class RespostaObjeto67Dto {
 
 }
 
-export class RespostaObjeto68Dto {
+export class RespostaObjeto75Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1321,12 +1444,12 @@ export class RespostaObjeto68Dto {
   @ApiProperty({"type":"string","nullable":true})
   "curriculoId"!: unknown;
 
-  @ApiProperty({"oneOf":[{"$ref":"#/components/schemas/RespostaObjeto69Dto"},{"$ref":"#/components/schemas/RespostaObjeto70Dto"},{"$ref":"#/components/schemas/RespostaObjeto71Dto"}]})
+  @ApiProperty({"oneOf":[{"$ref":"#/components/schemas/RespostaObjeto76Dto"},{"$ref":"#/components/schemas/RespostaObjeto77Dto"},{"$ref":"#/components/schemas/RespostaObjeto78Dto"}]})
   "vinculo"!: unknown;
 
 }
 
-export class RespostaObjeto69Dto {
+export class RespostaObjeto76Dto {
   @ApiProperty({"type":"string"})
   "curriculoId"!: unknown;
 
@@ -1341,37 +1464,25 @@ export class RespostaObjeto69Dto {
 
 }
 
-export class RespostaObjeto70Dto {
+export class RespostaObjeto77Dto {
   @ApiProperty({"type":"string"})
   "curriculoId"!: unknown;
 
   @ApiProperty({"type":"string"})
   "situacao"!: unknown;
 
-  @ApiPropertyOptional({})
-  "rotulo"!: unknown;
-
-  @ApiPropertyOptional({})
-  "score"!: unknown;
-
 }
 
-export class RespostaObjeto71Dto {
-  @ApiProperty({"nullable":true})
+export class RespostaObjeto78Dto {
+  @ApiProperty({"type":"string","enum":[null],"nullable":true})
   "curriculoId"!: unknown;
 
   @ApiProperty({"type":"string"})
   "situacao"!: unknown;
 
-  @ApiPropertyOptional({})
-  "rotulo"!: unknown;
-
-  @ApiPropertyOptional({})
-  "score"!: unknown;
-
 }
 
-export class RespostaObjeto72Dto {
+export class RespostaObjeto79Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1386,7 +1497,7 @@ export class RespostaObjeto72Dto {
 
 }
 
-export class RespostaObjeto73Dto {
+export class RespostaObjeto80Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1422,8 +1533,8 @@ export class RespostaObjeto73Dto {
 
 }
 
-export class RespostaObjeto74Dto {
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto73Dto"}})
+export class RespostaObjeto81Dto {
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto80Dto"}})
   "itens"!: unknown;
 
   @ApiProperty({"type":"string","nullable":true})
@@ -1431,19 +1542,19 @@ export class RespostaObjeto74Dto {
 
 }
 
-export class RespostaObjeto75Dto {
-  @ApiProperty({ ...{}, type: () => RespostaObjeto76Dto })
+export class RespostaObjeto82Dto {
+  @ApiProperty({ ...{}, type: () => RespostaObjeto83Dto })
   "oportunidade"!: unknown;
 
   @ApiProperty({ ...{}, type: () => RespostaObjeto8Dto })
   "candidatura"!: unknown;
 
-  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto73Dto })
+  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto80Dto })
   "evento"!: unknown;
 
 }
 
-export class RespostaObjeto76Dto {
+export class RespostaObjeto83Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1468,7 +1579,7 @@ export class RespostaObjeto76Dto {
   @ApiProperty({"type":"string","nullable":true})
   "fonte"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/Keyword"},"nullable":true})
   "keywords"!: unknown;
 
   @ApiProperty({"type":"string","enum":["PENDENTE","VALIDAS"]})
@@ -1503,7 +1614,7 @@ export class RespostaObjeto76Dto {
 
 }
 
-export class RespostaObjeto77Dto {
+export class RespostaObjeto84Dto {
   @ApiProperty({"type":"string"})
   "jobId"!: unknown;
 
@@ -1515,19 +1626,13 @@ export class RespostaObjeto77Dto {
 
 }
 
-export class RespostaObjeto78Dto {
+export class RespostaObjeto85Dto {
   @ApiProperty({"type":"string"})
   "jobId"!: unknown;
 
-  @ApiPropertyOptional({})
-  "status"!: unknown;
-
-  @ApiPropertyOptional({})
-  "curriculoId"!: unknown;
-
 }
 
-export class RespostaObjeto79Dto {
+export class RespostaObjeto86Dto {
   @ApiProperty({"type":"number"})
   "score"!: unknown;
 
@@ -1546,7 +1651,7 @@ export class RespostaObjeto79Dto {
   @ApiProperty({"type":"string"})
   "veredicto"!: unknown;
 
-  @ApiProperty({ ...{}, type: () => RespostaObjeto80Dto })
+  @ApiProperty({ ...{}, type: () => ScoreBreakdown })
   "breakdown"!: unknown;
 
   @ApiPropertyOptional({"type":"string"})
@@ -1554,22 +1659,7 @@ export class RespostaObjeto79Dto {
 
 }
 
-export class RespostaObjeto80Dto {
-  @ApiProperty({"type":"number"})
-  "keywordMatch"!: unknown;
-
-  @ApiProperty({"type":"number"})
-  "densidade"!: unknown;
-
-  @ApiProperty({"type":"number"})
-  "secoes"!: unknown;
-
-  @ApiProperty({"type":"array","items":{"type":"string"}})
-  "faltando"!: unknown;
-
-}
-
-export class RespostaObjeto81Dto {
+export class RespostaObjeto87Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1579,13 +1669,13 @@ export class RespostaObjeto81Dto {
   @ApiProperty({"type":"number","nullable":true})
   "score"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({ ...{"nullable":true}, type: () => ScoreBreakdown })
   "breakdown"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({ ...{"nullable":true}, type: () => AtsAnalysis })
   "analiseInicial"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({ ...{"nullable":true}, type: () => AtsAnalysis })
   "analiseFinal"!: unknown;
 
   @ApiProperty({"type":"string","nullable":true})
@@ -1596,7 +1686,7 @@ export class RespostaObjeto81Dto {
 
 }
 
-export class RespostaObjeto82Dto {
+export class RespostaObjeto88Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1612,13 +1702,13 @@ export class RespostaObjeto82Dto {
   @ApiProperty({"type":"string"})
   "resumo"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto83Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto89Dto"}})
   "experiencias"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto85Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto91Dto"}})
   "formacao"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto86Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto92Dto"}})
   "certificacoes"!: unknown;
 
   @ApiProperty({"type":"array","items":{"type":"string"}})
@@ -1627,24 +1717,24 @@ export class RespostaObjeto82Dto {
   @ApiProperty({"type":"array","items":{"type":"string"}})
   "skills"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto87Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto93Dto"}})
   "emails"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto88Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto94Dto"}})
   "telefones"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto89Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto95Dto"}})
   "links"!: unknown;
 
-  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto90Dto })
+  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto96Dto })
   "endereco"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto91Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto97Dto"}})
   "outrosContatos"!: unknown;
 
 }
 
-export class RespostaObjeto83Dto {
+export class RespostaObjeto89Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1669,7 +1759,7 @@ export class RespostaObjeto83Dto {
   @ApiProperty({"type":"boolean","enum":[false,true]})
   "atual"!: unknown;
 
-  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto84Dto })
+  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto90Dto })
   "local"!: unknown;
 
   @ApiProperty({"type":"string"})
@@ -1686,7 +1776,7 @@ export class RespostaObjeto83Dto {
 
 }
 
-export class RespostaObjeto84Dto {
+export class RespostaObjeto90Dto {
   @ApiProperty({"type":"string"})
   "pais"!: unknown;
 
@@ -1698,7 +1788,7 @@ export class RespostaObjeto84Dto {
 
 }
 
-export class RespostaObjeto85Dto {
+export class RespostaObjeto91Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1731,7 +1821,7 @@ export class RespostaObjeto85Dto {
 
 }
 
-export class RespostaObjeto86Dto {
+export class RespostaObjeto92Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1746,7 +1836,7 @@ export class RespostaObjeto86Dto {
 
 }
 
-export class RespostaObjeto87Dto {
+export class RespostaObjeto93Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1761,7 +1851,7 @@ export class RespostaObjeto87Dto {
 
 }
 
-export class RespostaObjeto88Dto {
+export class RespostaObjeto94Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1779,7 +1869,7 @@ export class RespostaObjeto88Dto {
 
 }
 
-export class RespostaObjeto89Dto {
+export class RespostaObjeto95Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1791,7 +1881,7 @@ export class RespostaObjeto89Dto {
 
 }
 
-export class RespostaObjeto90Dto {
+export class RespostaObjeto96Dto {
   @ApiPropertyOptional({"type":"string"})
   "bairro"!: unknown;
 
@@ -1818,7 +1908,7 @@ export class RespostaObjeto90Dto {
 
 }
 
-export class RespostaObjeto91Dto {
+export class RespostaObjeto97Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1833,7 +1923,7 @@ export class RespostaObjeto91Dto {
 
 }
 
-export class RespostaObjeto92Dto {
+export class RespostaObjeto98Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1867,7 +1957,7 @@ export class RespostaObjeto92Dto {
   @ApiProperty({"type":"number","nullable":true})
   "score"!: unknown;
 
-  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto93Dto })
+  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto99Dto })
   "curriculo"!: unknown;
 
   @ApiProperty({ ...{}, type: () => RespostaObjeto1Dto })
@@ -1876,12 +1966,12 @@ export class RespostaObjeto92Dto {
   @ApiProperty({"type":"string","format":"date-time"})
   "ultimaAtividade"!: unknown;
 
-  @ApiProperty({"oneOf":[{}],"nullable":true})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/Keyword"},"nullable":true})
   "keywords"!: unknown;
 
 }
 
-export class RespostaObjeto93Dto {
+export class RespostaObjeto99Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1893,22 +1983,22 @@ export class RespostaObjeto93Dto {
 
 }
 
-export class RespostaObjeto94Dto {
+export class RespostaObjeto100Dto {
   @ApiProperty({"type":"string"})
   "schemaVersion"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto95Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto101Dto"}})
   "nodes"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto96Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto102Dto"}})
   "edges"!: unknown;
 
-  @ApiProperty({ ...{}, type: () => RespostaObjeto97Dto })
+  @ApiProperty({ ...{}, type: () => RespostaObjeto103Dto })
   "facets"!: unknown;
 
 }
 
-export class RespostaObjeto95Dto {
+export class RespostaObjeto101Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1920,7 +2010,7 @@ export class RespostaObjeto95Dto {
 
 }
 
-export class RespostaObjeto96Dto {
+export class RespostaObjeto102Dto {
   @ApiProperty({"type":"string"})
   "id"!: unknown;
 
@@ -1935,7 +2025,7 @@ export class RespostaObjeto96Dto {
 
 }
 
-export class RespostaObjeto97Dto {
+export class RespostaObjeto103Dto {
   @ApiProperty({"type":"array","items":{"type":"string"}})
   "empresas"!: unknown;
 
@@ -1959,19 +2049,19 @@ export class HealthResponseDto {
 
 }
 
-export class RespostaObjeto99Dto {
+export class RespostaObjeto105Dto {
   @ApiProperty({"type":"string","enum":["api"]})
   "servico"!: unknown;
 
   @ApiProperty({"type":"string","enum":["pronto","indisponivel"]})
   "status"!: unknown;
 
-  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto100Dto"}})
+  @ApiProperty({"type":"array","items":{"$ref":"#/components/schemas/RespostaObjeto106Dto"}})
   "dependencias"!: unknown;
 
 }
 
-export class RespostaObjeto100Dto {
+export class RespostaObjeto106Dto {
   @ApiProperty({"type":"string"})
   "nome"!: unknown;
 
@@ -1983,7 +2073,7 @@ export class RespostaObjeto100Dto {
 
 }
 
-export class RespostaObjeto101Dto {
+export class RespostaObjeto107Dto {
   @ApiProperty({"type":"array","items":{"type":"string"}})
   "categorias"!: unknown;
 
@@ -1992,7 +2082,202 @@ export class RespostaObjeto101Dto {
 
 }
 
-export const modelosResposta = [RespostaObjeto1Dto, RespostaObjeto2Dto, RespostaObjeto3Dto, RespostaObjeto4Dto, RespostaObjeto5Dto, RespostaObjeto6Dto, RespostaObjeto7Dto, RespostaObjeto8Dto, RespostaObjeto9Dto, RespostaObjeto10Dto, RespostaObjeto11Dto, RespostaObjeto12Dto, RespostaObjeto13Dto, RespostaObjeto14Dto, RespostaObjeto15Dto, RespostaObjeto16Dto, RespostaObjeto17Dto, RespostaObjeto18Dto, RespostaObjeto19Dto, RespostaObjeto20Dto, RespostaObjeto21Dto, RespostaObjeto22Dto, RespostaObjeto23Dto, RespostaObjeto24Dto, RespostaObjeto25Dto, RespostaObjeto26Dto, RespostaObjeto27Dto, RespostaObjeto28Dto, RespostaObjeto29Dto, RespostaObjeto30Dto, RespostaObjeto31Dto, RespostaObjeto32Dto, RespostaObjeto33Dto, RespostaObjeto34Dto, RespostaObjeto35Dto, RespostaObjeto36Dto, RespostaObjeto37Dto, RespostaObjeto38Dto, RespostaObjeto39Dto, RespostaObjeto40Dto, RespostaObjeto41Dto, RespostaObjeto42Dto, RespostaObjeto43Dto, RespostaObjeto44Dto, RespostaObjeto45Dto, RespostaObjeto46Dto, RespostaObjeto47Dto, RespostaObjeto48Dto, RespostaObjeto49Dto, RespostaObjeto50Dto, RespostaObjeto51Dto, RespostaObjeto52Dto, RespostaObjeto53Dto, RespostaObjeto54Dto, RespostaObjeto55Dto, RespostaObjeto56Dto, RespostaObjeto57Dto, RespostaObjeto58Dto, RespostaObjeto59Dto, RespostaObjeto60Dto, RespostaObjeto61Dto, RespostaObjeto62Dto, RespostaObjeto63Dto, RespostaObjeto64Dto, RespostaObjeto65Dto, RespostaObjeto66Dto, RespostaObjeto67Dto, RespostaObjeto68Dto, RespostaObjeto69Dto, RespostaObjeto70Dto, RespostaObjeto71Dto, RespostaObjeto72Dto, RespostaObjeto73Dto, RespostaObjeto74Dto, RespostaObjeto75Dto, RespostaObjeto76Dto, RespostaObjeto77Dto, RespostaObjeto78Dto, RespostaObjeto79Dto, RespostaObjeto80Dto, RespostaObjeto81Dto, RespostaObjeto82Dto, RespostaObjeto83Dto, RespostaObjeto84Dto, RespostaObjeto85Dto, RespostaObjeto86Dto, RespostaObjeto87Dto, RespostaObjeto88Dto, RespostaObjeto89Dto, RespostaObjeto90Dto, RespostaObjeto91Dto, RespostaObjeto92Dto, RespostaObjeto93Dto, RespostaObjeto94Dto, RespostaObjeto95Dto, RespostaObjeto96Dto, RespostaObjeto97Dto, HealthResponseDto, RespostaObjeto99Dto, RespostaObjeto100Dto, RespostaObjeto101Dto];
+export class RespostaObjeto108Dto {
+  @ApiProperty({"type":"string","enum":["token"]})
+  "evento"!: unknown;
+
+  @ApiProperty({ ...{}, type: () => RespostaObjeto109Dto })
+  "data"!: unknown;
+
+}
+
+export class RespostaObjeto109Dto {
+  @ApiProperty({"type":"string"})
+  "delta"!: unknown;
+
+}
+
+export class RespostaObjeto110Dto {
+  @ApiProperty({"type":"string","enum":["tool_call"]})
+  "evento"!: unknown;
+
+  @ApiProperty({ ...{}, type: () => RespostaObjeto111Dto })
+  "data"!: unknown;
+
+}
+
+export class RespostaObjeto111Dto {
+  @ApiProperty({"type":"string"})
+  "callId"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "tool"!: unknown;
+
+  @ApiProperty({"type":"string","enum":["leitura","escrita"]})
+  "efeito"!: unknown;
+
+  @ApiProperty({"type":"object","additionalProperties":{"oneOf":[{}]}})
+  "args"!: unknown;
+
+  @ApiProperty({"type":"boolean","enum":[false,true]})
+  "exigeConfirmacao"!: unknown;
+
+}
+
+export class RespostaObjeto112Dto {
+  @ApiProperty({"type":"string","enum":["confirmacao"]})
+  "evento"!: unknown;
+
+  @ApiProperty({ ...{}, type: () => RespostaObjeto113Dto })
+  "data"!: unknown;
+
+}
+
+export class RespostaObjeto113Dto {
+  @ApiProperty({"type":"string"})
+  "callId"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "tool"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "resumo"!: unknown;
+
+  @ApiProperty({"type":"object","additionalProperties":{"oneOf":[{}]}})
+  "args"!: unknown;
+
+}
+
+export class RespostaObjeto114Dto {
+  @ApiProperty({"type":"string","enum":["tool_resultado"]})
+  "evento"!: unknown;
+
+  @ApiProperty({ ...{}, type: () => RespostaObjeto115Dto })
+  "data"!: unknown;
+
+}
+
+export class RespostaObjeto115Dto {
+  @ApiProperty({"type":"string"})
+  "callId"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "tool"!: unknown;
+
+  @ApiProperty({"type":"boolean","enum":[false,true]})
+  "ok"!: unknown;
+
+  @ApiProperty({"oneOf":[{}]})
+  "resultado"!: unknown;
+
+  @ApiProperty({ ...{"nullable":true}, type: () => RespostaObjeto116Dto })
+  "erro"!: unknown;
+
+}
+
+export class RespostaObjeto116Dto {
+  @ApiProperty({"type":"string"})
+  "mensagem"!: unknown;
+
+  @ApiProperty({"type":"boolean","enum":[false,true]})
+  "recuperavel"!: unknown;
+
+}
+
+export class RespostaObjeto117Dto {
+  @ApiProperty({"type":"string","enum":["entrega_externa"]})
+  "evento"!: unknown;
+
+  @ApiProperty({ ...{}, type: () => RespostaObjeto31Dto })
+  "data"!: unknown;
+
+}
+
+export class RespostaObjeto118Dto {
+  @ApiProperty({"type":"string","enum":["erro"]})
+  "evento"!: unknown;
+
+  @ApiProperty({ ...{}, type: () => RespostaObjeto119Dto })
+  "data"!: unknown;
+
+}
+
+export class RespostaObjeto119Dto {
+  @ApiProperty({"type":"string"})
+  "escopo"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "mensagem"!: unknown;
+
+  @ApiProperty({"type":"boolean","enum":[false,true]})
+  "recuperavel"!: unknown;
+
+  @ApiPropertyOptional({"type":"number"})
+  "retryAfter"!: unknown;
+
+}
+
+export class RespostaObjeto120Dto {
+  @ApiProperty({"type":"string","enum":["fim_turno"]})
+  "evento"!: unknown;
+
+  @ApiProperty({ ...{}, type: () => RespostaObjeto121Dto })
+  "data"!: unknown;
+
+}
+
+export class RespostaObjeto121Dto {
+  @ApiProperty({"type":"string"})
+  "motivo"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "conversaId"!: unknown;
+
+}
+
+export class RespostaObjeto122Dto {
+  @ApiProperty({"type":"string","enum":["conversa"]})
+  "evento"!: unknown;
+
+  @ApiProperty({ ...{}, type: () => RespostaObjeto123Dto })
+  "data"!: unknown;
+
+}
+
+export class RespostaObjeto123Dto {
+  @ApiProperty({"type":"string"})
+  "conversaId"!: unknown;
+
+}
+
+export class CorpoErro {
+  @ApiProperty({ ...{}, type: () => RespostaObjeto125Dto })
+  "erro"!: unknown;
+
+}
+
+export class RespostaObjeto125Dto {
+  @ApiProperty({"type":"string"})
+  "codigo"!: unknown;
+
+  @ApiProperty({"type":"string"})
+  "mensagem"!: unknown;
+
+  @ApiProperty({"type":"string","nullable":true})
+  "requestId"!: unknown;
+
+  @ApiPropertyOptional({"type":"object","additionalProperties":{"oneOf":[{}]}})
+  "detalhes"!: unknown;
+
+}
+
+export class RespostaExcecao {
+  @ApiProperty({"oneOf":[{"type":"string"},{"type":"array","items":{"type":"string"}}]})
+  "message"!: unknown;
+
+}
+
+export const modelosResposta = [RespostaObjeto1Dto, RespostaObjeto2Dto, RespostaObjeto3Dto, RespostaObjeto4Dto, RespostaObjeto5Dto, RespostaObjeto6Dto, RespostaObjeto7Dto, RespostaObjeto8Dto, RespostaObjeto9Dto, RespostaObjeto10Dto, RespostaObjeto11Dto, RespostaObjeto12Dto, RespostaObjeto13Dto, RespostaObjeto14Dto, RespostaObjeto15Dto, RespostaObjeto16Dto, RespostaObjeto17Dto, RespostaObjeto18Dto, RespostaObjeto19Dto, RespostaObjeto20Dto, RespostaObjeto21Dto, RespostaObjeto22Dto, RespostaObjeto23Dto, RespostaObjeto24Dto, RespostaObjeto25Dto, RespostaObjeto26Dto, RespostaObjeto27Dto, RespostaObjeto28Dto, RespostaObjeto29Dto, RespostaObjeto30Dto, RespostaObjeto31Dto, AvisoAcao, RespostaObjeto33Dto, RespostaObjeto34Dto, RespostaObjeto35Dto, RespostaObjeto36Dto, RespostaObjeto37Dto, RespostaObjeto38Dto, RespostaObjeto39Dto, ScoreBreakdown, AtsAnalysis, RespostaObjeto42Dto, RespostaObjeto43Dto, RespostaObjeto44Dto, RespostaObjeto45Dto, RespostaObjeto46Dto, RespostaObjeto47Dto, RespostaObjeto48Dto, RespostaObjeto49Dto, RespostaObjeto50Dto, RespostaObjeto51Dto, RespostaObjeto52Dto, RespostaObjeto53Dto, RespostaObjeto54Dto, RespostaObjeto55Dto, RespostaObjeto56Dto, RespostaObjeto57Dto, RespostaObjeto58Dto, RespostaObjeto59Dto, RespostaObjeto60Dto, RespostaObjeto61Dto, RespostaObjeto62Dto, RespostaObjeto63Dto, RespostaObjeto64Dto, Keyword, RespostaObjeto66Dto, RespostaObjeto67Dto, RespostaObjeto68Dto, RespostaObjeto69Dto, RespostaObjeto70Dto, RespostaObjeto71Dto, RespostaObjeto72Dto, RespostaObjeto73Dto, RespostaObjeto74Dto, RespostaObjeto75Dto, RespostaObjeto76Dto, RespostaObjeto77Dto, RespostaObjeto78Dto, RespostaObjeto79Dto, RespostaObjeto80Dto, RespostaObjeto81Dto, RespostaObjeto82Dto, RespostaObjeto83Dto, RespostaObjeto84Dto, RespostaObjeto85Dto, RespostaObjeto86Dto, RespostaObjeto87Dto, RespostaObjeto88Dto, RespostaObjeto89Dto, RespostaObjeto90Dto, RespostaObjeto91Dto, RespostaObjeto92Dto, RespostaObjeto93Dto, RespostaObjeto94Dto, RespostaObjeto95Dto, RespostaObjeto96Dto, RespostaObjeto97Dto, RespostaObjeto98Dto, RespostaObjeto99Dto, RespostaObjeto100Dto, RespostaObjeto101Dto, RespostaObjeto102Dto, RespostaObjeto103Dto, HealthResponseDto, RespostaObjeto105Dto, RespostaObjeto106Dto, RespostaObjeto107Dto, RespostaObjeto108Dto, RespostaObjeto109Dto, RespostaObjeto110Dto, RespostaObjeto111Dto, RespostaObjeto112Dto, RespostaObjeto113Dto, RespostaObjeto114Dto, RespostaObjeto115Dto, RespostaObjeto116Dto, RespostaObjeto117Dto, RespostaObjeto118Dto, RespostaObjeto119Dto, RespostaObjeto120Dto, RespostaObjeto121Dto, RespostaObjeto122Dto, RespostaObjeto123Dto, CorpoErro, RespostaObjeto125Dto, RespostaExcecao];
 export const respostasContrato = [
   {
     "controller": "AcoesController",
@@ -2191,98 +2476,98 @@ export const respostasContrato = [
     "controller": "CopilotoController",
     "metodo": "mensagemRecrutador",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto34Dto"
+      "$ref": "#/components/schemas/RespostaObjeto35Dto"
     }
   },
   {
     "controller": "CopilotoController",
     "metodo": "respostasFormulario",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto35Dto"
+      "$ref": "#/components/schemas/RespostaObjeto36Dto"
     }
   },
   {
     "controller": "CurriculosController",
     "metodo": "listar",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto37Dto"
+      "$ref": "#/components/schemas/RespostaObjeto38Dto"
     }
   },
   {
     "controller": "CurriculosController",
     "metodo": "status",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto41Dto"
+      "$ref": "#/components/schemas/RespostaObjeto44Dto"
     }
   },
   {
     "controller": "CurriculosController",
     "metodo": "buscar",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto43Dto"
+      "$ref": "#/components/schemas/RespostaObjeto46Dto"
     }
   },
   {
     "controller": "CurriculosController",
     "metodo": "editar",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto43Dto"
+      "$ref": "#/components/schemas/RespostaObjeto46Dto"
     }
   },
   {
     "controller": "CurriculosController",
     "metodo": "gerarArquivos",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto43Dto"
+      "$ref": "#/components/schemas/RespostaObjeto46Dto"
     }
   },
   {
     "controller": "CurriculosController",
     "metodo": "docx",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto46Dto"
+      "$ref": "#/components/schemas/RespostaObjeto49Dto"
     }
   },
   {
     "controller": "CurriculosController",
     "metodo": "pdf",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto46Dto"
+      "$ref": "#/components/schemas/RespostaObjeto49Dto"
     }
   },
   {
     "controller": "CurriculosController",
     "metodo": "pacote",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto46Dto"
+      "$ref": "#/components/schemas/RespostaObjeto49Dto"
     }
   },
   {
     "controller": "HojeController",
     "metodo": "agenda",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto47Dto"
+      "$ref": "#/components/schemas/RespostaObjeto50Dto"
     }
   },
   {
     "controller": "HojeController",
     "metodo": "preferencias",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto54Dto"
+      "$ref": "#/components/schemas/RespostaObjeto60Dto"
     }
   },
   {
     "controller": "HojeController",
     "metodo": "atualizar",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto54Dto"
+      "$ref": "#/components/schemas/RespostaObjeto60Dto"
     }
   },
   {
     "controller": "LotesController",
     "metodo": "status",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto55Dto"
+      "$ref": "#/components/schemas/RespostaObjeto61Dto"
     }
   },
   {
@@ -2291,13 +2576,13 @@ export const respostasContrato = [
     "schema": {
       "oneOf": [
         {
-          "$ref": "#/components/schemas/RespostaObjeto57Dto"
-        },
-        {
-          "$ref": "#/components/schemas/RespostaObjeto59Dto"
-        },
-        {
           "$ref": "#/components/schemas/RespostaObjeto63Dto"
+        },
+        {
+          "$ref": "#/components/schemas/RespostaObjeto66Dto"
+        },
+        {
+          "$ref": "#/components/schemas/RespostaObjeto70Dto"
         }
       ]
     }
@@ -2306,42 +2591,42 @@ export const respostasContrato = [
     "controller": "OportunidadesController",
     "metodo": "criar",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto64Dto"
+      "$ref": "#/components/schemas/RespostaObjeto71Dto"
     }
   },
   {
     "controller": "OportunidadesController",
     "metodo": "importar",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto65Dto"
+      "$ref": "#/components/schemas/RespostaObjeto72Dto"
     }
   },
   {
     "controller": "OportunidadesController",
     "metodo": "ativar",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto64Dto"
+      "$ref": "#/components/schemas/RespostaObjeto71Dto"
     }
   },
   {
     "controller": "OportunidadesController",
     "metodo": "workspace",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto66Dto"
+      "$ref": "#/components/schemas/RespostaObjeto73Dto"
     }
   },
   {
     "controller": "OportunidadesController",
     "metodo": "timeline",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto74Dto"
+      "$ref": "#/components/schemas/RespostaObjeto81Dto"
     }
   },
   {
     "controller": "OportunidadesController",
     "metodo": "nota",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto73Dto"
+      "$ref": "#/components/schemas/RespostaObjeto80Dto"
     }
   },
   {
@@ -2355,7 +2640,7 @@ export const respostasContrato = [
     "controller": "OportunidadesController",
     "metodo": "transicionar",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto75Dto"
+      "$ref": "#/components/schemas/RespostaObjeto82Dto"
     }
   },
   {
@@ -2364,10 +2649,10 @@ export const respostasContrato = [
     "schema": {
       "oneOf": [
         {
-          "$ref": "#/components/schemas/RespostaObjeto77Dto"
+          "$ref": "#/components/schemas/RespostaObjeto84Dto"
         },
         {
-          "$ref": "#/components/schemas/RespostaObjeto78Dto"
+          "$ref": "#/components/schemas/RespostaObjeto85Dto"
         }
       ]
     }
@@ -2376,7 +2661,7 @@ export const respostasContrato = [
     "controller": "OportunidadesController",
     "metodo": "analisarAts",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto79Dto"
+      "$ref": "#/components/schemas/RespostaObjeto86Dto"
     }
   },
   {
@@ -2385,7 +2670,7 @@ export const respostasContrato = [
     "schema": {
       "type": "array",
       "items": {
-        "$ref": "#/components/schemas/RespostaObjeto81Dto"
+        "$ref": "#/components/schemas/RespostaObjeto87Dto"
       }
     }
   },
@@ -2393,21 +2678,21 @@ export const respostasContrato = [
     "controller": "OportunidadesController",
     "metodo": "buscar",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto67Dto"
+      "$ref": "#/components/schemas/RespostaObjeto74Dto"
     }
   },
   {
     "controller": "OportunidadesController",
     "metodo": "atualizar",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto64Dto"
+      "$ref": "#/components/schemas/RespostaObjeto71Dto"
     }
   },
   {
     "controller": "PerfilController",
     "metodo": "buscar",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto82Dto",
+      "$ref": "#/components/schemas/RespostaObjeto88Dto",
       "nullable": true
     }
   },
@@ -2415,7 +2700,7 @@ export const respostasContrato = [
     "controller": "PerfilController",
     "metodo": "salvar",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto82Dto"
+      "$ref": "#/components/schemas/RespostaObjeto88Dto"
     }
   },
   {
@@ -2424,7 +2709,7 @@ export const respostasContrato = [
     "schema": {
       "type": "array",
       "items": {
-        "$ref": "#/components/schemas/RespostaObjeto92Dto"
+        "$ref": "#/components/schemas/RespostaObjeto98Dto"
       }
     }
   },
@@ -2432,7 +2717,7 @@ export const respostasContrato = [
     "controller": "PipelineController",
     "metodo": "grafo",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto94Dto"
+      "$ref": "#/components/schemas/RespostaObjeto100Dto"
     }
   },
   {
@@ -2446,14 +2731,15 @@ export const respostasContrato = [
     "controller": "SaudeController",
     "metodo": "ready",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto99Dto"
+      "$ref": "#/components/schemas/RespostaObjeto105Dto"
     }
   },
   {
     "controller": "TaxonomiaController",
     "metodo": "listar",
     "schema": {
-      "$ref": "#/components/schemas/RespostaObjeto101Dto"
+      "$ref": "#/components/schemas/RespostaObjeto107Dto"
     }
   }
 ];
+export const eventosCopiloto = {"oneOf":[{"$ref":"#/components/schemas/RespostaObjeto108Dto"},{"$ref":"#/components/schemas/RespostaObjeto110Dto"},{"$ref":"#/components/schemas/RespostaObjeto112Dto"},{"$ref":"#/components/schemas/RespostaObjeto114Dto"},{"$ref":"#/components/schemas/RespostaObjeto117Dto"},{"$ref":"#/components/schemas/RespostaObjeto118Dto"},{"$ref":"#/components/schemas/RespostaObjeto120Dto"},{"$ref":"#/components/schemas/RespostaObjeto122Dto"}]};

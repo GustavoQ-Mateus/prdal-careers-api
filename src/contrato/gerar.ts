@@ -6,7 +6,7 @@ import { ApiExtraModels, ApiResponse, DocumentBuilder, SwaggerModule } from '@ne
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { configurarPrefixo } from '../config/prefixo';
-import { modelosResposta, respostasContrato } from './respostas.dto';
+import { eventosCopiloto, modelosResposta, respostasContrato } from './respostas.dto';
 
 function controllers(pasta: string): Array<new (...args: any[]) => any> {
   return readdirSync(pasta, { withFileTypes: true }).flatMap((entrada) => {
@@ -44,7 +44,10 @@ export async function gerarContrato() {
   try {
     app = await NestFactory.create(ModuloContrato, { logger: false, abortOnError: false });
     configurarPrefixo(app, {});
-    return SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('prdal-careers-api').setVersion('1.0.0').build());
+    const documento = SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('prdal-careers-api').setVersion('1.1.0').build());
+    documento.components!.schemas!.CopilotoEvento = eventosCopiloto;
+    Object.assign(documento.paths['/v1/copiloto/chat'].post!, { 'x-eventos': { $ref: '#/components/schemas/CopilotoEvento' } });
+    return documento;
   } finally {
     await app?.close();
     for (const { alvo, chave, valor } of metadados) Reflect.defineMetadata(chave, valor, alvo);

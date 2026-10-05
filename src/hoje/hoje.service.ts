@@ -13,15 +13,27 @@ import {
   type SerieTemporal,
 } from './hoje.agregacao';
 
+export type HojeAcao = ReturnType<HojeService['itemAcao']>;
+
+export type HojeAtividade = {
+  id: string;
+  vagaId: string;
+  titulo: string;
+  empresa: string;
+  tipo: string;
+  descricao: string;
+  ocorridoEm: Date;
+};
+
 export type HojeResposta = {
   fusoHorario: string;
   inicioDia: Date;
   fimDia: Date;
-  atrasadas: unknown[];
-  hoje: unknown[];
-  proximosDias: unknown[];
+  atrasadas: HojeAcao[];
+  hoje: HojeAcao[];
+  proximosDias: HojeAcao[];
   semProximoPasso: { id: string; titulo: string; empresa: string }[];
-  atividadeRecente: unknown[];
+  atividadeRecente: HojeAtividade[];
   resumoAts: { curriculos: number; comScore: number; media: number | null };
   serieTemporal: SerieTemporal;
   geracoesConcluidas: {

@@ -13,10 +13,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": "./",
-    "strict": true,
-    "paths": {
-      "@prdal/contracts": ["../../packages/contracts/dist"]
-    }
+    "strict": true
   },
   "include": ["src"]
 }

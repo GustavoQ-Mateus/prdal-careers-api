@@ -12,6 +12,10 @@ export interface CorpoErro {
   };
 }
 
+export interface RespostaExcecao {
+  message: string | string[];
+}
+
 export const CODIGOS_POR_STATUS: Record<number, string> = {
   400: 'requisicao_invalida',
   401: 'nao_autenticado',
@@ -49,7 +53,7 @@ interface Traduzido {
 
 function mensagemDe(resposta: unknown, padrao: string): { texto: string; lista: boolean } {
   if (typeof resposta === 'string') return { texto: resposta, lista: false };
-  const message = (resposta as { message?: unknown } | null)?.message;
+  const message = (resposta as Partial<RespostaExcecao> | null)?.message;
   if (Array.isArray(message)) return { texto: message.map(String).join('; '), lista: true };
   if (typeof message === 'string' && message) return { texto: message, lista: false };
   return { texto: padrao, lista: false };

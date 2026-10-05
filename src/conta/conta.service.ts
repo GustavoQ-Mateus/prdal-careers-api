@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import { Armazenamento } from '../arquivos/armazenamento';
 import { JobsService } from '../jobs/jobs.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -64,5 +65,24 @@ export class ContaService {
     if (!chave || chave !== `usuarios/${usuarioId}/exportacoes/${jobId}.zip`) throw new NotFoundException('arquivo de exportacao nao encontrado');
     const { url, expiraEm } = await this.armazenamento.urlDeDownload(chave, 'dados-da-conta.zip');
     return { status: job.status, url, expiraEm };
+  }
+
+  async agendarExclusao(usuarioId: string, senha: string): Promise<{ exclusaoAgendadaPara: string }> {
+    const usuario = await this.prisma.usuario.findUnique({ where: { id: usuarioId }, select: { senhaHash: true, exclusaoAgendadaPara: true } });
+    if (!usuario) throw new NotFoundException('conta nao encontrada');
+    if (!(await bcrypt.compare(senha, usuario.senhaHash))) {
+      throw new ForbiddenException({ codigo: 'senha_incorreta', message: 'senha incorreta' });
+    }
+    const dias = Number(process.env.EXCLUSAO_PRAZO_DIAS);
+    const prazoDias = Number.isInteger(dias) && dias > 0 ? dias : 7;
+    const prazo = new Date(Date.now() + prazoDias * 86_400_000);
+    await this.prisma.usuario.updateMany({ where: { id: usuarioId, exclusaoAgendadaPara: null }, data: { exclusaoAgendadaPara: prazo } });
+    const atual = await this.prisma.usuario.findUnique({ where: { id: usuarioId }, select: { exclusaoAgendadaPara: true } });
+    if (!atual?.exclusaoAgendadaPara) throw new NotFoundException('conta nao encontrada');
+    return { exclusaoAgendadaPara: atual.exclusaoAgendadaPara.toISOString() };
+  }
+
+  async cancelarExclusao(usuarioId: string): Promise<void> {
+    await this.prisma.usuario.updateMany({ where: { id: usuarioId }, data: { exclusaoAgendadaPara: null } });
   }
 }

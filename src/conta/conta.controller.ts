@@ -1,8 +1,9 @@
-import { Controller, Delete, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
 import { ContaService } from './conta.service';
+import { AgendarExclusaoDto } from './exclusao.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('conta')
@@ -36,5 +37,18 @@ export class ContaController {
   @Get('exportacoes/:jobId')
   statusExportacao(@CurrentUser() user: AuthUser, @Param('jobId') jobId: string) {
     return this.conta.statusExportacao(user.userId, jobId);
+  }
+
+  @Post('exclusao')
+  @HttpCode(200)
+  @LimitarRequisicoes(LIMITES.login)
+  agendarExclusao(@CurrentUser() user: AuthUser, @Body() dto: AgendarExclusaoDto) {
+    return this.conta.agendarExclusao(user.userId, dto.senha);
+  }
+
+  @Delete('exclusao')
+  @HttpCode(204)
+  cancelarExclusao(@CurrentUser() user: AuthUser) {
+    return this.conta.cancelarExclusao(user.userId);
   }
 }

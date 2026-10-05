@@ -11,6 +11,7 @@ const CSRF = 'csrf-de-teste';
 async function subirApp(t, { controllers = [], providers = [], imports = [], configurar, bodyParser = true, sessoes } = {}) {
   const { JwtStrategy } = require('../../dist/auth/jwt.strategy');
   const { SessoesService } = require('../../dist/auth/sessoes.service');
+  const { PrismaService } = require('../../dist/prisma/prisma.service');
   const sessoesProvider = sessoes === false ? [] : [{ provide: SessoesService, useValue: sessoes ?? { familiaAtiva: async () => true } }];
   class ModuloTeste {}
   Module({
@@ -20,9 +21,9 @@ async function subirApp(t, { controllers = [], providers = [], imports = [], con
       ...imports,
     ],
     controllers,
-    providers: [JwtStrategy, ...sessoesProvider, ...providers],
+    providers: [JwtStrategy, ...sessoesProvider, { provide: PrismaService, useValue: { usuario: { findUnique: async () => ({ consentimentoLlmEm: new Date() }) } } }, ...providers],
   })(ModuloTeste);
-  const app = await NestFactory.create(ModuloTeste, { logger: false, bodyParser });
+  const app = await NestFactory.create(ModuloTeste, { logger: false, bodyParser, abortOnError: false });
   if (configurar) configurar(app);
   await app.listen(0, '127.0.0.1');
   t.after(() => app.close());

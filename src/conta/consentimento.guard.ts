@@ -7,7 +7,7 @@ export const MENSAGEM_CONSENTIMENTO = 'Aceite o envio dos seus dados ao provedor
 
 export class ConsentimentoPendente extends ForbiddenException {
   constructor() {
-    super(MENSAGEM_CONSENTIMENTO);
+    super({ codigo: 'consentimento_pendente', message: MENSAGEM_CONSENTIMENTO });
   }
 }
 

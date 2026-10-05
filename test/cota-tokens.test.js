@@ -87,10 +87,10 @@ test('a api soma o uso devolvido pelo ai-service, inclusive quando a chamada fal
   t.after(() => app.close());
   const ai = app.get(AiClient);
 
-  await ai.generateCvPipeline({ perfilMestre: {}, vaga: {}, keywords: [], contexto: [] }, { usuarioId: 'u1' });
-  await ai.generateCvPipeline({ perfilMestre: {}, vaga: {}, keywords: [], contexto: [] }, { usuarioId: 'u1' });
+  await ai.redigirFormulario({ vaga: {}, perfil: {}, campos: [] }, { usuarioId: 'u1' });
+  await ai.redigirFormulario({ vaga: {}, perfil: {}, campos: [] }, { usuarioId: 'u1' });
   await assert.rejects(ai.redigirMensagem({ vaga: {}, perfil: {}, contexto: '' }, { usuarioId: 'u1' }));
-  await ai.generateCvPipeline({ perfilMestre: {}, vaga: {}, keywords: [], contexto: [] });
+  await ai.redigirFormulario({ vaga: {}, perfil: {}, campos: [] });
 
   const linha = prisma.linhas.get('u1|2026-10-04T00:00:00.000Z');
   assert.deepEqual(

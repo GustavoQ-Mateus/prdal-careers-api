@@ -7,7 +7,6 @@ import { CotaTokensEsgotada, CotaTokensService } from '../cota/cota-tokens.servi
 import type { BlocoNativo, Troca } from '../copiloto/historico';
 import type { ResumoConversa } from '../repositorios/tipos';
 
-const DEFAULT_GENERATE_TIMEOUT_MS = 300000;
 const DEFAULT_LLM_TIMEOUT_MS = 60000;
 const MARGEM_PRAZO_MS = 1000;
 export const HEADER_PRAZO = 'X-Prdal-Prazo-Ms';
@@ -126,10 +125,6 @@ export class AiClient {
   private readonly logger = new Logger(AiClient.name);
   private readonly baseUrl =
     process.env.AI_SERVICE_URL ?? 'http://localhost:8000';
-  private readonly generateTimeoutMs = envMs(
-    'AI_GENERATE_TIMEOUT_MS',
-    DEFAULT_GENERATE_TIMEOUT_MS,
-  );
   private readonly llmTimeoutMs = envMs('AI_LLM_TIMEOUT_MS', DEFAULT_LLM_TIMEOUT_MS);
 
   constructor(
@@ -200,43 +195,6 @@ export class AiClient {
         degradacao: DEGRADACAO_KEYWORDS_INDISPONIVEIS,
       };
     }
-  }
-
-  async generateCv(payload: {
-    perfilMestre: unknown;
-    vaga: unknown;
-    keywords: Keyword[];
-    contexto: FonteContexto[];
-  }): Promise<string> {
-    const { data } = await firstValueFrom(
-      this.http.post<{ markdown: string }>(
-        `${this.baseUrl}/generate-cv`,
-        payload,
-        this.comPrazo(this.generateTimeoutMs),
-      ),
-    );
-    return data.markdown;
-  }
-
-  async generateCvPipeline(
-    payload: {
-      perfilMestre: unknown;
-      vaga: unknown;
-      keywords: Keyword[];
-      contexto: FonteContexto[];
-    },
-    opcoes: OpcoesIa = {},
-  ): Promise<GeneratePipelineResult> {
-    return this.comCota(opcoes, async () => {
-      const { data } = await firstValueFrom(
-        this.http.post<GeneratePipelineResult>(
-          `${this.baseUrl}/generate-cv-pipeline`,
-          payload,
-          this.comPrazo(this.generateTimeoutMs, opcoes),
-        ),
-      );
-      return data;
-    });
   }
 
   async reduzirCurriculo(

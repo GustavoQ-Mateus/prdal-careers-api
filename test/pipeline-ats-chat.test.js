@@ -83,7 +83,7 @@ function ambiente() {
   };
   const acoes = { criar: async (_u, _vagaId, dados) => ({ id: 'acao-1', ...dados }) };
   const candidaturas = { criar: async (_u, dados) => ({ id: 'cand-1', ...dados }) };
-  const executor = new ToolExecutor(null, acoes, servicoCurriculos, null, null, null, candidaturas, capacidades, { verificar: async () => {} });
+  const executor = new ToolExecutor(null, acoes, servicoCurriculos, null, null, candidaturas, capacidades, { verificar: async () => {} });
   const conversa = { id: 'conversa-1', usuarioId: 'usuario-1', modo: 'assistido', oportunidadeId: 'vaga-1', mensagens: [], pendencia: null };
   const conversas = {
     abrir: async () => conversa,

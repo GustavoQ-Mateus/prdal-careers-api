@@ -3,14 +3,10 @@ import {
   ArrayMaxSize,
   IsArray,
   IsIn,
-  IsInt,
   IsObject,
   IsOptional,
   IsString,
-  Max,
   MaxLength,
-  Min,
-  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { LIMITE } from '../dominio/limites';
@@ -52,54 +48,6 @@ export class ChatDto {
   @ValidateNested()
   @Type(() => ConfirmacaoDto)
   confirmacao?: ConfirmacaoDto;
-}
-
-export class KeywordsPreviaDto {
-  @IsString()
-  @MinLength(1)
-  @MaxLength(LIMITE.descricaoVaga)
-  descricao!: string;
-}
-
-export class RagConsultaDto {
-  @IsString()
-  @MinLength(1)
-  @MaxLength(LIMITE.consulta)
-  query!: string;
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(20)
-  k?: number;
-}
-
-export class KeywordDto {
-  @IsString()
-  @MaxLength(LIMITE.termo)
-  termo!: string;
-
-  @Type(() => Number)
-  peso!: number;
-}
-
-export class ScoreAvulsoDto {
-  @IsString()
-  @MinLength(1)
-  @MaxLength(LIMITE.markdownCurriculo)
-  markdown!: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(LIMITE.id)
-  oportunidadeId?: string;
-
-  @IsOptional()
-  @IsArray()
-  @ArrayMaxSize(LIMITE.keywords)
-  @ValidateNested({ each: true })
-  @Type(() => KeywordDto)
-  keywords?: KeywordDto[];
 }
 
 export class MensagemRecrutadorDto {

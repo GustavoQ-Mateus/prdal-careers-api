@@ -1,7 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { OportunidadesService } = require('../dist/oportunidades/oportunidades.service');
-const { VagasService } = require('../dist/vagas/vagas.service');
 const { LotesService, tipoDoJob } = require('../dist/lotes/lotes.service');
 
 function filaFalsa(banco) {
@@ -63,7 +62,7 @@ const eventos = { registrar: async () => {} };
 test('criar oportunidade responde sem chamar o Claude, com extracao pendente e um job na fila', async () => {
   const banco = bancoDeVagas();
   const { jobs, servico } = filaFalsa(banco);
-  const service = new OportunidadesService(banco, null, semIa, eventos, servico);
+  const service = new OportunidadesService(banco, semIa, eventos, servico, null);
   const vaga = await service.criar('u1', { titulo: 'Dev', empresa: 'Acme', descricao: 'Java e Docker' });
   assert.deepEqual([vaga.keywordsStatus, vaga.keywordsExtracao, vaga.keywords], ['PENDENTE', 'PENDENTE', []]);
   assert.deepEqual([vaga.categoria, vaga.nivel], ['backend', 'pleno']);
@@ -75,7 +74,7 @@ test('editar a descricao reabre a extracao por job; editar outro campo nao', asy
   const atual = { id: 'v1', usuarioId: 'u1', titulo: 'Dev', empresa: 'Acme', descricao: 'Java', prioridade: 'MEDIA', arquivadaEm: null };
   const banco = bancoDeVagas(atual);
   const { jobs, servico } = filaFalsa(banco);
-  const service = new OportunidadesService(banco, null, semIa, eventos, servico);
+  const service = new OportunidadesService(banco, semIa, eventos, servico, null);
   service.garantirVaga = async () => atual;
   await service.atualizar('u1', 'v1', { descricao: 'Java e Kotlin' });
   assert.deepEqual(
@@ -91,21 +90,13 @@ test('editar a descricao reabre a extracao por job; editar outro campo nao', asy
 });
 
 test('o detalhe da oportunidade mostra o estado e o erro da extracao', async () => {
-  const service = new OportunidadesService(null, null, semIa, eventos, null);
+  const service = new OportunidadesService(null, semIa, eventos, null, null);
   const resumo = service.resumo({
     id: 'v1', titulo: 'Dev', empresa: 'Acme', categoria: null, nivel: null, prioridade: 'MEDIA', arquivadaEm: null, atualizadoEm: new Date(),
     origem: 'MANUAL', keywords: [], keywordsStatus: 'PENDENTE', keywordsExtracao: 'ERRO', keywordsErro: 'ai-service respondeu 503',
     candidaturas: [], curriculos: [], acoes: [], eventos: [],
   });
   assert.deepEqual([resumo.keywordsExtracao, resumo.keywordsErro], ['ERRO', 'ai-service respondeu 503']);
-});
-
-test('rota legada de vagas tambem cria a vaga sem esperar a extracao', async () => {
-  const banco = bancoDeVagas();
-  const { jobs, servico } = filaFalsa(banco);
-  const vaga = await new VagasService(banco, eventos, servico).criar('u1', { titulo: 'QA', empresa: 'Beta', descricao: 'Cypress' });
-  assert.equal(vaga.keywordsExtracao, 'PENDENTE');
-  assert.deepEqual(jobs.enfileirados, ['job-1']);
 });
 
 test('lote vira um job por item em leque, criado na transacao e enfileirado depois do commit', async () => {

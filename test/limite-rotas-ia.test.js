@@ -6,14 +6,14 @@ const { GUARDS_METADATA } = require('@nestjs/common/constants');
 const { ThrottlerModule } = require('@nestjs/throttler');
 const { subirApp, autenticado } = require('./helpers/app-teste');
 
-test('rotas de IA e consulta do copiloto sao limitadas por usuario', async (t) => {
+test('rotas de IA do copiloto sao limitadas por usuario', async (t) => {
   const { CopilotoController } = require('../dist/copiloto/copiloto.controller');
   const { ChatService } = require('../dist/copiloto/chat.service');
   const { CapacidadesService } = require('../dist/copiloto/capacidades.service');
   const { ConversasService } = require('../dist/copiloto/conversas.service');
   const { JANELAS, LIMITES } = require('../dist/limites/limite-requisicoes');
   const ok = async () => ({ ok: true });
-  const capacidades = { keywordsPrevia: ok, consultarRag: ok, score: ok, mensagemRecrutador: ok, respostasFormulario: ok };
+  const capacidades = { mensagemRecrutador: ok, respostasFormulario: ok };
   const { url } = await subirApp(t, {
     imports: [ThrottlerModule.forRoot(JANELAS)],
     controllers: [CopilotoController],
@@ -27,11 +27,8 @@ test('rotas de IA e consulta do copiloto sao limitadas por usuario', async (t) =
     configurar: (app) => app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true })),
   });
   const rotas = [
-    ['keywords-previa', { descricao: 'Vaga Python' }, LIMITES.ia.minuto],
     ['mensagem-recrutador', { oportunidadeId: 'op-1' }, LIMITES.ia.minuto],
     ['respostas-formulario', { oportunidadeId: 'op-1', campos: ['Por que?'] }, LIMITES.ia.minuto],
-    ['score', { markdown: '# Nome' }, LIMITES.consulta.minuto],
-    ['rag/consulta', { query: 'python' }, LIMITES.consulta.minuto],
   ];
   for (const [rota, corpo, limite] of rotas) {
     const enviar = (usuario) =>

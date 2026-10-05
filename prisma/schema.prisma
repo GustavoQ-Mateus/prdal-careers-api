@@ -19,7 +19,6 @@ model Usuario {
   lotes         Lote[]
   acoes         AcaoOportunidade[]
   eventos       EventoOportunidade[]
-  layouts       PipelineLayout[]
   preferencia   PreferenciaUsuario?
   geracoes      GeracaoCurriculo[]
   sessoes       Sessao[]
@@ -28,7 +27,6 @@ model Usuario {
   conversas     CopilotoConversa[]
   documentosRag DocumentoRag[]
   notas         NotaObsidian[]
-  bancoVagas    BancoVaga[]
   chunksRag     ChunkRag[]
   jobs          Job[]
 
@@ -95,6 +93,11 @@ enum OrigemOportunidade {
   IMPORTACAO
 }
 
+enum EstagioOportunidade {
+  ENTRADA
+  ATIVA
+}
+
 enum StatusKeywords {
   VALIDAS
   PENDENTE
@@ -123,6 +126,7 @@ model Vaga {
   nivel              String?
   prioridade         PrioridadeOportunidade @default(MEDIA)
   origem             OrigemOportunidade     @default(MANUAL)
+  estagio            EstagioOportunidade    @default(ATIVA)
   origemImportacaoId String?                @map("origem_importacao_id")
   criadoEm           DateTime               @default(now()) @map("criado_em")
   atualizadoEm       DateTime               @default(now()) @updatedAt @map("atualizado_em")
@@ -131,13 +135,13 @@ model Vaga {
   candidaturas       Candidatura[]
   acoes              AcaoOportunidade[]
   eventos            EventoOportunidade[]
-  layouts            PipelineLayout[]
   geracoes           GeracaoCurriculo[]
   pipelineAts        PipelineAts?
   conversas          CopilotoConversa[]
-  entradas           BancoVaga[]
+  loteItens          LoteItem[]
 
   @@unique([usuarioId, origemImportacaoId])
+  @@index([usuarioId, estagio, criadoEm(sort: Desc)])
   @@map("vagas")
 }
 
@@ -232,8 +236,8 @@ model LoteItem {
   id               String         @id @default(uuid())
   loteId           String         @map("lote_id")
   lote             Lote           @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  bancoVagaId      String?        @map("banco_vaga_id")
-  bancoVaga        BancoVaga?     @relation(fields: [bancoVagaId], references: [id], onDelete: SetNull)
+  vagaId           String?        @map("vaga_id")
+  vaga             Vaga?          @relation(fields: [vagaId], references: [id], onDelete: SetNull)
   documentoRagId   String?        @map("documento_rag_id")
   documentoRag     DocumentoRag?  @relation(fields: [documentoRagId], references: [id], onDelete: SetNull)
   referenciaLegada String?        @map("referencia_legada")
@@ -242,7 +246,7 @@ model LoteItem {
   erro             String?
 
   @@index([loteId])
-  @@index([bancoVagaId])
+  @@index([vagaId])
   @@index([documentoRagId])
   @@map("lote_itens")
 }
@@ -311,32 +315,11 @@ model EventoOportunidade {
   @@map("eventos_oportunidade")
 }
 
-model PipelineLayout {
-  id           String   @id @default(uuid())
-  usuarioId    String   @map("usuario_id")
-  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  vagaId       String   @map("vaga_id")
-  vaga         Vaga     @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  modo         String
-  posX         Float    @map("pos_x")
-  posY         Float    @map("pos_y")
-  criadoEm     DateTime @default(now()) @map("criado_em")
-  atualizadoEm DateTime @updatedAt @map("atualizado_em")
-
-  @@unique([usuarioId, vagaId, modo])
-  @@index([vagaId])
-  @@map("pipeline_layouts")
-}
-
 model PreferenciaUsuario {
-  usuarioId     String   @id @map("usuario_id")
-  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  fusoHorario   String   @map("fuso_horario")
-  canvasX       Float    @default(0) @map("canvas_x")
-  canvasY       Float    @default(0) @map("canvas_y")
-  canvasZoom    Float    @default(1) @map("canvas_zoom")
-  canvasRevisao Int      @default(1) @map("canvas_revisao")
-  atualizadoEm  DateTime @updatedAt @map("atualizado_em")
+  usuarioId    String   @id @map("usuario_id")
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  fusoHorario  String   @map("fuso_horario")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
 
   @@map("preferencias_usuario")
 }
@@ -540,34 +523,6 @@ model DocumentoRag {
   @@index([notaId])
   @@index([candidaturaId])
   @@map("documentos_rag")
-}
-
-enum StatusBancoVaga {
-  CRUA
-  ATIVADA
-}
-
-model BancoVaga {
-  id             String          @id @default(uuid())
-  usuarioId      String          @map("usuario_id")
-  usuario        Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  titulo         String
-  empresa        String
-  fonte          String?
-  descricao      String
-  status         StatusBancoVaga @default(CRUA)
-  categoria      String?
-  nivel          String?
-  keywords       Json?
-  keywordsStatus StatusKeywords  @default(PENDENTE) @map("keywords_status")
-  vagaId         String?         @map("vaga_id")
-  vaga           Vaga?           @relation(fields: [vagaId], references: [id], onDelete: SetNull)
-  criadoEm       DateTime        @default(now()) @map("criado_em")
-  loteItens      LoteItem[]
-
-  @@index([usuarioId, status, criadoEm(sort: Desc)])
-  @@index([vagaId])
-  @@map("banco_vagas")
 }
 
 model ChunkRag {

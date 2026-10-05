@@ -1,24 +1,5 @@
-import type { Keyword } from '../clients/ai.client';
 import type { BlocoNativo } from '../copiloto/historico';
 import type { DadosNarracao } from '../pipeline-ats/narracao';
-
-export type StatusBancoVaga = 'CRUA' | 'ATIVADA';
-
-export interface BancoVagaRegistro {
-  id: string;
-  usuarioId: string;
-  titulo: string;
-  empresa: string;
-  fonte: string | null;
-  descricao: string;
-  status: StatusBancoVaga;
-  categoria: string | null;
-  nivel: string | null;
-  keywords: Keyword[] | null;
-  keywordsStatus: 'VALIDAS' | 'PENDENTE';
-  vagaId: string | null;
-  criadoEm: Date;
-}
 
 export type OrigemDocumentoRag = 'perfil' | 'candidatura' | 'nota';
 

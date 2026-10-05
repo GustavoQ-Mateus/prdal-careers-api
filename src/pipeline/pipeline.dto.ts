@@ -1,12 +1,9 @@
 import { Type } from 'class-transformer';
 import {
-  ArrayMaxSize,
-  IsArray,
   IsNumber,
   IsOptional,
   IsString,
   MaxLength,
-  ValidateNested,
 } from 'class-validator';
 import { LIMITE } from '../dominio/limites';
 
@@ -75,42 +72,4 @@ export class PipelineFiltrosDto {
   @IsString()
   @MaxLength(LIMITE.termo)
   ordenarDirecao?: string;
-}
-
-export class PosicaoCanvasDto {
-  @IsString()
-  @MaxLength(LIMITE.id)
-  vagaId!: string;
-
-  @IsNumber()
-  x!: number;
-
-  @IsNumber()
-  y!: number;
-}
-
-export class ViewportCanvasDto {
-  @IsNumber()
-  x!: number;
-
-  @IsNumber()
-  y!: number;
-
-  @IsNumber()
-  zoom!: number;
-}
-
-export class SalvarCanvasDto {
-  @IsNumber()
-  revisaoBase!: number;
-
-  @ValidateNested()
-  @Type(() => ViewportCanvasDto)
-  viewport!: ViewportCanvasDto;
-
-  @IsArray()
-  @ArrayMaxSize(LIMITE.posicoesCanvas)
-  @ValidateNested({ each: true })
-  @Type(() => PosicaoCanvasDto)
-  posicoes!: PosicaoCanvasDto[];
 }

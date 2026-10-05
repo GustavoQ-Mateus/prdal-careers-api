@@ -12,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { BancoVagasService } from '../banco-vagas/banco-vagas.service';
 import { CurriculosService } from '../curriculos/curriculos.service';
 import {
   AtualizarOportunidadeDto,
@@ -40,7 +39,6 @@ function numeroPaginacao(valor: string | undefined, nome: 'limit' | 'offset') {
 export class OportunidadesController {
   constructor(
     private readonly oportunidades: OportunidadesService,
-    private readonly banco: BancoVagasService,
     private readonly curriculos: CurriculosService,
   ) {}
 
@@ -88,7 +86,7 @@ export class OportunidadesController {
   @LimitarRequisicoes(LIMITES.criacao)
   @ExigirCotaTokens()
   importar(@CurrentUser() user: AuthUser, @Body() dto: ImportarOportunidadesDto) {
-    return this.banco.importar(user.userId, dto);
+    return this.oportunidades.importar(user.userId, dto);
   }
 
   @Post('entradas/:id/ativar')
@@ -156,6 +154,11 @@ export class OportunidadesController {
   @LimitarRequisicoes(LIMITES.ia)
   analisarAts(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.curriculos.analisarAts(user.userId, id);
+  }
+
+  @Get(':id/curriculos')
+  curriculosDaOportunidade(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.curriculos.listarPorVaga(user.userId, id);
   }
 
   @Get(':id')

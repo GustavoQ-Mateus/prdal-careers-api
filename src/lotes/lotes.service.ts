@@ -5,8 +5,8 @@ import { PrismaService } from '../prisma/prisma.service';
 
 const TIPO_INGESTAO = 'INGESTAO';
 
-function referenciaDoItem(item: Pick<LoteItem, 'bancoVagaId' | 'documentoRagId' | 'referenciaLegada'>): string | null {
-  return item.documentoRagId ?? item.bancoVagaId ?? item.referenciaLegada;
+function referenciaDoItem(item: Pick<LoteItem, 'vagaId' | 'documentoRagId' | 'referenciaLegada'>): string | null {
+  return item.documentoRagId ?? item.vagaId ?? item.referenciaLegada;
 }
 
 export function tipoDoJob(tipoLote: string): TipoJob {
@@ -21,7 +21,7 @@ export class LotesService {
   ) {}
 
   async criar(usuarioId: string, tipo: string, referencias: string[]) {
-    const itens = referencias.map((id) => (tipo === TIPO_INGESTAO ? { documentoRagId: id } : { bancoVagaId: id }));
+    const itens = referencias.map((id) => (tipo === TIPO_INGESTAO ? { documentoRagId: id } : { vagaId: id }));
     const { lote, jobs } = await this.prisma.$transaction(async (tx) => {
       const lote = await tx.lote.create({
         data: { usuarioId, tipo, total: referencias.length, itens: { create: itens } },

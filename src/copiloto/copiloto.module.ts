@@ -1,12 +1,10 @@
 import { Module } from '@nestjs/common';
-import { BancoVagasModule } from '../banco-vagas/banco-vagas.module';
 import { CandidaturasModule } from '../candidaturas/candidaturas.module';
 import { ClientsModule } from '../clients/clients.module';
 import { CurriculosModule } from '../curriculos/curriculos.module';
 import { HojeModule } from '../hoje/hoje.module';
 import { OportunidadesModule } from '../oportunidades/oportunidades.module';
 import { PerfilModule } from '../perfil/perfil.module';
-import { RagModule } from '../rag/rag.module';
 import { CapacidadesService } from './capacidades.service';
 import { ChatService } from './chat.service';
 import { ConversasService } from './conversas.service';
@@ -20,10 +18,8 @@ import { TurnosService } from './turnos.service';
     OportunidadesModule,
     PerfilModule,
     CurriculosModule,
-    BancoVagasModule,
     CandidaturasModule,
     HojeModule,
-    RagModule,
   ],
   controllers: [CopilotoController],
   providers: [ChatService, CapacidadesService, ConversasService, ToolExecutor, TurnosService],

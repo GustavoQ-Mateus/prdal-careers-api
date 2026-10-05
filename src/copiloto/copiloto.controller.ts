@@ -22,6 +22,7 @@ import {
 } from './copiloto.dto';
 import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
 import { ExigirCotaTokens } from '../cota/cota-tokens.guard';
+import { ExigirConsentimento } from '../conta/consentimento.guard';
 
 @UseGuards(JwtAuthGuard)
 @Controller('copiloto')
@@ -47,6 +48,7 @@ export class CopilotoController {
   }
 
   @Post('chat')
+  @ExigirConsentimento()
   @LimitarRequisicoes(LIMITES.chat)
   async chatSse(
     @CurrentUser() user: AuthUser,
@@ -57,6 +59,7 @@ export class CopilotoController {
   }
 
   @Post('mensagem-recrutador')
+  @ExigirConsentimento()
   @LimitarRequisicoes(LIMITES.ia)
   @ExigirCotaTokens()
   mensagemRecrutador(
@@ -71,6 +74,7 @@ export class CopilotoController {
   }
 
   @Post('respostas-formulario')
+  @ExigirConsentimento()
   @LimitarRequisicoes(LIMITES.ia)
   @ExigirCotaTokens()
   respostasFormulario(

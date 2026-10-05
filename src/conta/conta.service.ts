@@ -24,4 +24,12 @@ export class ContaService {
       exclusaoAgendadaPara: usuario.exclusaoAgendadaPara?.toISOString() ?? null,
     };
   }
+
+  async consentir(usuarioId: string): Promise<void> {
+    await this.prisma.usuario.updateMany({ where: { id: usuarioId, consentimentoLlmEm: null }, data: { consentimentoLlmEm: new Date() } });
+  }
+
+  async revogar(usuarioId: string): Promise<void> {
+    await this.prisma.usuario.updateMany({ where: { id: usuarioId }, data: { consentimentoLlmEm: null } });
+  }
 }

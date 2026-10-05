@@ -21,6 +21,15 @@ test('cadastro exige senha com pelo menos 10 caracteres', async (t) => {
   assert.equal(prisma.usuarios.length, 1);
 });
 
+test('cadastro grava email normalizado e login aceita caixa e espacos', async (t) => {
+  const { url, prisma } = await subirAuth(t);
+  assert.equal((await post(url, 'register', ' Pessoa@Teste.dev ', 'senha-forte-123')).status, 201);
+  assert.equal(prisma.usuarios[0].email, 'pessoa@teste.dev');
+  const resposta = await post(url, 'login', ' PESSOA@TESTE.DEV ', 'senha-forte-123');
+  assert.equal(resposta.status, 201);
+  assert.equal((await resposta.json()).usuario.email, 'pessoa@teste.dev');
+});
+
 test('cadastro com email existente responde igual a um cadastro novo', async (t) => {
   const usuarios = [{ id: 'vitima', email: 'vitima@teste.dev', senhaHash: await bcrypt.hash('senha-original-123', 4), criadoEm: new Date() }];
   const { url } = await subirAuth(t, { usuarios });

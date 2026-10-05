@@ -19,10 +19,11 @@ export class AuthService {
 
   async register(dto: CadastroDto) {
     const senhaHash = await bcrypt.hash(dto.senha, 10);
-    const existente = await this.buscarPorEmail(dto.email);
+    const email = dto.email.trim().toLowerCase();
+    const existente = await this.buscarPorEmail(email);
     if (!existente) {
       await this.prisma.usuario
-        .create({ data: { email: dto.email, senhaHash } })
+        .create({ data: { email, senhaHash } })
         .catch((erro: { code?: string }) => {
           if (erro?.code !== 'P2002') throw erro;
         });
@@ -54,9 +55,6 @@ export class AuthService {
   }
 
   private buscarPorEmail(email: string) {
-    return this.prisma.usuario.findFirst({
-      where: { email: { equals: email, mode: 'insensitive' } },
-      orderBy: { criadoEm: 'asc' },
-    });
+    return this.prisma.usuario.findUnique({ where: { email: email.trim().toLowerCase() } });
   }
 }

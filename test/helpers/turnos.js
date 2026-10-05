@@ -15,3 +15,25 @@ function mensagensEnviadas(payload) {
 }
 
 module.exports.mensagensEnviadas = mensagensEnviadas;
+
+function turnosEmMemoria(travas = new Map()) {
+  const { ConflictException } = require('@nestjs/common');
+  const { MENSAGEM_TURNO_EM_ANDAMENTO } = require('../../dist/copiloto/turnos.service');
+  let sequencia = 0;
+  return {
+    travas,
+    async exigir(conversaId) {
+      if (travas.has(conversaId)) throw new ConflictException(MENSAGEM_TURNO_EM_ANDAMENTO);
+      const turno = { conversaId, turnoId: `turno-${++sequencia}` };
+      travas.set(conversaId, turno.turnoId);
+      return turno;
+    },
+    manter(turno) {
+      return async () => {
+        if (travas.get(turno.conversaId) === turno.turnoId) travas.delete(turno.conversaId);
+      };
+    },
+  };
+}
+
+module.exports.turnosEmMemoria = turnosEmMemoria;

@@ -48,6 +48,7 @@ async function subir(t) {
       { provide: ChatService, useValue: chat },
       { provide: CapacidadesService, useValue: {} },
       { provide: ConversasService, useValue: conversas },
+      { provide: require('../dist/copiloto/turnos.service').TurnosService, useValue: require('./helpers/turnos').turnosEmMemoria() },
       { provide: require('../dist/cota/cota-tokens.service').CotaTokensService, useValue: { verificar: async () => {} } },
     ],
     configurar: (app) => app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true })),

@@ -164,6 +164,7 @@ async function subirCopiloto(t, cota, chat = {}) {
       { provide: ChatService, useValue: chat },
       { provide: CapacidadesService, useValue: capacidades },
       { provide: ConversasService, useValue: {} },
+      { provide: require('../dist/copiloto/turnos.service').TurnosService, useValue: require('./helpers/turnos').turnosEmMemoria() },
       { provide: CotaTokensService, useValue: cota },
     ],
     configurar: (app) => {

@@ -79,6 +79,7 @@ test('chat e limitado por usuario, nao por IP', async (t) => {
       { provide: ChatService, useValue: chat },
       { provide: CapacidadesService, useValue: {} },
       { provide: ConversasService, useValue: {} },
+      { provide: require('../dist/copiloto/turnos.service').TurnosService, useValue: require('./helpers/turnos').turnosEmMemoria() },
       { provide: require('../dist/cota/cota-tokens.service').CotaTokensService, useValue: { verificar: async () => {} } },
     ],
   });

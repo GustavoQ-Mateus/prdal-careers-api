@@ -8,8 +8,10 @@ import { opcoesCors } from './config/cors';
 import { configurarCsrf } from './config/csrf';
 import { configurarPrefixo } from './config/prefixo';
 import { configurarProxy } from './config/proxy';
+import { configurarServidor, temposServidor } from './config/servidor';
 
 async function bootstrap() {
+  temposServidor();
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false });
   configurarProxy(app);
   configurarPrefixo(app);
@@ -18,6 +20,7 @@ async function bootstrap() {
   configurarCorpo(app);
   configurarCsrf(app);
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  configurarServidor(app.getHttpServer());
   await app.listen(Number(process.env.PORT ?? 3000), '0.0.0.0');
 }
 

@@ -14,6 +14,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CapacidadesService } from './capacidades.service';
 import { ChatService } from './chat.service';
 import { ConversasService } from './conversas.service';
+import { TurnosService } from './turnos.service';
 import {
   ChatDto,
   KeywordsPreviaDto,
@@ -32,6 +33,7 @@ export class CopilotoController {
     private readonly chat: ChatService,
     private readonly capacidades: CapacidadesService,
     private readonly conversas: ConversasService,
+    private readonly turnos: TurnosService,
   ) {}
 
   @Get('conversas')
@@ -54,7 +56,7 @@ export class CopilotoController {
     @Body() dto: ChatDto,
     @Res() res: Response,
   ) {
-    await this.chat.chat(res, user, dto);
+    await this.chat.chat(res, user, dto, async (conversaId) => this.turnos.manter(await this.turnos.exigir(conversaId)));
   }
 
   @Post('keywords-previa')

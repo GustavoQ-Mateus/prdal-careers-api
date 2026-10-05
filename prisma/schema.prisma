@@ -388,3 +388,11 @@ model EventoPipelineAts {
   @@index([usuarioId, jobId])
   @@map("eventos_pipeline_ats")
 }
+
+model TurnoCopiloto {
+  conversaId String   @id @map("conversa_id")
+  turnoId    String   @map("turno_id")
+  expiraEm   DateTime @map("expira_em")
+
+  @@map("turnos_copiloto")
+}

@@ -11,6 +11,7 @@ import { ChatService } from './chat.service';
 import { ConversasService } from './conversas.service';
 import { CopilotoController } from './copiloto.controller';
 import { ToolExecutor } from './tool-executor';
+import { TurnosService } from './turnos.service';
 
 @Module({
   imports: [
@@ -23,6 +24,6 @@ import { ToolExecutor } from './tool-executor';
     HojeModule,
   ],
   controllers: [CopilotoController],
-  providers: [ChatService, CapacidadesService, ConversasService, ToolExecutor],
+  providers: [ChatService, CapacidadesService, ConversasService, ToolExecutor, TurnosService],
 })
 export class CopilotoModule {}

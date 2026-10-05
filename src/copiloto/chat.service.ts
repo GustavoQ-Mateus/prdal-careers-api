@@ -15,12 +15,17 @@ import { BlocoNativo, idDeTool, paraTrocas, resultadoTool } from './historico';
 import { oportunidadeDosArgs, prepararArgsTool } from './tool-args';
 import { ToolExecutor, validarArgs } from './tool-executor';
 import { ToolDef, TOOLS_NATIVAS, TOOLS_POR_NOME } from './tools';
+import { intervaloHeartbeatMs } from './turnos.service';
 
 const MAX_PASSOS = 8;
 const ESCRITAS_SEM_CONFIRMACAO_NO_AUTOPILOTO = new Set(['registrar_nota']);
 const ARGS_INVALIDOS_CANDIDATO = 'os dados desta ação vieram incompletos ou inválidos; o copiloto vai ajustar e tentar de novo';
 
 type ToolUse = Extract<BlocoNativo, { type: 'tool_use' }>;
+
+export type TravaTurno = (conversaId: string) => Promise<() => Promise<void>>;
+
+const semTrava: TravaTurno = async () => async () => {};
 
 interface Falha {
   modelo: string;
@@ -81,6 +86,7 @@ export class ChatService {
     res: Response,
     user: AuthUser,
     dto: ChatDto,
+    travar: TravaTurno = semTrava,
   ): Promise<void> {
     if (dto.oportunidadeId) {
       await this.oportunidades.garantirVaga(user.userId, dto.oportunidadeId);
@@ -92,6 +98,7 @@ export class ChatService {
       modo,
       dto.oportunidadeId ?? null,
     );
+    const soltar = await travar(conversa._id);
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -101,6 +108,9 @@ export class ChatService {
     res.on('close', () => {
       if (!res.writableEnded) cancelamento.abort();
     });
+    const batimento = setInterval(() => this.batimento(res), intervaloHeartbeatMs());
+    batimento.unref?.();
+    this.enviar(res, 'conversa', { conversaId: conversa._id });
 
     try {
       if (dto.confirmacao) {
@@ -123,7 +133,15 @@ export class ChatService {
         recuperavel: true,
       });
       this.finalizar(res, conversa._id, 'erro');
+    } finally {
+      clearInterval(batimento);
+      await soltar();
     }
+  }
+
+  private batimento(res: Response): void {
+    if (res.destroyed || res.writableEnded) return;
+    res.write(': heartbeat\n\n');
   }
 
   private async resolverConfirmacao(

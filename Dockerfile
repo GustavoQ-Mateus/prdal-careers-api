@@ -3,6 +3,7 @@ WORKDIR /repo/apps/api
 COPY apps/api/package.json apps/api/package-lock.json ./
 COPY apps/api/prisma ./prisma
 RUN npm ci --omit=dev
+RUN npm prune --omit=dev --omit=optional --ignore-scripts
 
 FROM node:22-slim AS build
 WORKDIR /repo
@@ -18,8 +19,10 @@ RUN npm run build
 FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
+RUN mkdir -p /app/storage && chown node:node /app /app/storage
 COPY --from=deps /repo/apps/api/node_modules ./node_modules
 COPY --from=deps /repo/apps/api/prisma ./prisma
 COPY --from=build /repo/apps/api/dist ./dist
 EXPOSE 3000
+USER node
 CMD ["node", "dist/main.js"]

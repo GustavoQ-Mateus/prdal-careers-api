@@ -1,3 +1,4 @@
+require('./helpers/armazenamento');
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { CurriculosService } = require('../dist/curriculos/curriculos.service');

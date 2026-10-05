@@ -1,6 +1,4 @@
-const path = require('node:path');
-const os = require('node:os');
-process.env.STORAGE_DIR = path.join(os.tmpdir(), 'prdal-teste-corte');
+require('./helpers/armazenamento');
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { CurriculosService } = require('../dist/curriculos/curriculos.service');

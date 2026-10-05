@@ -55,6 +55,10 @@ async function subir(t, { ai, doc, prisma, mongo, prefixo } = {}) {
       else process.env[k] = v;
     }
   });
+  const { LoggerJson } = require('../dist/observabilidade/logger');
+  const { configurarContexto, configurarRequisicoes } = require('../dist/observabilidade/requisicao');
+  logs.length = 0;
+  const logger = new LoggerJson('api', (linha) => logs.push(JSON.parse(linha)));
   return subirApp(t, {
     controllers: [SaudeController],
     providers: [
@@ -62,14 +66,26 @@ async function subir(t, { ai, doc, prisma, mongo, prefixo } = {}) {
       { provide: PrismaService, useValue: prisma ?? { $queryRaw: async () => [{ '?column?': 1 }] } },
       { provide: MongoService, useValue: mongo ?? { ping: async () => undefined } },
     ],
-    configurar: (app) => configurarPrefixo(app),
+    configurar: (app) => {
+      app.useLogger(logger);
+      configurarRequisicoes(app, logger);
+      configurarContexto(app);
+      configurarPrefixo(app);
+    },
   });
+}
+
+const logs = [];
+
+function motivoNoLog(dependencia) {
+  return logs.find((l) => l.mensagem === 'dependencia fora' && l.dependencia === dependencia);
 }
 
 async function ready(url, caminho = '/ready') {
   const resposta = await fetch(`${url}${caminho}`);
   const corpo = await resposta.json();
-  return { status: resposta.status, corpo, deps: Object.fromEntries(corpo.dependencias.map((d) => [d.nome, d])) };
+  for (const d of corpo.dependencias) assert.deepEqual(Object.keys(d), ['nome', 'obrigatoria', 'estado'], d.nome);
+  return { status: resposta.status, requestId: resposta.headers.get('x-request-id'), corpo, deps: Object.fromEntries(corpo.dependencias.map((d) => [d.nome, d])) };
 }
 
 test('tudo no ar: ready 200 com cada dependencia e se e obrigatoria', async (t) => {
@@ -87,10 +103,14 @@ test('tudo no ar: ready 200 com cada dependencia e se e obrigatoria', async (t) 
 
 test('ai-service fora: api segue pronta e aponta ai-service e chroma', async (t) => {
   const { url } = await subir(t, { ai: await portaFechada() });
-  const { status, deps } = await ready(url);
+  const { status, deps, requestId } = await ready(url);
   assert.equal(status, 200);
   assert.equal(deps['ai-service'].estado, 'indisponivel');
   assert.equal(deps.chroma.estado, 'desconhecido');
+  const motivo = motivoNoLog('ai-service');
+  assert.match(motivo.detalhe, /fetch failed|ECONNREFUSED|aborted/);
+  assert.equal(motivo.requestId, requestId);
+  assert.equal(motivo.nivel, 'warn');
   assert.equal(deps['doc-service'].estado, 'ok');
 });
 
@@ -110,7 +130,7 @@ test('chroma fora: vem do ready do ai-service e a api segue pronta', async (t) =
   const { status, deps } = await ready(url);
   assert.equal(status, 200);
   assert.equal(deps.chroma.estado, 'indisponivel');
-  assert.equal(deps.chroma.detalhe, 'conexao recusada');
+  assert.equal(motivoNoLog('chroma').estado, 'indisponivel');
   assert.equal(deps['ai-service'].estado, 'ok');
 });
 
@@ -120,7 +140,7 @@ test('ai-service respondendo 503 conta como indisponivel', async (t) => {
   const { status, deps } = await ready(url);
   assert.equal(status, 200);
   assert.equal(deps['ai-service'].estado, 'indisponivel');
-  assert.match(deps['ai-service'].detalhe, /503/);
+  assert.match(motivoNoLog('ai-service').detalhe, /503/);
 });
 
 test('postgres fora: ready 503', async (t) => {
@@ -137,7 +157,7 @@ test('mongo sem resposta: ready 503 dentro do prazo', async (t) => {
   const { status, deps } = await ready(url);
   assert.equal(status, 503);
   assert.equal(deps.mongo.estado, 'indisponivel');
-  assert.match(deps.mongo.detalhe, /sem resposta/);
+  assert.match(motivoNoLog('mongo').detalhe, /sem resposta/);
   assert.ok(Date.now() - inicio < 2000);
 });
 

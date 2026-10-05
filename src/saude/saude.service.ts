@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { cabecalhoServico } from '../config/servico';
 import { cabecalhoRequestId } from '../observabilidade/contexto';
 import { MongoService } from '../mongo/mongo.service';
@@ -13,10 +13,12 @@ export interface SituacaoDependencia {
   detalhe?: string;
 }
 
+export type DependenciaPublica = Omit<SituacaoDependencia, 'detalhe'>;
+
 export interface Prontidao {
   servico: 'api';
   status: 'pronto' | 'indisponivel';
-  dependencias: SituacaoDependencia[];
+  dependencias: DependenciaPublica[];
 }
 
 const PRAZO_PADRAO_MS = 2000;
@@ -40,6 +42,8 @@ function motivo(err: unknown): string {
 
 @Injectable()
 export class SaudeService {
+  private readonly logger = new Logger('Prontidao');
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly mongo: MongoService,
@@ -55,7 +59,14 @@ export class SaudeService {
     ]);
     const dependencias = [postgres, mongo, ...ia, doc];
     const pronto = dependencias.every((d) => !d.obrigatoria || d.estado === 'ok');
-    return { servico: 'api', status: pronto ? 'pronto' : 'indisponivel', dependencias };
+    for (const { nome, obrigatoria, estado, detalhe } of dependencias) {
+      if (estado !== 'ok') this.logger.warn({ mensagem: 'dependencia fora', dependencia: nome, obrigatoria, estado, detalhe });
+    }
+    return {
+      servico: 'api',
+      status: pronto ? 'pronto' : 'indisponivel',
+      dependencias: dependencias.map(({ nome, obrigatoria, estado }) => ({ nome, obrigatoria, estado })),
+    };
   }
 
   private async verificar(nome: string, obrigatoria: boolean, sonda: () => Promise<unknown>, ms: number): Promise<SituacaoDependencia> {
@@ -77,7 +88,7 @@ export class SaudeService {
           ? { nome: 'ai-service', obrigatoria: false, estado: 'ok' }
           : { nome: 'ai-service', obrigatoria: false, estado: 'indisponivel', detalhe: `ready respondeu ${resposta.status}` },
         chroma
-          ? { nome: 'chroma', obrigatoria: false, estado: chroma.estado, ...(chroma.detalhe ? { detalhe: chroma.detalhe } : {}) }
+          ? { nome: 'chroma', obrigatoria: false, estado: chroma.estado, detalhe: 'informado pelo ready do ai-service' }
           : { nome: 'chroma', obrigatoria: false, estado: 'desconhecido', detalhe: 'ai-service nao informou' },
       ];
     } catch (err) {

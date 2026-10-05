@@ -24,7 +24,19 @@ export type HojeResposta = {
   atividadeRecente: unknown[];
   resumoAts: { curriculos: number; comScore: number; media: number | null };
   serieTemporal: SerieTemporal;
+  geracoesConcluidas: {
+    curriculoId: string;
+    oportunidadeId: string;
+    titulo: string;
+    empresa: string;
+    score: number | null;
+    concluidaEm: Date;
+  }[];
+  entrada: { id: string; titulo: string; empresa: string; criadoEm: Date }[];
 };
+
+const LIMITE_INICIO = 5;
+const DIAS_GERACOES = 7;
 
 @Injectable()
 export class HojeService {
@@ -159,6 +171,25 @@ export class HojeService {
       curriculos: curriculosGerados.map((item) => ({ data: item.geradoEm, score: item.score })),
     });
 
+    const { inicio: inicioGeracoes } = limitesDoDia(adicionarDiasCivis(hoje, 1 - DIAS_GERACOES), fuso);
+    const [geracoes, entradas] = await Promise.all([
+      this.prisma.geracaoCurriculo.findMany({
+        where: { usuarioId, status: 'CONCLUIDA', curriculoId: { not: null }, atualizadoEm: { gte: inicioGeracoes } },
+        orderBy: { atualizadoEm: 'desc' },
+        take: LIMITE_INICIO,
+        include: {
+          vaga: { select: { titulo: true, empresa: true } },
+          curriculo: { select: { score: true } },
+        },
+      }),
+      this.prisma.vaga.findMany({
+        where: { usuarioId, estagio: 'ENTRADA' },
+        orderBy: { criadoEm: 'desc' },
+        take: LIMITE_INICIO,
+        select: { id: true, titulo: true, empresa: true, criadoEm: true },
+      }),
+    ]);
+
     return {
       fusoHorario: fuso,
       inicioDia,
@@ -178,6 +209,15 @@ export class HojeService {
       })),
       resumoAts,
       serieTemporal,
+      geracoesConcluidas: geracoes.map((g) => ({
+        curriculoId: g.curriculoId!,
+        oportunidadeId: g.vagaId,
+        titulo: g.vaga.titulo,
+        empresa: g.vaga.empresa,
+        score: g.curriculo?.score ?? null,
+        concluidaEm: g.atualizadoEm,
+      })),
+      entrada: entradas,
     };
   }
 

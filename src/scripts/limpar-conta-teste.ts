@@ -152,10 +152,9 @@ export async function reindexarConhecimento(
 }
 
 export async function simular(prisma: PrismaClient, usuarioId: string) {
-  const [candidaturas, acoes, layouts, eventos, geracoes, curriculos, vagas, conversas, rag] = await Promise.all([
+  const [candidaturas, acoes, eventos, geracoes, curriculos, vagas, conversas, rag] = await Promise.all([
     prisma.candidatura.count({ where: { vaga: { usuarioId } } }),
     prisma.acaoOportunidade.count({ where: { usuarioId } }),
-    prisma.pipelineLayout.count({ where: { usuarioId } }),
     prisma.eventoOportunidade.count({ where: { usuarioId } }),
     prisma.geracaoCurriculo.count({ where: { usuarioId } }),
     prisma.curriculo.count({ where: { vaga: { usuarioId } } }),
@@ -166,7 +165,6 @@ export async function simular(prisma: PrismaClient, usuarioId: string) {
   return {
     candidaturas,
     acoes,
-    pipeline_layouts: layouts,
     eventos_oportunidade: eventos,
     geracoes_curriculo: geracoes,
     curriculos,
@@ -203,7 +201,6 @@ async function main() {
       const conversas = await tx.copilotoConversa.deleteMany({ where: { usuarioId: usuario.id } });
       const candidaturas = await tx.candidatura.deleteMany({ where: { vaga: { usuarioId: usuario.id } } });
       const acoes = await tx.acaoOportunidade.deleteMany({ where: { usuarioId: usuario.id } });
-      const layouts = await tx.pipelineLayout.deleteMany({ where: { usuarioId: usuario.id } });
       const eventos = await tx.eventoOportunidade.deleteMany({ where: { usuarioId: usuario.id } });
       const geracoes = await tx.geracaoCurriculo.deleteMany({ where: { usuarioId: usuario.id } });
       const curriculos = await tx.curriculo.deleteMany({ where: { vaga: { usuarioId: usuario.id } } });
@@ -211,7 +208,6 @@ async function main() {
       return {
         candidaturas: candidaturas.count,
         acoes: acoes.count,
-        pipeline_layouts: layouts.count,
         eventos_oportunidade: eventos.count,
         geracoes_curriculo: geracoes.count,
         curriculos: curriculos.count,

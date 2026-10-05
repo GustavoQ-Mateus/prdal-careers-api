@@ -18,5 +18,4 @@ export const LIMITE = {
   itens: 50,
   skills: 200,
   keywords: 200,
-  posicoesCanvas: 2000,
 } as const;

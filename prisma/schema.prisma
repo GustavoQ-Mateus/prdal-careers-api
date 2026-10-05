@@ -19,7 +19,6 @@ model Usuario {
   lotes         Lote[]
   acoes         AcaoOportunidade[]
   eventos       EventoOportunidade[]
-  layouts       PipelineLayout[]
   preferencia   PreferenciaUsuario?
   geracoes      GeracaoCurriculo[]
   sessoes       Sessao[]
@@ -136,7 +135,6 @@ model Vaga {
   candidaturas       Candidatura[]
   acoes              AcaoOportunidade[]
   eventos            EventoOportunidade[]
-  layouts            PipelineLayout[]
   geracoes           GeracaoCurriculo[]
   pipelineAts        PipelineAts?
   conversas          CopilotoConversa[]
@@ -317,32 +315,11 @@ model EventoOportunidade {
   @@map("eventos_oportunidade")
 }
 
-model PipelineLayout {
-  id           String   @id @default(uuid())
-  usuarioId    String   @map("usuario_id")
-  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  vagaId       String   @map("vaga_id")
-  vaga         Vaga     @relation(fields: [vagaId], references: [id], onDelete: Cascade)
-  modo         String
-  posX         Float    @map("pos_x")
-  posY         Float    @map("pos_y")
-  criadoEm     DateTime @default(now()) @map("criado_em")
-  atualizadoEm DateTime @updatedAt @map("atualizado_em")
-
-  @@unique([usuarioId, vagaId, modo])
-  @@index([vagaId])
-  @@map("pipeline_layouts")
-}
-
 model PreferenciaUsuario {
-  usuarioId     String   @id @map("usuario_id")
-  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  fusoHorario   String   @map("fuso_horario")
-  canvasX       Float    @default(0) @map("canvas_x")
-  canvasY       Float    @default(0) @map("canvas_y")
-  canvasZoom    Float    @default(1) @map("canvas_zoom")
-  canvasRevisao Int      @default(1) @map("canvas_revisao")
-  atualizadoEm  DateTime @updatedAt @map("atualizado_em")
+  usuarioId    String   @id @map("usuario_id")
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  fusoHorario  String   @map("fuso_horario")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
 
   @@map("preferencias_usuario")
 }

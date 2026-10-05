@@ -17,11 +17,8 @@ import { ConversasService } from './conversas.service';
 import { TurnosService } from './turnos.service';
 import {
   ChatDto,
-  KeywordsPreviaDto,
   MensagemRecrutadorDto,
-  RagConsultaDto,
   RespostasFormularioDto,
-  ScoreAvulsoDto,
 } from './copiloto.dto';
 import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
 import { ExigirCotaTokens } from '../cota/cota-tokens.guard';
@@ -57,30 +54,6 @@ export class CopilotoController {
     @Res() res: Response,
   ) {
     await this.chat.chat(res, user, dto, async (conversaId) => this.turnos.manter(await this.turnos.exigir(conversaId)));
-  }
-
-  @Post('keywords-previa')
-  @LimitarRequisicoes(LIMITES.ia)
-  @ExigirCotaTokens()
-  keywordsPrevia(@CurrentUser() user: AuthUser, @Body() dto: KeywordsPreviaDto) {
-    return this.capacidades.keywordsPrevia(user.userId, dto.descricao);
-  }
-
-  @Post('rag/consulta')
-  @LimitarRequisicoes(LIMITES.consulta)
-  ragConsulta(@CurrentUser() user: AuthUser, @Body() dto: RagConsultaDto) {
-    return this.capacidades.consultarRag(user.userId, dto.query, dto.k);
-  }
-
-  @Post('score')
-  @LimitarRequisicoes(LIMITES.consulta)
-  score(@CurrentUser() user: AuthUser, @Body() dto: ScoreAvulsoDto) {
-    return this.capacidades.score(
-      user.userId,
-      dto.markdown,
-      dto.oportunidadeId,
-      dto.keywords,
-    );
   }
 
   @Post('mensagem-recrutador')

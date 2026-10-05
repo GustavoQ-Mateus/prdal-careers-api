@@ -11,11 +11,10 @@ function erroAxios(status) {
 
 function servico(erro) {
   const falhar = async () => { throw erro; };
-  const ai = { redigirMensagem: falhar, redigirFormulario: falhar, score: falhar };
-  const rag = { recuperar: falhar };
+  const ai = { redigirMensagem: falhar, redigirFormulario: falhar };
   const oportunidades = { buscar: async () => ({ id: 'vaga-1', titulo: 'Vaga', keywordsStatus: 'VALIDAS', keywords: [] }) };
   const perfil = { buscar: async () => null };
-  return new CapacidadesService(ai, oportunidades, perfil, rag);
+  return new CapacidadesService(ai, oportunidades, perfil);
 }
 
 test('503 do ai-service na mensagem ao recrutador vira 503 com frase de produto', async () => {
@@ -34,5 +33,5 @@ test('ai-service fora do ar nas respostas de formulario vira 503', async () => {
 
 test('erro que nao e indisponibilidade continua propagando', async () => {
   const erro = erroAxios(422);
-  await assert.rejects(servico(erro).score('usuario-1', '# CV', undefined, [{ termo: 'Java', peso: 1 }]), (err) => err === erro);
+  await assert.rejects(servico(erro).mensagemRecrutador('usuario-1', 'vaga-1'), (err) => err === erro);
 });

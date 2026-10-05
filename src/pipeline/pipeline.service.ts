@@ -2,10 +2,9 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { Prisma, PrioridadeOportunidade, StatusCandidatura } from '@prisma/client';
 import { apresentacaoRelacional, etapaPipeline } from '../dominio/apresentacao';
 import { normalizar } from '../dominio/normalizar';
-import { HojeService } from '../hoje/hoje.service';
 import { NotasRepositorio } from '../repositorios/notas.repositorio';
 import { PrismaService } from '../prisma/prisma.service';
-import { PipelineFiltrosDto, SalvarCanvasDto } from './pipeline.dto';
+import { PipelineFiltrosDto } from './pipeline.dto';
 
 export const GRAFO_SCHEMA_VERSION = '1';
 
@@ -30,7 +29,6 @@ export class PipelineService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notasRepositorio: NotasRepositorio,
-    private readonly hoje: HojeService,
   ) {}
 
   async listar(usuarioId: string, filtros: PipelineFiltrosDto) {
@@ -40,68 +38,6 @@ export class PipelineService {
       filtros.ordenarPor,
       filtros.ordenarDirecao,
     );
-  }
-
-  async canvas(usuarioId: string) {
-    const pref = await this.hoje.garantirPreferencia(usuarioId);
-    const posicoes = await this.prisma.pipelineLayout.findMany({
-      where: { usuarioId, modo: 'canvas' },
-      select: { vagaId: true, posX: true, posY: true },
-    });
-    return {
-      revisao: pref.canvasRevisao,
-      viewport: { x: pref.canvasX, y: pref.canvasY, zoom: pref.canvasZoom },
-      posicoes: posicoes.map((p) => ({ vagaId: p.vagaId, x: p.posX, y: p.posY })),
-    };
-  }
-
-  async salvarCanvas(usuarioId: string, dto: SalvarCanvasDto) {
-    const pref = await this.hoje.garantirPreferencia(usuarioId);
-    if (dto.revisaoBase !== pref.canvasRevisao) {
-      throw new ConflictException('layout desatualizado');
-    }
-    const vagas = await this.prisma.vaga.findMany({
-      where: { usuarioId, id: { in: dto.posicoes.map((p) => p.vagaId) } },
-      select: { id: true },
-    });
-    const permitidas = new Set(vagas.map((v) => v.id));
-
-    return this.prisma.$transaction(async (tx) => {
-      await tx.pipelineLayout.deleteMany({
-        where: { usuarioId, modo: 'canvas' },
-      });
-      if (dto.posicoes.length) {
-        await tx.pipelineLayout.createMany({
-          data: dto.posicoes
-            .filter((p) => permitidas.has(p.vagaId))
-            .map((p) => ({
-              usuarioId,
-              vagaId: p.vagaId,
-              modo: 'canvas',
-              posX: p.x,
-              posY: p.y,
-            })),
-        });
-      }
-      const atualizada = await tx.preferenciaUsuario.update({
-        where: { usuarioId },
-        data: {
-          canvasX: dto.viewport.x,
-          canvasY: dto.viewport.y,
-          canvasZoom: dto.viewport.zoom,
-          canvasRevisao: { increment: 1 },
-        },
-      });
-      return {
-        revisao: atualizada.canvasRevisao,
-        viewport: {
-          x: atualizada.canvasX,
-          y: atualizada.canvasY,
-          zoom: atualizada.canvasZoom,
-        },
-        posicoes: dto.posicoes.filter((p) => permitidas.has(p.vagaId)),
-      };
-    });
   }
 
   async grafo(usuarioId: string, filtros: PipelineFiltrosDto) {

@@ -152,9 +152,9 @@ async function subirCopiloto(t, cota, chat = {}) {
   const { JANELAS } = require('../dist/limites/limite-requisicoes');
   let chamadasIa = 0;
   const capacidades = {
-    keywordsPrevia: async () => {
+    mensagemRecrutador: async () => {
       chamadasIa += 1;
-      return { keywords: [] };
+      return { tipo: 'mensagem_recrutador', titulo: 't', texto: 'x' };
     },
   };
   const { url } = await subirApp(t, {
@@ -181,10 +181,10 @@ test('rota de IA responde 429 com Retry-After ate a virada do dia quando a cota 
   await cota.registrar('u1', { entrada: 600, saida: 400, cacheLida: 0, cacheEscrita: 0, chamadas: 1 });
   const { url, chamadasIa } = await subirCopiloto(t, cota);
   const enviar = (usuario) =>
-    fetch(`${url}/copiloto/keywords-previa`, {
+    fetch(`${url}/copiloto/mensagem-recrutador`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...autenticado(usuario) },
-      body: JSON.stringify({ descricao: 'Vaga Python' }),
+      body: JSON.stringify({ oportunidadeId: 'op-1' }),
     });
 
   const bloqueada = await enviar('u1');
@@ -265,13 +265,11 @@ test('as rotas que sempre chamam o Claude exigem a cota e o filtro e global', ()
   const { CotaTokensGuard } = require('../dist/cota/cota-tokens.guard');
   const { CopilotoController } = require('../dist/copiloto/copiloto.controller');
   const { OportunidadesController } = require('../dist/oportunidades/oportunidades.controller');
-  const { VagasController } = require('../dist/vagas/vagas.controller');
   const { CotaModule } = require('../dist/cota/cota.module');
   const { APP_FILTER } = require('@nestjs/core');
   const rotas = [
-    [CopilotoController, ['keywordsPrevia', 'mensagemRecrutador', 'respostasFormulario']],
+    [CopilotoController, ['mensagemRecrutador', 'respostasFormulario']],
     [OportunidadesController, ['criar', 'reprocessarKeywords', 'importar', 'gerarCv']],
-    [VagasController, ['criar', 'gerarCv']],
   ];
   for (const [controller, metodos] of rotas) {
     for (const metodo of metodos) {

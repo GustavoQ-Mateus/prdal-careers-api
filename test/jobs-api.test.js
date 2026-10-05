@@ -1,7 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { OportunidadesService } = require('../dist/oportunidades/oportunidades.service');
-const { VagasService } = require('../dist/vagas/vagas.service');
 const { LotesService, tipoDoJob } = require('../dist/lotes/lotes.service');
 
 function filaFalsa(banco) {
@@ -98,14 +97,6 @@ test('o detalhe da oportunidade mostra o estado e o erro da extracao', async () 
     candidaturas: [], curriculos: [], acoes: [], eventos: [],
   });
   assert.deepEqual([resumo.keywordsExtracao, resumo.keywordsErro], ['ERRO', 'ai-service respondeu 503']);
-});
-
-test('rota legada de vagas tambem cria a vaga sem esperar a extracao', async () => {
-  const banco = bancoDeVagas();
-  const { jobs, servico } = filaFalsa(banco);
-  const vaga = await new VagasService(banco, eventos, servico).criar('u1', { titulo: 'QA', empresa: 'Beta', descricao: 'Cypress' });
-  assert.equal(vaga.keywordsExtracao, 'PENDENTE');
-  assert.deepEqual(jobs.enfileirados, ['job-1']);
 });
 
 test('lote vira um job por item em leque, criado na transacao e enfileirado depois do commit', async () => {

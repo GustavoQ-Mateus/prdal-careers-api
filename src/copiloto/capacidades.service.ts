@@ -1,15 +1,13 @@
 import {
-  BadRequestException,
   Injectable,
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { AxiosError } from 'axios';
-import { AiClient, Keyword } from '../clients/ai.client';
+import { AiClient } from '../clients/ai.client';
 import { OportunidadesService } from '../oportunidades/oportunidades.service';
 import { PerfilService } from '../perfil/perfil.service';
 import { perfilParaIa } from '../perfil/perfil.normalizacao';
-import { RagService } from '../rag/rag.service';
 
 export const MENSAGEM_IA_INDISPONIVEL =
   'O assistente está indisponível no momento. Tente novamente em instantes.';
@@ -28,38 +26,7 @@ export class CapacidadesService {
     private readonly ai: AiClient,
     private readonly oportunidades: OportunidadesService,
     private readonly perfil: PerfilService,
-    private readonly rag: RagService,
   ) {}
-
-  async keywordsPrevia(usuarioId: string, descricao: string) {
-    return this.ai.keywords(descricao, { usuarioId });
-  }
-
-  async consultarRag(usuarioId: string, query: string, k = 5) {
-    return this.chamarIa('rag', async () => {
-      const { chunks, degradacao } = await this.rag.recuperar(usuarioId, [query], k);
-      return degradacao ? { chunks, degradacao } : { chunks };
-    });
-  }
-
-  async score(
-    usuarioId: string,
-    markdown: string,
-    oportunidadeId?: string,
-    keywords?: Keyword[],
-  ) {
-    const usadas = await this.resolverKeywords(
-      usuarioId,
-      oportunidadeId,
-      keywords,
-    );
-    if (usadas.length === 0) {
-      throw new BadRequestException(
-        'informe keywords ou uma oportunidade com keywords',
-      );
-    }
-    return this.chamarIa('score', () => this.ai.score(markdown, { keywords: usadas }));
-  }
 
   async mensagemRecrutador(
     usuarioId: string,
@@ -112,22 +79,5 @@ export class CapacidadesService {
       );
       throw new ServiceUnavailableException(MENSAGEM_IA_INDISPONIVEL);
     }
-  }
-
-  private async resolverKeywords(
-    usuarioId: string,
-    oportunidadeId?: string,
-    keywords?: Keyword[],
-  ): Promise<Keyword[]> {
-    if (keywords && keywords.length > 0) return keywords;
-    if (!oportunidadeId) return [];
-    const vaga = await this.oportunidades.buscar(usuarioId, oportunidadeId);
-    if (vaga.keywordsStatus !== 'VALIDAS') {
-      throw new BadRequestException(
-        'a extracao de keywords da oportunidade esta pendente; tente novamente',
-      );
-    }
-    const brutas = (vaga as { keywords?: unknown }).keywords;
-    return Array.isArray(brutas) ? (brutas as Keyword[]) : [];
   }
 }

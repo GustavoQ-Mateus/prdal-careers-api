@@ -140,6 +140,7 @@ model Curriculo {
   markdown       String
   docxPath       String?              @map("docx_path")
   pdfPath        String?              @map("pdf_path")
+  pacotePath     String?              @map("pacote_path")
   score          Int?
   scoreBreakdown Json?                @map("score_breakdown")
   analiseInicial Json?                @map("analise_inicial")

@@ -1,4 +1,4 @@
-require('./helpers/armazenamento');
+const { ArmazenamentoMemoria } = require('./helpers/armazenamento');
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { CurriculosService } = require('../dist/curriculos/curriculos.service');
@@ -48,7 +48,7 @@ test('o rag e consultado pelas keywords da vaga, nao pelo texto da vaga, e as fo
   };
   const falhar = async () => { throw new Error('doc-service fora'); };
   const doc = { renderPdf: falhar, renderDocx: falhar };
-  const service = new CurriculosService(prisma(criados), ai, doc, { registrar: async () => {} }, null, null, ai);
+  const service = new CurriculosService(prisma(criados), ai, doc, { registrar: async () => {} }, null, null, ai, new ArmazenamentoMemoria());
   await service.processar('job-1');
 
   assert.deepEqual(consultas, [['usuario-1', ['SQL', 'Power BI', 'Excel']]]);
@@ -71,7 +71,7 @@ test('armazenamento de vetores fora gera com degradacao explicita, nunca context
   };
   const ok = async () => Buffer.from('%PDF /Type /Page');
   const doc = { renderPdf: ok, renderDocx: ok };
-  const service = new CurriculosService(banco, ai, doc, { registrar: async () => {} }, null, null, ai);
+  const service = new CurriculosService(banco, ai, doc, { registrar: async () => {} }, null, null, ai, new ArmazenamentoMemoria());
   const avisos = [];
   service.logger.warn = (mensagem) => avisos.push(mensagem);
   await service.processar('job-1');
@@ -90,7 +90,7 @@ test('degradacao do contexto se soma a da reescrita sem perder nenhuma', async (
     generateCvPipeline: async () => ({ markdown: '# Pessoa', analiseInicial: analise, analiseFinal: analise, degradacao: 'A reescrita está indisponível no momento.' }),
   };
   const ok = async () => Buffer.from('%PDF /Type /Page');
-  const service = new CurriculosService(prisma(criados), ai, { renderPdf: ok, renderDocx: ok }, { registrar: async () => {} }, null, null, ai);
+  const service = new CurriculosService(prisma(criados), ai, { renderPdf: ok, renderDocx: ok }, { registrar: async () => {} }, null, null, ai, new ArmazenamentoMemoria());
   service.logger.warn = () => {};
   await service.processar('job-1');
   assert.equal(criados.curriculo.degradacao, `${DEGRADACAO_CONTEXTO}; A reescrita está indisponível no momento.`);

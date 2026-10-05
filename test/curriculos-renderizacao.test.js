@@ -1,4 +1,4 @@
-require('./helpers/armazenamento');
+const { ArmazenamentoMemoria } = require('./helpers/armazenamento');
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { ServiceUnavailableException } = require('@nestjs/common');
@@ -41,7 +41,7 @@ test('falha do doc-service conclui o curriculo com degradacao explicita e sem ar
     generateCvPipeline: async () => ({ markdown: '# Pessoa', analiseInicial: analise, analiseFinal: analise, degradacao: null }),
   };
   const eventos = { registrar: async () => {} };
-  const service = new CurriculosService(prismaDaGeracao(criados), ai, docClientFalhando(), eventos, null, null, ai);
+  const service = new CurriculosService(prismaDaGeracao(criados), ai, docClientFalhando(), eventos, null, null, ai, new ArmazenamentoMemoria());
 
   await service.processar('job-1');
 
@@ -60,7 +60,7 @@ test('gerar arquivos novamente mantem a degradacao e responde 503 quando o doc-s
       update: async ({ data }) => { atualizacoes.push(data); },
     },
   };
-  const service = new CurriculosService(prisma, null, docClientFalhando(), null, null);
+  const service = new CurriculosService(prisma, null, docClientFalhando(), null, null, null, null, new ArmazenamentoMemoria());
 
   await assert.rejects(service.gerarArquivos('usuario-1', 'cv-1'), (err) => err instanceof ServiceUnavailableException);
   assert.equal(atualizacoes[0].degradacao, DEGRADACAO_RENDERIZACAO);

@@ -1,9 +1,24 @@
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
+class ArmazenamentoMemoria {
+  constructor() {
+    this.objetos = new Map();
+  }
 
-const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'prdal-teste-storage-'));
-process.env.STORAGE_DIR = pasta;
-process.on('exit', () => fs.rmSync(pasta, { recursive: true, force: true }));
+  async gravar(chave, dados, tipo) {
+    this.objetos.set(chave, { dados: Buffer.from(dados), tipo });
+    return chave;
+  }
 
-module.exports = { pasta };
+  async ler(chave) {
+    const objeto = this.objetos.get(chave);
+    if (!objeto) throw new Error(`objeto ${chave} nao encontrado`);
+    return objeto.dados;
+  }
+
+  async urlDeDownload(chave, nomeArquivo) {
+    return { url: `http://s3.teste/${chave}?nome=${encodeURIComponent(nomeArquivo)}`, expiraEm: new Date(Date.now() + 300_000).toISOString() };
+  }
+
+  async verificar() {}
+}
+
+module.exports = { ArmazenamentoMemoria };

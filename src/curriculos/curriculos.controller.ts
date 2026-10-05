@@ -7,10 +7,8 @@ import {
   Post,
   Put,
   Query,
-  Res,
   UseGuards,
 } from '@nestjs/common';
-import type { Response } from 'express';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { EditarCurriculoDto } from './curriculo.dto';
@@ -84,41 +82,17 @@ export class CurriculosController {
   }
 
   @Get('curriculos/:id/docx')
-  async docx(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Res() res: Response,
-  ) {
-    const buffer = await this.curriculos.arquivo(user.userId, id, 'docx');
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    );
-    res.setHeader('Content-Disposition', 'attachment; filename="curriculo.docx"');
-    res.send(buffer);
+  docx(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.curriculos.arquivo(user.userId, id, 'docx');
   }
 
   @Get('curriculos/:id/pdf')
-  async pdf(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Res() res: Response,
-  ) {
-    const buffer = await this.curriculos.arquivo(user.userId, id, 'pdf');
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="curriculo.pdf"');
-    res.send(buffer);
+  pdf(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.curriculos.arquivo(user.userId, id, 'pdf');
   }
 
   @Get('curriculos/:id/pacote')
-  async pacote(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Res() res: Response,
-  ) {
-    const pacote = await this.curriculos.pacote(user.userId, id);
-    res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="${pacote.nome}"`);
-    res.send(pacote.buffer);
+  pacote(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.curriculos.pacote(user.userId, id);
   }
 }

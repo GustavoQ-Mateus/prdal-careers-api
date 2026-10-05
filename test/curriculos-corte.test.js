@@ -1,4 +1,4 @@
-require('./helpers/armazenamento');
+const { ArmazenamentoMemoria } = require('./helpers/armazenamento');
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const { CurriculosService } = require('../dist/curriculos/curriculos.service');
@@ -51,7 +51,7 @@ async function gerar(paginasPorMarkdown, reducoes) {
       return reducoes[payload.nivel - 1];
     },
   };
-  const service = new CurriculosService(prisma(criados), ai, docComPaginas(paginasPorMarkdown), { registrar: async () => {} }, null, null, ai);
+  const service = new CurriculosService(prisma(criados), ai, docComPaginas(paginasPorMarkdown), { registrar: async () => {} }, null, null, ai, new ArmazenamentoMemoria());
   await service.processar('job-1');
   return { criados, chamadas };
 }

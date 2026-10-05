@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { Prisma, StatusGeracaoCurriculo } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
-import archiver from 'archiver';
 import { AiClient, AtsAnalysis, FonteContexto, Keyword } from '../clients/ai.client';
 import { DocClient } from '../clients/doc.client';
 import { EventosService } from '../eventos/eventos.service';
@@ -20,7 +19,7 @@ import { DadosNarracao, dadosDaNarracao, narrar, resumoDaAnalise } from '../pipe
 import { PipelineAtsService } from '../pipeline-ats/pipeline-ats.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EditarCurriculoDto } from './curriculo.dto';
-import { lerArquivo, salvarArquivo } from './storage';
+import { Armazenamento, chaveDoCurriculo } from '../arquivos/armazenamento';
 import { acompanharTrabalho } from '../observabilidade/desligamento';
 
 const GERACAO_EM_ANDAMENTO: StatusGeracaoCurriculo[] = ['PENDENTE', 'ANALISANDO', 'GERANDO', 'VALIDANDO'];
@@ -93,6 +92,14 @@ function nomeArquivo(valor: string) {
   return valor.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim() || 'Curriculo';
 }
 
+export function chaveNoArmazenamento(caminho: string | null): string | null {
+  return caminho && caminho.startsWith('usuarios/') ? caminho : null;
+}
+
+export const ARQUIVO_NAO_MIGRADO =
+  'Os arquivos deste currículo ainda estão no armazenamento antigo. Gere os arquivos de novo para baixar.';
+export const PACOTE_EM_PREPARO = 'O pacote deste currículo ainda está sendo preparado. Tente de novo em instantes.';
+
 @Injectable()
 export class CurriculosService implements OnModuleInit {
   private readonly logger = new Logger(CurriculosService.name);
@@ -105,6 +112,7 @@ export class CurriculosService implements OnModuleInit {
     private readonly conversas: ConversasRepositorio,
     private readonly pipelineAts: PipelineAtsService,
     private readonly rag: RagService,
+    private readonly armazenamento: Armazenamento,
   ) {}
 
   async onModuleInit() {
@@ -368,6 +376,7 @@ export class CurriculosService implements OnModuleInit {
     });
 
     const { docxPath, pdfPath, falhou } = await this.renderizar(
+      usuarioId,
       curriculo.id,
       dto.markdown,
     );
@@ -381,6 +390,7 @@ export class CurriculosService implements OnModuleInit {
           scoreBreakdown: breakdown as unknown as Prisma.InputJsonValue,
           docxPath,
           pdfPath,
+          pacotePath: null,
           degradacao: degradacaoComRenderizacao(curriculo.degradacao, falhou),
           estrutura: Prisma.DbNull,
           ...(dto.rotulo ? { rotulo: dto.rotulo } : {}),
@@ -441,12 +451,13 @@ export class CurriculosService implements OnModuleInit {
     });
     if (!curriculo) throw new NotFoundException('curriculo nao encontrado');
 
-    const { docxPath, pdfPath, falhou } = await this.renderizar(curriculo.id, curriculo.markdown);
+    const { docxPath, pdfPath, falhou } = await this.renderizar(usuarioId, curriculo.id, curriculo.markdown);
     await this.prisma.curriculo.update({
       where: { id: curriculo.id },
       data: {
         docxPath,
         pdfPath,
+        pacotePath: null,
         degradacao: degradacaoComRenderizacao(curriculo.degradacao, falhou),
       },
     });
@@ -461,7 +472,9 @@ export class CurriculosService implements OnModuleInit {
     if (!curriculo) throw new NotFoundException('curriculo nao encontrado');
     const caminho = formato === 'docx' ? curriculo.docxPath : curriculo.pdfPath;
     if (!caminho) throw new NotFoundException('arquivo indisponivel');
-    return lerArquivo(caminho);
+    const chave = chaveNoArmazenamento(caminho);
+    if (!chave) throw new NotFoundException(ARQUIVO_NAO_MIGRADO);
+    return this.armazenamento.urlDeDownload(chave, `Curriculo_${nomeArquivo(curriculo.rotulo)}.${formato}`);
   }
 
   async pacote(usuarioId: string, id: string) {
@@ -470,22 +483,9 @@ export class CurriculosService implements OnModuleInit {
       include: { vaga: { select: { titulo: true, empresa: true } } },
     });
     if (!curriculo) throw new NotFoundException('curriculo nao encontrado');
-
-    const pasta = nomeArquivo(`${curriculo.vaga.titulo} - ${curriculo.vaga.empresa}`);
-    const rotulo = nomeArquivo(curriculo.rotulo);
-    const buffer = await new Promise<Buffer>((resolve, reject) => {
-      const zip = archiver('zip', { zlib: { level: 9 } });
-      const partes: Buffer[] = [];
-      zip.on('data', (parte: Buffer) => partes.push(parte));
-      zip.on('error', reject);
-      zip.on('end', () => resolve(Buffer.concat(partes)));
-      zip.append(curriculo.markdown, { name: `${pasta}/Curriculo_${rotulo}.md` });
-      void Promise.all([
-        curriculo.docxPath ? lerArquivo(curriculo.docxPath).then((arquivo) => zip.append(arquivo, { name: `${pasta}/Curriculo_${rotulo}.docx` })) : null,
-        curriculo.pdfPath ? lerArquivo(curriculo.pdfPath).then((arquivo) => zip.append(arquivo, { name: `${pasta}/Curriculo_${rotulo}.pdf` })) : null,
-      ]).then(() => void zip.finalize(), reject);
-    });
-    return { buffer, nome: `${pasta}.zip` };
+    const chave = chaveNoArmazenamento(curriculo.pacotePath);
+    if (!chave) throw new NotFoundException(PACOTE_EM_PREPARO);
+    return this.armazenamento.urlDeDownload(chave, `${nomeArquivo(`${curriculo.vaga.titulo} - ${curriculo.vaga.empresa}`)}.zip`);
   }
 
   private async processar(id: string) {
@@ -561,6 +561,7 @@ export class CurriculosService implements OnModuleInit {
       const modelo = pipeline.modelo ?? null;
       const promptVersion = pipeline.promptVersion ?? null;
       let { docxPath, pdfPath, paginas, falhou } = await this.renderizar(
+        geracao.usuarioId,
         curriculoId,
         markdown,
       );
@@ -594,6 +595,7 @@ export class CurriculosService implements OnModuleInit {
           analiseFinal = reducao.analiseFinal;
           estrutura = reducao.estrutura ?? estrutura;
           ({ docxPath, pdfPath, paginas, falhou } = await this.renderizar(
+            geracao.usuarioId,
             curriculoId,
             markdown,
           ));
@@ -754,7 +756,7 @@ export class CurriculosService implements OnModuleInit {
     }
   }
 
-  private async renderizar(curriculoId: string, markdown: string) {
+  private async renderizar(usuarioId: string, curriculoId: string, markdown: string) {
     let docxPath: string | null = null;
     let pdfPath: string | null = null;
     let paginas = 0;
@@ -769,11 +771,15 @@ export class CurriculosService implements OnModuleInit {
         paginas = this.contarPaginasPdf(pdf);
       }
       const docx = await this.docClient.renderDocx(markdown, template);
-      docxPath = await salvarArquivo(`${curriculoId}.docx`, docx);
+      docxPath = await this.armazenamento.gravar(
+        chaveDoCurriculo(usuarioId, curriculoId, 'docx'),
+        docx,
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      );
       if (paginas > 1) {
         this.logger.warn(`curriculo ${curriculoId} gerou PDF com ${paginas} paginas`);
       }
-      pdfPath = await salvarArquivo(`${curriculoId}.pdf`, pdf);
+      pdfPath = await this.armazenamento.gravar(chaveDoCurriculo(usuarioId, curriculoId, 'pdf'), pdf, 'application/pdf');
     } catch (err) {
       falhou = true;
       docxPath = null;

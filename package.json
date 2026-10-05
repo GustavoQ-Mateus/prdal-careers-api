@@ -39,7 +39,6 @@
     "@nestjs/platform-express": "^11.2.7",
     "@nestjs/throttler": "^6.7.1",
     "@prisma/client": "^6.2.1",
-    "archiver": "^7.0.1",
     "axios": "^1.7.9",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
@@ -54,7 +53,6 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
-    "@types/archiver": "^6.0.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.5",

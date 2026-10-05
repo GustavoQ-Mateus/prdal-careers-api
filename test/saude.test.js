@@ -35,8 +35,9 @@ const AI_PRONTO = {
   corpo: { servico: 'ai-service', status: 'pronto', dependencias: [{ nome: 'embeddings', obrigatoria: false, estado: 'ok' }] },
 };
 
-async function subir(t, { ai, doc, prisma, prefixo, fila } = {}) {
+async function subir(t, { ai, doc, prisma, prefixo, fila, armazenamento } = {}) {
   const { Fila } = require('../dist/jobs/fila');
+  const { Armazenamento } = require('../dist/arquivos/armazenamento');
   const { SaudeController } = require('../dist/saude/saude.controller');
   const { SaudeService } = require('../dist/saude/saude.service');
   const { PrismaService } = require('../dist/prisma/prisma.service');
@@ -65,6 +66,7 @@ async function subir(t, { ai, doc, prisma, prefixo, fila } = {}) {
       SaudeService,
       { provide: PrismaService, useValue: prisma ?? { $queryRaw: async () => [{ '?column?': 1 }] } },
       { provide: Fila, useValue: fila ?? { verificar: async () => {} } },
+      { provide: Armazenamento, useValue: armazenamento ?? { verificar: async () => {} } },
     ],
     configurar: (app) => {
       app.useLogger(logger);
@@ -93,13 +95,14 @@ test('tudo no ar: ready 200 com cada dependencia e se e obrigatoria', async (t) 
   const { status, corpo, deps } = await ready(url);
   assert.equal(status, 200);
   assert.equal(corpo.status, 'pronto');
-  assert.deepEqual(Object.keys(deps), ['postgres', 'ai-service', 'embeddings', 'doc-service', 'fila']);
+  assert.deepEqual(Object.keys(deps), ['postgres', 'ai-service', 'embeddings', 'doc-service', 'fila', 'armazenamento']);
   for (const d of Object.values(deps)) assert.equal(d.estado, 'ok', d.nome);
   assert.equal(deps.postgres.obrigatoria, true);
   assert.equal(deps['ai-service'].obrigatoria, false);
   assert.equal(deps['doc-service'].obrigatoria, false);
   assert.equal(deps.embeddings.obrigatoria, false);
   assert.equal(deps.fila.obrigatoria, false);
+  assert.equal(deps.armazenamento.obrigatoria, false);
 });
 
 test('fila fora nao derruba o ready da api: o job fica pendente para a varredura do worker', async (t) => {
@@ -108,6 +111,13 @@ test('fila fora nao derruba o ready da api: o job fica pendente para a varredura
   assert.equal(status, 200);
   assert.equal(deps.fila.estado, 'indisponivel');
   assert.match(motivoNoLog('fila').detalhe, /fila fora/);
+});
+
+test('armazenamento fora aparece no ready da api sem derrubar a prontidao', async (t) => {
+  const { url } = await subir(t, { armazenamento: { verificar: async () => { throw new Error('bucket fora'); } } });
+  const { status, deps } = await ready(url);
+  assert.equal(status, 200);
+  assert.equal(deps.armazenamento.estado, 'indisponivel');
 });
 
 test('ai-service fora: api segue pronta e aponta ai-service e embeddings', async (t) => {

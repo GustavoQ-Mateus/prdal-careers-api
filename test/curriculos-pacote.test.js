@@ -1,50 +1,31 @@
-require('./helpers/armazenamento');
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { mkdtemp, rm, writeFile } = require('node:fs/promises');
-const os = require('node:os');
-const path = require('node:path');
-const { CurriculosService } = require('../dist/curriculos/curriculos.service');
+const { CurriculosService, ARQUIVO_NAO_MIGRADO, PACOTE_EM_PREPARO } = require('../dist/curriculos/curriculos.service');
+const { ArmazenamentoMemoria } = require('./helpers/armazenamento');
 
-async function criarServico(curriculo) {
-  const pasta = await mkdtemp(path.join(os.tmpdir(), 'prdal-pacote-'));
-  const docxPath = path.join(pasta, 'curriculo.docx');
-  const pdfPath = path.join(pasta, 'curriculo.pdf');
-  if (curriculo.docxPath) await writeFile(docxPath, Buffer.from('docx'));
-  if (curriculo.pdfPath) await writeFile(pdfPath, Buffer.from('pdf'));
-  const registro = { ...curriculo, docxPath: curriculo.docxPath ? docxPath : null, pdfPath: curriculo.pdfPath ? pdfPath : null };
-  return {
-    pasta,
-    service: new CurriculosService({ curriculo: { findFirst: async () => registro } }, null, null, null),
-  };
+function servico(registro) {
+  return new CurriculosService({ curriculo: { findFirst: async () => registro } }, null, null, null, null, null, null, new ArmazenamentoMemoria());
 }
 
-test('pacote contem markdown e formatos disponiveis com nome sanitizado', async () => {
-  const { pasta, service } = await criarServico({
-    id: 'cv-1', rotulo: 'Versao: 1/Principal', markdown: '# Curriculo', docxPath: 'disponivel', pdfPath: 'disponivel',
+test('pacote e arquivos saem por url assinada com nome sanitizado, sem a api ler nem comprimir nada', async () => {
+  const service = servico({
+    id: 'cv-1', rotulo: 'Versao: 1/Principal', markdown: '# Curriculo',
+    docxPath: 'usuarios/u1/curriculos/cv-1.docx', pdfPath: 'usuarios/u1/curriculos/cv-1.pdf', pacotePath: 'usuarios/u1/curriculos/cv-1.zip',
     vaga: { titulo: 'Dev/Web', empresa: 'ACME: Brasil' },
   });
-  try {
-    const pacote = await service.pacote('user-1', 'cv-1');
-    assert.ok(pacote.buffer.length > 0);
-    assert.equal(pacote.buffer.subarray(0, 2).toString(), 'PK');
-    assert.equal(pacote.nome, 'DevWeb - ACME Brasil.zip');
-    assert.match(pacote.buffer.toString(), /Curriculo_Versao 1Principal\.(md|docx|pdf)/);
-  } finally {
-    await rm(pasta, { recursive: true, force: true });
-  }
+  const pacote = await service.pacote('u1', 'cv-1');
+  assert.equal(pacote.url, `http://s3.teste/usuarios/u1/curriculos/cv-1.zip?nome=${encodeURIComponent('DevWeb - ACME Brasil.zip')}`);
+  assert.ok(Date.parse(pacote.expiraEm) - Date.now() <= 300_000);
+  const pdf = await service.arquivo('u1', 'cv-1', 'pdf');
+  assert.match(pdf.url, /usuarios\/u1\/curriculos\/cv-1\.pdf\?nome=Curriculo_Versao%201Principal\.pdf$/);
 });
 
-test('pacote mantem markdown quando docx e pdf nao estao disponiveis', async () => {
-  const { pasta, service } = await criarServico({
-    id: 'cv-2', rotulo: 'Versao 2', markdown: '# Curriculo', vaga: { titulo: 'Backend', empresa: 'ACME' },
-  });
-  try {
-    const pacote = await service.pacote('user-1', 'cv-2');
-    const conteudo = pacote.buffer.toString();
-    assert.match(conteudo, /Curriculo_Versao 2\.md/);
-    assert.doesNotMatch(conteudo, /Curriculo_Versao 2\.(docx|pdf)/);
-  } finally {
-    await rm(pasta, { recursive: true, force: true });
-  }
+test('pacote ainda nao gravado pelo worker responde 404 com mensagem clara', async () => {
+  const service = servico({ id: 'cv-2', rotulo: 'V2', markdown: '#', docxPath: null, pdfPath: null, pacotePath: null, vaga: { titulo: 'B', empresa: 'A' } });
+  await assert.rejects(service.pacote('u1', 'cv-2'), (err) => err.getStatus() === 404 && err.message === PACOTE_EM_PREPARO);
+});
+
+test('caminho local antigo ainda nao migrado nao vira url e pede nova geracao dos arquivos', async () => {
+  const service = servico({ id: 'cv-3', rotulo: 'V3', markdown: '#', docxPath: '/app/storage/cv-3.docx', pdfPath: '/app/storage/cv-3.pdf', pacotePath: null, vaga: { titulo: 'B', empresa: 'A' } });
+  await assert.rejects(service.arquivo('u1', 'cv-3', 'docx'), (err) => err.getStatus() === 404 && err.message === ARQUIVO_NAO_MIGRADO);
 });

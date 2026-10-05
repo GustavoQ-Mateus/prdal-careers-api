@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ArquivosModule } from './arquivos/arquivos.module';
 import { AuthModule } from './auth/auth.module';
 import { validarAmbiente } from './config/ambiente';
 import { cabecalhoServico } from './config/servico';
@@ -38,6 +39,7 @@ import { VagasModule } from './vagas/vagas.module';
     ThrottlerModule.forRoot(JANELAS),
     PrismaModule,
     JobsModule,
+    ArquivosModule,
     PipelineAtsModule,
     CotaModule,
     RepositoriosModule,

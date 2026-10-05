@@ -15,7 +15,7 @@ function servidorQueRegistra() {
     }
     const corpos = {
       '/keywords': { keywords: [{ termo: 'Python', peso: 1 }], status: 'VALIDAS', degradacao: null },
-      '/generate-cv-pipeline': { markdown: '# x', analiseInicial: {}, analiseFinal: {}, degradacao: null },
+      '/copiloto/redigir-formulario': { titulo: 'Formulario', respostas: [] },
     };
     res.end(JSON.stringify(corpos[req.url] ?? { chunks: [] }));
   });
@@ -29,7 +29,6 @@ test('chamadas de LLM enviam ao ai-service o prazo restante e a operacao, as dem
   t.after(() => servidor.close());
   process.env.AI_SERVICE_URL = url;
   process.env.AI_LLM_TIMEOUT_MS = '45000';
-  process.env.AI_GENERATE_TIMEOUT_MS = '200000';
 
   const { ClientsModule } = require('../dist/clients/clients.module');
   const { AiClient } = require('../dist/clients/ai.client');
@@ -39,13 +38,13 @@ test('chamadas de LLM enviam ao ai-service o prazo restante e a operacao, as dem
 
   await ai.keywords('Vaga Python');
   await ai.copilotoTurnStream({ modo: 'assistido', oportunidadeId: null, trocas: [], resumo: null, tools: [] }, { operacao: 'conversa:c1' }, () => {});
-  await ai.generateCvPipeline({ perfilMestre: {}, vaga: {}, keywords: [], contexto: [] }, { operacao: 'geracao:g1' });
+  await ai.redigirFormulario({ vaga: {}, perfil: {}, campos: [] }, { operacao: 'formulario:f1' });
   await ai.embeddingConsultas(['consulta']);
 
   assert.deepEqual(recebidas, [
     { url: '/keywords', prazo: '44000', operacao: undefined },
     { url: '/copiloto/turn/stream', prazo: '44000', operacao: 'conversa:c1' },
-    { url: '/generate-cv-pipeline', prazo: '199000', operacao: 'geracao:g1' },
+    { url: '/copiloto/redigir-formulario', prazo: '44000', operacao: 'formulario:f1' },
     { url: '/embeddings/consultas', prazo: undefined, operacao: undefined },
   ]);
 });

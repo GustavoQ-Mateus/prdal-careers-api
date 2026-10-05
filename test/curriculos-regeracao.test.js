@@ -72,6 +72,19 @@ test('gerar cria a geracao e o job na mesma transacao, com perfil e vaga normali
   assert.deepEqual(jobs.enfileirados, ['job-1']);
 });
 
+test('gerar sem linha ATS nao interpreta a geracao recem-criada como anterior', async () => {
+  const prisma = prismaFalso();
+  prisma.pipelineAts = { findUnique: async () => null, create: async () => {} };
+  prisma.eventoPipelineAts = { create: async () => {} };
+  prisma.geracaoCurriculo.findFirst = async ({ where }) => prisma.geracoes.filter(
+    (g) => g.usuarioId === where.usuarioId && g.vagaId === where.vagaId && g.id !== where.id?.not && (!where.status?.in || where.status.in.includes(g.status)),
+  ).at(-1) ?? null;
+  const { PipelineAtsService } = require('../dist/pipeline-ats/pipeline-ats.service');
+  const { service } = servico(prisma);
+  service.pipelineAts = new PipelineAtsService(prisma);
+  await assert.doesNotReject(service.gerar('usuario-1', 'vaga-1'));
+});
+
 test('geracao concluida ou com erro nunca bloqueia uma nova geracao para a mesma vaga', async () => {
   const prisma = prismaFalso();
   const { service, jobs } = servico(prisma);

@@ -239,7 +239,7 @@ async function subirCopiloto(t, logger) {
 }
 
 test('SIGTERM com turno aberto: evento de erro recuperavel, trava liberada e servidor fechado', async (t) => {
-  const { reiniciarEstadoDesligamento, desligar, acompanharTrabalho } = require('../dist/observabilidade/desligamento');
+  const { reiniciarEstadoDesligamento, desligar } = require('../dist/observabilidade/desligamento');
   reiniciarEstadoDesligamento();
   t.after(reiniciarEstadoDesligamento);
   const { logger, linhas } = logsCapturados();
@@ -257,9 +257,6 @@ test('SIGTERM com turno aberto: evento de erro recuperavel, trava liberada e ser
   assert.match(texto, /event: conversa/);
   assert.equal(turnos.travas.size, 1);
 
-  let concluida = false;
-  void acompanharTrabalho(new Promise((r) => setTimeout(r, 150)).then(() => { concluida = true; }));
-
   const resultado = await desligar(app, logger, 3000);
   for (;;) {
     const parte = await leitor.read();
@@ -267,7 +264,6 @@ test('SIGTERM com turno aberto: evento de erro recuperavel, trava liberada e ser
     texto += decodificador.decode(parte.value);
   }
   assert.deepEqual(resultado, { limpo: true });
-  assert.equal(concluida, true);
   const erro = JSON.parse(texto.split('event: erro\ndata: ')[1].split('\n')[0]);
   assert.equal(erro.escopo, 'servidor');
   assert.equal(erro.recuperavel, true);
@@ -282,18 +278,19 @@ test('SIGTERM com turno aberto: evento de erro recuperavel, trava liberada e ser
 });
 
 test('prazo de desligamento esgotado registra o que ficou pendente', async (t) => {
-  const { reiniciarEstadoDesligamento, desligar, acompanharTrabalho } = require('../dist/observabilidade/desligamento');
+  const { reiniciarEstadoDesligamento, desligar, inicioRequisicao } = require('../dist/observabilidade/desligamento');
   reiniciarEstadoDesligamento();
   t.after(reiniciarEstadoDesligamento);
   const { logger, linhas } = logsCapturados();
   const { app } = await subirCopiloto(t, logger);
-  void acompanharTrabalho(new Promise(() => {}));
+  inicioRequisicao();
   const inicio = Date.now();
   const resultado = await desligar(app, logger, 200);
   assert.deepEqual(resultado, { limpo: false });
   assert.ok(Date.now() - inicio < 1500);
   const aviso = linhas.find((l) => l.nivel === 'warn' && /prazo de desligamento esgotado/.test(l.mensagem));
-  assert.equal(aviso.trabalhos, 1);
+  assert.equal(aviso.requisicoes, 1);
+  assert.equal('trabalhos' in aviso, false);
 });
 
 test('durante o desligamento requisicao nova recebe 503 com Connection close', async (t) => {

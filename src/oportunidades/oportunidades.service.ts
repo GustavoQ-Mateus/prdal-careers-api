@@ -22,6 +22,7 @@ import {
   transicaoPermitida,
 } from '../dominio/transicoes';
 import { EventosService } from '../eventos/eventos.service';
+import { JobsService } from '../jobs/jobs.service';
 import { BancoVagasRepositorio } from '../repositorios/banco-vagas.repositorio';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -54,6 +55,7 @@ export class OportunidadesService {
     private readonly bancoVagas: BancoVagasRepositorio,
     private readonly ai: AiClient,
     private readonly eventos: EventosService,
+    private readonly jobs: JobsService,
   ) {}
 
   private async classificar(titulo: string, descricao: string) {
@@ -77,16 +79,16 @@ export class OportunidadesService {
     );
     if (equivalente) return equivalente;
 
-    const extracao = await this.ai.keywords(dto.descricao, { usuarioId });
     const taxonomia = await this.classificar(dto.titulo, dto.descricao);
-    return this.prisma.$transaction(async (tx) => {
+    const { vaga, job } = await this.prisma.$transaction(async (tx) => {
       const vaga = await tx.vaga.create({
         data: {
           ...dto,
           usuarioId,
           origem: 'MANUAL',
-          keywords: extracao.keywords as unknown as Prisma.InputJsonValue,
-          keywordsStatus: extracao.status,
+          keywords: [],
+          keywordsStatus: 'PENDENTE',
+          keywordsExtracao: 'PENDENTE',
           ...(taxonomia
             ? { categoria: taxonomia.categoria, nivel: taxonomia.nivel }
             : {}),
@@ -100,8 +102,11 @@ export class OportunidadesService {
         descricao: 'Oportunidade registrada',
         dados: { origem: 'MANUAL' },
       });
-      return vaga;
+      const job = await this.jobs.criar(tx, { tipo: 'extrair_keywords', usuarioId, referenciaId: vaga.id });
+      return { vaga, job };
     });
+    await this.jobs.enfileirar([job]);
+    return vaga;
   }
 
   async listar(
@@ -340,6 +345,8 @@ export class OportunidadesService {
           data: {
             keywords: extracao.keywords as unknown as Prisma.InputJsonValue,
             keywordsStatus: extracao.status,
+            keywordsExtracao: extracao.status === 'VALIDAS' ? 'PRONTAS' : 'ERRO',
+            keywordsErro: extracao.status === 'VALIDAS' ? null : extracao.degradacao ?? 'a extracao de keywords nao retornou termos validos',
           },
         });
         if (extracao.status === 'VALIDAS') reprocessadas += 1;
@@ -354,9 +361,7 @@ export class OportunidadesService {
 
   async atualizar(usuarioId: string, id: string, dto: AtualizarOportunidadeDto) {
     const atual = await this.garantirVaga(usuarioId, id);
-    const extracao = dto.descricao !== undefined
-      ? await this.ai.keywords(dto.descricao, { usuarioId })
-      : undefined;
+    const extrair = dto.descricao !== undefined && dto.descricao !== atual.descricao;
     const mudouTexto =
       (dto.titulo !== undefined && dto.titulo !== atual.titulo) ||
       (dto.descricao !== undefined && dto.descricao !== atual.descricao);
@@ -370,7 +375,7 @@ export class OportunidadesService {
       dto.prioridade !== undefined && dto.prioridade !== atual.prioridade;
     const arquivar = dto.arquivar;
 
-    return this.prisma.$transaction(async (tx) => {
+    const { vaga, job } = await this.prisma.$transaction(async (tx) => {
       const vaga = await tx.vaga.update({
         where: { id },
         data: {
@@ -379,11 +384,8 @@ export class OportunidadesService {
           ...(dto.descricao !== undefined ? { descricao: dto.descricao } : {}),
           ...(dto.fonte !== undefined ? { fonte: dto.fonte } : {}),
           ...(dto.prioridade !== undefined ? { prioridade: dto.prioridade } : {}),
-          ...(extracao
-            ? {
-                keywords: extracao.keywords as unknown as Prisma.InputJsonValue,
-                keywordsStatus: extracao.status,
-              }
+          ...(extrair
+            ? { keywordsStatus: 'PENDENTE', keywordsExtracao: 'PENDENTE', keywordsErro: null }
             : {}),
           ...(taxonomia
             ? { categoria: taxonomia.categoria, nivel: taxonomia.nivel }
@@ -435,8 +437,11 @@ export class OportunidadesService {
           descricao: 'Oportunidade reaberta',
         });
       }
-      return vaga;
+      const job = extrair ? await this.jobs.criar(tx, { tipo: 'extrair_keywords', usuarioId, referenciaId: id }) : null;
+      return { vaga, job };
     });
+    if (job) await this.jobs.enfileirar([job]);
+    return vaga;
   }
 
   async ativarEntrada(usuarioId: string, entradaId: string) {
@@ -451,7 +456,8 @@ export class OportunidadesService {
     const doc = await this.bancoVagas.buscar(entradaId, usuarioId);
     if (!doc) throw new NotFoundException('entrada nao encontrada');
 
-    const vaga = await this.prisma.$transaction(async (tx) => {
+    const prontas = doc.keywordsStatus === 'VALIDAS' && Array.isArray(doc.keywords) && doc.keywords.length > 0;
+    const { vaga, job } = await this.prisma.$transaction(async (tx) => {
       const criada = await tx.vaga.create({
         data: {
           usuarioId,
@@ -460,7 +466,8 @@ export class OportunidadesService {
           descricao: doc.descricao,
           fonte: doc.fonte,
           keywords: (doc.keywords ?? []) as unknown as Prisma.InputJsonValue,
-          keywordsStatus: doc.keywordsStatus,
+          keywordsStatus: prontas ? 'VALIDAS' : 'PENDENTE',
+          keywordsExtracao: prontas ? 'PRONTAS' : 'PENDENTE',
           categoria: doc.categoria,
           nivel: doc.nivel,
           origem: 'IMPORTACAO',
@@ -475,8 +482,10 @@ export class OportunidadesService {
         descricao: 'Entrada ativada',
         dados: { entradaId },
       });
-      return criada;
+      const job = prontas ? null : await this.jobs.criar(tx, { tipo: 'extrair_keywords', usuarioId, referenciaId: criada.id });
+      return { vaga: criada, job };
     });
+    if (job) await this.jobs.enfileirar([job]);
 
     await this.vincularEntrada(entradaId, usuarioId, vaga.id);
     return vaga;
@@ -786,6 +795,8 @@ export class OportunidadesService {
       origem: vaga.origem,
       keywords: vaga.keywords,
       keywordsStatus: vaga.keywordsStatus,
+      keywordsExtracao: vaga.keywordsExtracao,
+      keywordsErro: vaga.keywordsErro,
       statusCandidatura: candidatura?.status ?? null,
       arquivadaEm: vaga.arquivadaEm,
     };

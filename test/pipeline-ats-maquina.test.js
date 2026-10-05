@@ -14,7 +14,6 @@ const {
 const { TOOLS_NATIVAS } = require('../dist/copiloto/tools');
 
 const NOME_DE_TOOL = new RegExp(`\\b(${TOOLS_NATIVAS.map((t) => t.name).join('|')})\\b`);
-const { dadosDaNarracao, narrar } = require('../dist/pipeline-ats/narracao');
 const { TransicaoRecusada } = require('../dist/pipeline-ats/pipeline-ats.service');
 const { pipelineMemoria } = require('./helpers/pipeline-memoria');
 
@@ -34,7 +33,7 @@ function aplicar(situacao, ...eventos) {
   }, situacao);
 }
 
-const narracao = dadosDaNarracao(analise, { ...analise, score: 76, keywordsEncontradas: ['TypeScript', 'Docker'], keywordsCriticasAusentes: [] }, null);
+const narracao = { scoreInicial: 48, scoreFinal: 76, keywordsEncontradas: ['TypeScript'], keywordsAusentesIniciais: ['Docker'], pontosDeAtencao: [], veredicto: 'Cobertura baixa.', keywordsCobertas: ['TypeScript', 'Docker'], keywordsAusentes: [], degradacao: null };
 
 test('sequencia inteira: analise, confirmacao, geracao e conclusao', () => {
   const caminho = [];
@@ -172,29 +171,6 @@ test('legado sem linha de pipeline vem da ultima geracao', () => {
   assert.equal(situacaoDeLegado({ id: 'j', status: 'ERRO', curriculoId: null }).estado, 'FALHOU');
 });
 
-test('narracao e montada dos dados do evento em duas mensagens, sem marcador nem travessao', () => {
-  const dados = dadosDaNarracao(
-    { ...analise, pontosEliminatorios: ['secao obrigatoria ausente'] },
-    { ...analise, score: 76, keywordsEncontradas: ['TypeScript'], keywordsCriticasAusentes: ['Docker'] },
-    'Curriculo mantido com 2 paginas',
-  );
-  const { etapa1, etapa3 } = narrar(dados);
-  assert.match(etapa1, /^Etapa 1: Aderência do perfil-mestre\nScore: 48\n/);
-  assert.match(etapa1, /Keywords críticas ausentes: Docker/);
-  assert.match(etapa1, /Pontos de atenção: secao obrigatoria ausente/);
-  assert.match(etapa3, /^Etapa 3: Aderência do currículo gerado/);
-  assert.match(etapa3, /Score: 76\. Para referência, a aderência do perfil-mestre foi 48\./);
-  assert.match(etapa3, /Keywords cobertas: TypeScript/);
-  assert.match(etapa3, /Keywords ainda ausentes: Docker/);
-  assert.match(etapa3, /Observação: Curriculo mantido com 2 paginas/);
-  for (const texto of [etapa1, etapa3]) {
-    for (const proibido of ['[[', ']]', '\u2014', 'aumentou', 'melhorou', 'reduziu']) {
-      assert.ok(!texto.includes(proibido), proibido);
-    }
-  }
-  assert.equal(dadosDaNarracao({ score: 'x' }, analise, null), null);
-});
-
 test('servico grava um evento estruturado por transicao e recusa fora de ordem', async () => {
   const { banco, service } = pipelineMemoria();
   await service.aplicar('u1', 'v1', { tipo: 'analise_concluida', analise });
@@ -213,7 +189,7 @@ test('servico grava um evento estruturado por transicao e recusa fora de ordem',
   );
   assert.deepEqual(banco.eventos[0].dados.analise, analise);
   assert.equal(banco.eventos[3].jobId, 'job-1');
-  assert.deepEqual(await service.narracaoDaGeracao('u1', 'job-1'), narracao);
+  assert.deepEqual(banco.eventos[3].dados.narracao, narracao);
   assert.equal(banco.linhas.get('v1').versao, 4);
 
   await assert.rejects(service.aplicar('u1', 'v1', { tipo: 'confirmacao_solicitada' }), (err) => {

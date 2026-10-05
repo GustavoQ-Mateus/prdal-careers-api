@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { AiClient } from '../clients/ai.client';
 import { EventosService } from '../eventos/eventos.service';
+import { JobsService } from '../jobs/jobs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AtualizarVagaDto, CriarVagaDto } from './vaga.dto';
 
@@ -9,19 +8,19 @@ import { AtualizarVagaDto, CriarVagaDto } from './vaga.dto';
 export class VagasService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly aiClient: AiClient,
     private readonly eventos: EventosService,
+    private readonly jobs: JobsService,
   ) {}
 
   async criar(usuarioId: string, dto: CriarVagaDto) {
-    const extracao = await this.aiClient.keywords(dto.descricao, { usuarioId });
-    return this.prisma.$transaction(async (tx) => {
+    const { vaga, job } = await this.prisma.$transaction(async (tx) => {
       const vaga = await tx.vaga.create({
         data: {
           ...dto,
           usuarioId,
-          keywords: extracao.keywords as unknown as Prisma.InputJsonValue,
-          keywordsStatus: extracao.status,
+          keywords: [],
+          keywordsStatus: 'PENDENTE',
+          keywordsExtracao: 'PENDENTE',
         },
       });
       await this.eventos.registrar(tx, {
@@ -32,8 +31,11 @@ export class VagasService {
         descricao: 'Oportunidade registrada',
         dados: { origem: 'MANUAL' },
       });
-      return vaga;
+      const job = await this.jobs.criar(tx, { tipo: 'extrair_keywords', usuarioId, referenciaId: vaga.id });
+      return { vaga, job };
     });
+    await this.jobs.enfileirar([job]);
+    return vaga;
   }
 
   listar(usuarioId: string) {
@@ -50,22 +52,21 @@ export class VagasService {
   }
 
   async atualizar(usuarioId: string, id: string, dto: AtualizarVagaDto) {
-    await this.buscar(usuarioId, id);
-    const extracao = dto.descricao !== undefined
-      ? await this.aiClient.keywords(dto.descricao, { usuarioId })
-      : undefined;
-    return this.prisma.vaga.update({
-      where: { id },
-      data: {
-        ...dto,
-        ...(extracao
-          ? {
-              keywords: extracao.keywords as unknown as Prisma.InputJsonValue,
-              keywordsStatus: extracao.status,
-            }
-          : {}),
-      },
+    const atual = await this.buscar(usuarioId, id);
+    const extrair = dto.descricao !== undefined && dto.descricao !== atual.descricao;
+    const { vaga, job } = await this.prisma.$transaction(async (tx) => {
+      const vaga = await tx.vaga.update({
+        where: { id },
+        data: {
+          ...dto,
+          ...(extrair ? { keywordsStatus: 'PENDENTE', keywordsExtracao: 'PENDENTE', keywordsErro: null } : {}),
+        },
+      });
+      const job = extrair ? await this.jobs.criar(tx, { tipo: 'extrair_keywords', usuarioId, referenciaId: id }) : null;
+      return { vaga, job };
     });
+    if (job) await this.jobs.enfileirar([job]);
+    return vaga;
   }
 
   async remover(usuarioId: string, id: string) {

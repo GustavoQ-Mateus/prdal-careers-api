@@ -10,7 +10,6 @@ const INTERVALO_VERIFICACAO_MS = 50;
 type Encerrador = () => void;
 
 const turnosAbertos = new Set<Encerrador>();
-const trabalhos = new Set<Promise<unknown>>();
 let requisicoesAtivas = 0;
 let desligando = false;
 
@@ -30,15 +29,6 @@ export function registrarTurnoAberto(encerrar: Encerrador): () => void {
   };
 }
 
-export function acompanharTrabalho<T>(trabalho: Promise<T>): Promise<T> {
-  trabalhos.add(trabalho);
-  const remover = () => {
-    trabalhos.delete(trabalho);
-  };
-  trabalho.then(remover, remover);
-  return trabalho;
-}
-
 export function inicioRequisicao(): () => void {
   requisicoesAtivas++;
   let encerrada = false;
@@ -49,8 +39,8 @@ export function inicioRequisicao(): () => void {
   };
 }
 
-export function pendencias(): { requisicoes: number; turnos: number; trabalhos: number } {
-  return { requisicoes: requisicoesAtivas, turnos: turnosAbertos.size, trabalhos: trabalhos.size };
+export function pendencias(): { requisicoes: number; turnos: number } {
+  return { requisicoes: requisicoesAtivas, turnos: turnosAbertos.size };
 }
 
 function esperar(ms: number): Promise<void> {
@@ -77,17 +67,16 @@ export async function desligar(
   }
   const limite = Date.now() + prazoMs;
   while (Date.now() < limite) {
-    const { requisicoes, trabalhos: emCurso } = pendencias();
-    if (requisicoes === 0 && emCurso === 0) break;
+    if (pendencias().requisicoes === 0) break;
     servidor.closeIdleConnections();
     await esperar(INTERVALO_VERIFICACAO_MS);
   }
   const restantes = pendencias();
-  const limpo = restantes.requisicoes === 0 && restantes.trabalhos === 0;
+  const limpo = restantes.requisicoes === 0;
   if (!limpo) {
     logger.warn(
       {
-        mensagem: 'prazo de desligamento esgotado; conexoes encerradas a forca e geracoes em andamento ficam pendentes para o proximo boot',
+        mensagem: 'prazo de desligamento esgotado; conexoes encerradas a forca',
         ...restantes,
       },
       'Desligamento',
@@ -103,5 +92,4 @@ export function reiniciarEstadoDesligamento(): void {
   desligando = false;
   requisicoesAtivas = 0;
   turnosAbertos.clear();
-  trabalhos.clear();
 }

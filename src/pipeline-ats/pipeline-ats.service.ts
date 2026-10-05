@@ -12,7 +12,6 @@ import {
   transicionar,
   verificarOrdem,
 } from './maquina';
-import { DadosNarracao, dadosNarracaoValidos } from './narracao';
 
 type Banco = Prisma.TransactionClient | PrismaService;
 
@@ -164,15 +163,6 @@ export class PipelineAtsService {
     };
     if (banco) return executar(banco);
     await this.prisma.$transaction(executar);
-  }
-
-  async narracaoDaGeracao(usuarioId: string, jobId: string): Promise<DadosNarracao | null> {
-    const evento = await this.prisma.eventoPipelineAts.findFirst({
-      where: { usuarioId, jobId, tipo: 'geracao_concluida' },
-      orderBy: { ocorridoEm: 'desc' },
-    });
-    const dados = evento?.dados as { narracao?: unknown } | undefined;
-    return dados ? dadosNarracaoValidos(dados.narracao) : null;
   }
 
   async eventos(usuarioId: string, vagaId: string) {

@@ -4,7 +4,7 @@ const { CurriculosService, ARQUIVO_NAO_MIGRADO, PACOTE_EM_PREPARO } = require('.
 const { ArmazenamentoMemoria } = require('./helpers/armazenamento');
 
 function servico(registro) {
-  return new CurriculosService({ curriculo: { findFirst: async () => registro } }, null, null, null, null, null, null, new ArmazenamentoMemoria());
+  return new CurriculosService({ curriculo: { findFirst: async () => registro } }, null, null, null, null, null, new ArmazenamentoMemoria(), null);
 }
 
 test('pacote e arquivos saem por url assinada com nome sanitizado, sem a api ler nem comprimir nada', async () => {

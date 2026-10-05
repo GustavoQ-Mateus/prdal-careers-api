@@ -32,6 +32,8 @@ async function main() {
           data: {
             keywords: extracao.keywords as unknown as Prisma.InputJsonValue,
             keywordsStatus: extracao.status,
+            keywordsExtracao: extracao.status === 'VALIDAS' ? 'PRONTAS' : 'ERRO',
+            keywordsErro: extracao.status === 'VALIDAS' ? null : extracao.degradacao ?? 'a extracao de keywords nao retornou termos validos',
           },
         });
         if (extracao.status === 'VALIDAS') validas += 1;

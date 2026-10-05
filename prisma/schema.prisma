@@ -100,6 +100,13 @@ enum StatusKeywords {
   PENDENTE
 }
 
+enum EstadoExtracaoKeywords {
+  PENDENTE
+  EXTRAINDO
+  PRONTAS
+  ERRO
+}
+
 model Vaga {
   id                 String                 @id @default(uuid())
   usuarioId          String                 @map("usuario_id")
@@ -110,6 +117,8 @@ model Vaga {
   fonte              String?
   keywords           Json
   keywordsStatus     StatusKeywords         @default(PENDENTE) @map("keywords_status")
+  keywordsExtracao   EstadoExtracaoKeywords @default(PENDENTE) @map("keywords_extracao")
+  keywordsErro       String?                @map("keywords_erro")
   categoria          String?
   nivel              String?
   prioridade         PrioridadeOportunidade @default(MEDIA)
@@ -584,6 +593,7 @@ enum TipoJob {
   extrair_keywords
   importar_lote
   reindexar_contexto
+  empacotar_curriculo
 }
 
 enum StatusJob {

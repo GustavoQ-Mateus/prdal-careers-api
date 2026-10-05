@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { EventosService } from '../eventos/eventos.service';
+import { JobsService } from '../jobs/jobs.service';
 import { LotesService } from '../lotes/lotes.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BancoVagasRepositorio } from '../repositorios/banco-vagas.repositorio';
@@ -15,6 +16,7 @@ export class BancoVagasService {
     private readonly prisma: PrismaService,
     private readonly lotes: LotesService,
     private readonly eventos: EventosService,
+    private readonly jobs: JobsService,
   ) {}
 
   async importar(usuarioId: string, dto: ImportarBancoVagasDto) {
@@ -70,7 +72,8 @@ export class BancoVagasService {
     const doc = await this.bancoVagas.buscar(id, usuarioId);
     if (!doc) throw new NotFoundException('postagem nao encontrada');
 
-    const vaga = await this.prisma.$transaction(async (tx) => {
+    const prontas = doc.keywordsStatus === 'VALIDAS' && Array.isArray(doc.keywords) && doc.keywords.length > 0;
+    const { vaga, job } = await this.prisma.$transaction(async (tx) => {
       const criada = await tx.vaga.create({
         data: {
           usuarioId,
@@ -79,6 +82,8 @@ export class BancoVagasService {
           descricao: doc.descricao,
           fonte: doc.fonte,
           keywords: (doc.keywords ?? []) as unknown as Prisma.InputJsonValue,
+          keywordsStatus: prontas ? 'VALIDAS' : 'PENDENTE',
+          keywordsExtracao: prontas ? 'PRONTAS' : 'PENDENTE',
           categoria: doc.categoria,
           nivel: doc.nivel,
           origem: 'IMPORTACAO',
@@ -93,8 +98,10 @@ export class BancoVagasService {
         descricao: 'Entrada ativada',
         dados: { entradaId: id },
       });
-      return criada;
+      const job = prontas ? null : await this.jobs.criar(tx, { tipo: 'extrair_keywords', usuarioId, referenciaId: criada.id });
+      return { vaga: criada, job };
     });
+    if (job) await this.jobs.enfileirar([job]);
 
     await this.bancoVagas.marcarAtivada(id, usuarioId, vaga.id);
     return vaga;

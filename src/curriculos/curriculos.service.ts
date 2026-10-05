@@ -3,24 +3,21 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  OnModuleInit,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { Prisma, StatusGeracaoCurriculo } from '@prisma/client';
-import { randomUUID } from 'node:crypto';
+import { PerfilMestre, Prisma, StatusGeracaoCurriculo, Vaga } from '@prisma/client';
 import { AiClient, AtsAnalysis, FonteContexto, Keyword } from '../clients/ai.client';
 import { DocClient } from '../clients/doc.client';
 import { EventosService } from '../eventos/eventos.service';
 import { RagService } from '../rag/rag.service';
-import { ConversasRepositorio } from '../repositorios/conversas.repositorio';
+import { JobsService } from '../jobs/jobs.service';
 import { perfilParaIa } from '../perfil/perfil.normalizacao';
 import type { OrigemGeracao } from '../pipeline-ats/maquina';
-import { DadosNarracao, dadosDaNarracao, narrar, resumoDaAnalise } from '../pipeline-ats/narracao';
+import { resumoDaAnalise } from '../pipeline-ats/narracao';
 import { PipelineAtsService } from '../pipeline-ats/pipeline-ats.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EditarCurriculoDto } from './curriculo.dto';
 import { Armazenamento, chaveDoCurriculo } from '../arquivos/armazenamento';
-import { acompanharTrabalho } from '../observabilidade/desligamento';
 
 const GERACAO_EM_ANDAMENTO: StatusGeracaoCurriculo[] = ['PENDENTE', 'ANALISANDO', 'GERANDO', 'VALIDANDO'];
 
@@ -88,6 +85,15 @@ function degradacaoComRenderizacao(atual: string | null, falhou: boolean): strin
   return falhou ? mesclarDegradacao(base, DEGRADACAO_RENDERIZACAO) : base;
 }
 
+export function entradaDaGeracao(perfil: PerfilMestre, vaga: Vaga) {
+  const keywords = normalizarKeywords(vaga.keywords);
+  return {
+    perfilMestre: perfilParaIa(perfil),
+    vaga: { titulo: vaga.titulo, empresa: vaga.empresa, descricao: vaga.descricao, keywords },
+    keywords,
+  };
+}
+
 function nomeArquivo(valor: string) {
   return valor.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim() || 'Curriculo';
 }
@@ -101,7 +107,7 @@ export const ARQUIVO_NAO_MIGRADO =
 export const PACOTE_EM_PREPARO = 'O pacote deste currículo ainda está sendo preparado. Tente de novo em instantes.';
 
 @Injectable()
-export class CurriculosService implements OnModuleInit {
+export class CurriculosService {
   private readonly logger = new Logger(CurriculosService.name);
 
   constructor(
@@ -109,24 +115,11 @@ export class CurriculosService implements OnModuleInit {
     private readonly aiClient: AiClient,
     private readonly docClient: DocClient,
     private readonly eventos: EventosService,
-    private readonly conversas: ConversasRepositorio,
     private readonly pipelineAts: PipelineAtsService,
     private readonly rag: RagService,
     private readonly armazenamento: Armazenamento,
+    private readonly jobs: JobsService,
   ) {}
-
-  async onModuleInit() {
-    const pendentes = await this.prisma.geracaoCurriculo.findMany({
-      where: { status: { notIn: ['CONCLUIDA', 'ERRO'] } },
-      select: { id: true },
-    });
-    for (const geracao of pendentes) {
-      void acompanharTrabalho(this.processar(geracao.id));
-    }
-    void this.reidratarConcluidas().catch((err) => {
-      this.logger.warn(`reidratação de conclusões adiada: ${(err as Error).message}`);
-    });
-  }
 
   async gerar(usuarioId: string, vagaId: string, origem: OrigemGeracao = 'direta') {
     const vaga = await this.prisma.vaga.findFirst({
@@ -156,14 +149,20 @@ export class CurriculosService implements OnModuleInit {
       return { jobId: emAndamento.id, status: emAndamento.status, curriculoId: emAndamento.curriculoId };
     }
 
-    const geracao = await this.prisma.$transaction(async (tx) => {
+    const { geracao, job } = await this.prisma.$transaction(async (tx) => {
       const criada = await tx.geracaoCurriculo.create({
         data: { usuarioId, vagaId },
       });
       await this.pipelineAts.aplicar(usuarioId, vagaId, { tipo: 'geracao_iniciada', jobId: criada.id, origem }, tx);
-      return criada;
+      const novo = await this.jobs.criar(tx, {
+        tipo: 'gerar_curriculo',
+        usuarioId,
+        referenciaId: criada.id,
+        entrada: entradaDaGeracao(perfil, vaga) as unknown as Prisma.InputJsonValue,
+      });
+      return { geracao: criada, job: novo };
     });
-    void acompanharTrabalho(this.processar(geracao.id));
+    await this.jobs.enfileirar([job]);
     return { jobId: geracao.id };
   }
 
@@ -381,7 +380,7 @@ export class CurriculosService implements OnModuleInit {
       dto.markdown,
     );
 
-    await this.prisma.$transaction(async (tx) => {
+    const job = await this.prisma.$transaction(async (tx) => {
       await tx.curriculo.update({
         where: { id: curriculo.id },
         data: {
@@ -405,7 +404,9 @@ export class CurriculosService implements OnModuleInit {
         descricao: 'Curriculo editado',
         dados: { curriculoId: curriculo.id },
       });
+      return this.jobs.criar(tx, { tipo: 'empacotar_curriculo', usuarioId, referenciaId: curriculo.id });
     });
+    await this.jobs.enfileirar([job]);
 
     return this.buscar(usuarioId, curriculo.id);
   }
@@ -452,15 +453,19 @@ export class CurriculosService implements OnModuleInit {
     if (!curriculo) throw new NotFoundException('curriculo nao encontrado');
 
     const { docxPath, pdfPath, falhou } = await this.renderizar(usuarioId, curriculo.id, curriculo.markdown);
-    await this.prisma.curriculo.update({
-      where: { id: curriculo.id },
-      data: {
-        docxPath,
-        pdfPath,
-        pacotePath: null,
-        degradacao: degradacaoComRenderizacao(curriculo.degradacao, falhou),
-      },
+    const job = await this.prisma.$transaction(async (tx) => {
+      await tx.curriculo.update({
+        where: { id: curriculo.id },
+        data: {
+          docxPath,
+          pdfPath,
+          pacotePath: null,
+          degradacao: degradacaoComRenderizacao(curriculo.degradacao, falhou),
+        },
+      });
+      return this.jobs.criar(tx, { tipo: 'empacotar_curriculo', usuarioId, referenciaId: curriculo.id });
     });
+    await this.jobs.enfileirar([job]);
     if (falhou) throw new ServiceUnavailableException(DEGRADACAO_RENDERIZACAO);
     return this.buscar(usuarioId, curriculo.id);
   }
@@ -486,255 +491,6 @@ export class CurriculosService implements OnModuleInit {
     const chave = chaveNoArmazenamento(curriculo.pacotePath);
     if (!chave) throw new NotFoundException(PACOTE_EM_PREPARO);
     return this.armazenamento.urlDeDownload(chave, `${nomeArquivo(`${curriculo.vaga.titulo} - ${curriculo.vaga.empresa}`)}.zip`);
-  }
-
-  private async processar(id: string) {
-    const geracao = await this.prisma.geracaoCurriculo.findUnique({
-      where: { id },
-      include: { vaga: true },
-    });
-    if (!geracao || geracao.status === 'CONCLUIDA' || geracao.status === 'ERRO') {
-      return;
-    }
-
-    try {
-      await this.prisma.geracaoCurriculo.update({
-        where: { id },
-        data: { status: 'ANALISANDO' },
-      });
-      const perfil = await this.prisma.perfilMestre.findUnique({
-        where: { usuarioId: geracao.usuarioId },
-      });
-      if (!perfil) throw new Error('perfil-mestre ausente');
-      if (
-        geracao.vaga.keywordsStatus !== 'VALIDAS' ||
-        !normalizarKeywords(geracao.vaga.keywords).length
-      ) {
-        throw new Error(
-          'extracao de keywords pendente; tente novamente antes de gerar o curriculo',
-        );
-      }
-
-      const keywords = normalizarKeywords(geracao.vaga.keywords);
-      const { contexto, degradacao: degradacaoContexto } = await this.recuperarContexto(geracao.usuarioId, keywords);
-
-      await this.prisma.geracaoCurriculo.update({
-        where: { id },
-        data: { status: 'GERANDO' },
-      });
-      const pipeline = await this.aiClient.generateCvPipeline(
-        {
-          perfilMestre: perfilParaIa(perfil),
-          vaga: {
-            titulo: geracao.vaga.titulo,
-            empresa: geracao.vaga.empresa,
-            descricao: geracao.vaga.descricao,
-            keywords,
-          },
-          keywords,
-          contexto,
-        },
-        { operacao: `geracao:${id}`, usuarioId: geracao.usuarioId },
-      );
-      await this.prisma.geracaoCurriculo.update({
-        where: { id },
-        data: {
-          analiseInicial: pipeline.analiseInicial as unknown as Prisma.InputJsonValue,
-          degradacao: mesclarDegradacao(degradacaoContexto, pipeline.degradacao),
-        },
-      });
-      await this.prisma.geracaoCurriculo.update({
-        where: { id },
-        data: {
-          status: 'VALIDANDO',
-          analiseFinal: pipeline.analiseFinal as unknown as Prisma.InputJsonValue,
-        },
-      });
-      const versoes = await this.prisma.curriculo.count({
-        where: { vagaId: geracao.vagaId },
-      });
-      const curriculoId = randomUUID();
-
-      let markdown = pipeline.markdown;
-      let analiseFinal = pipeline.analiseFinal;
-      let degradacao = mesclarDegradacao(degradacaoContexto, pipeline.degradacao);
-      const modelo = pipeline.modelo ?? null;
-      const promptVersion = pipeline.promptVersion ?? null;
-      let { docxPath, pdfPath, paginas, falhou } = await this.renderizar(
-        geracao.usuarioId,
-        curriculoId,
-        markdown,
-      );
-
-      let rodadas = 0;
-      const estruturaGerada = pipeline.estrutura ?? null;
-      let estrutura = estruturaGerada;
-      while (paginas > 1 && rodadas < 2 && estruturaGerada) {
-        rodadas += 1;
-        this.logger.warn(
-          `curriculo ${curriculoId} com ${paginas} paginas; rodada ${rodadas} de corte de conteudo`,
-        );
-        try {
-          const reducao = await this.aiClient.reduzirCurriculo(
-            {
-              perfilMestre: perfilParaIa(perfil),
-              vaga: {
-                titulo: geracao.vaga.titulo,
-                empresa: geracao.vaga.empresa,
-                descricao: geracao.vaga.descricao,
-                keywords,
-              },
-              keywords,
-              estrutura: estruturaGerada,
-              nivel: rodadas,
-            },
-            { operacao: `geracao:${id}` },
-          );
-          if (reducao.markdown === markdown) break;
-          markdown = reducao.markdown;
-          analiseFinal = reducao.analiseFinal;
-          estrutura = reducao.estrutura ?? estrutura;
-          ({ docxPath, pdfPath, paginas, falhou } = await this.renderizar(
-            geracao.usuarioId,
-            curriculoId,
-            markdown,
-          ));
-        } catch (err) {
-          this.logger.warn(
-            `corte de conteudo indisponivel para ${curriculoId}: ${(err as Error).message}`,
-          );
-          break;
-        }
-      }
-      if (paginas > 1) {
-        degradacao = mesclarDegradacao(
-          degradacao,
-          `Curriculo mantido com ${paginas} paginas apos ${rodadas} rodada(s) de corte de conteudo`,
-        );
-      }
-      degradacao = degradacaoComRenderizacao(degradacao, falhou);
-
-      const { score, breakdown } = this.scoreDaAnalise(analiseFinal);
-
-      await this.prisma.$transaction(async (tx) => {
-        await tx.curriculo.create({
-          data: {
-            id: curriculoId,
-            vagaId: geracao.vagaId,
-            rotulo: `${geracao.vaga.empresa} · ${geracao.vaga.titulo}${versoes > 0 ? ` (regeração ${versoes + 1})` : ''}`,
-            markdown,
-            docxPath,
-            pdfPath,
-            score,
-            scoreBreakdown: breakdown as unknown as Prisma.InputJsonValue,
-            analiseInicial:
-              pipeline.analiseInicial as unknown as Prisma.InputJsonValue,
-            analiseFinal: analiseFinal as unknown as Prisma.InputJsonValue,
-            degradacao,
-            modelo,
-            promptVersion,
-            estrutura: estrutura === null ? Prisma.DbNull : (estrutura as Prisma.InputJsonValue),
-          },
-        });
-        await tx.geracaoCurriculo.update({
-          where: { id },
-          data: {
-            status: 'CONCLUIDA',
-            curriculoId,
-            analiseFinal: analiseFinal as unknown as Prisma.InputJsonValue,
-            degradacao,
-          },
-        });
-        await this.eventos.registrar(tx, {
-          usuarioId: geracao.usuarioId,
-          vagaId: geracao.vagaId,
-          curriculoId,
-          tipo: 'CURRICULO_GERADO',
-          origem: 'SISTEMA',
-          descricao: 'Curriculo gerado',
-          dados: {
-            curriculoId,
-            scoreInicial: pipeline.analiseInicial.score,
-            scoreFinal: score,
-            degradacao,
-          },
-        });
-      });
-      const narracao = dadosDaNarracao(pipeline.analiseInicial, analiseFinal, degradacao);
-      await this.transicionarSemFalhar(id, () =>
-        this.pipelineAts.aplicar(geracao.usuarioId, geracao.vagaId, {
-          tipo: 'geracao_concluida',
-          jobId: id,
-          curriculoId,
-          narracao,
-        }),
-      );
-      await this.persistirConclusaoCopiloto(geracao.usuarioId, id, curriculoId, narracao);
-    } catch (err) {
-      this.logger.warn(`geracao ${id} falhou: ${(err as Error).message}`);
-      await this.prisma.geracaoCurriculo.update({
-        where: { id },
-        data: { status: 'ERRO', erro: (err as Error).message },
-      });
-      await this.transicionarSemFalhar(id, () =>
-        this.pipelineAts.aplicar(geracao.usuarioId, geracao.vagaId, {
-          tipo: 'geracao_falhou',
-          jobId: id,
-          erro: (err as Error).message,
-        }),
-      );
-    }
-  }
-
-  private async transicionarSemFalhar(jobId: string, transicao: () => Promise<unknown>): Promise<void> {
-    try {
-      await transicao();
-    } catch (err) {
-      this.logger.warn(`pipeline ATS sem transicao job=${jobId} causa=${(err as Error).message}`);
-    }
-  }
-
-  private async reidratarConcluidas(): Promise<void> {
-    const concluidas = await this.prisma.geracaoCurriculo.findMany({
-      where: { status: 'CONCLUIDA', curriculoId: { not: null } },
-      select: { id: true, usuarioId: true, curriculoId: true },
-      orderBy: { atualizadoEm: 'desc' },
-      take: 100,
-    });
-    await Promise.all(
-      concluidas.map((geracao) =>
-        this.persistirConclusaoCopiloto(geracao.usuarioId, geracao.id, geracao.curriculoId!),
-      ),
-    );
-  }
-
-  private async persistirConclusaoCopiloto(
-    usuarioId: string,
-    jobId: string,
-    curriculoId: string,
-    dados?: DadosNarracao | null,
-  ): Promise<void> {
-    try {
-      const curriculo = await this.buscar(usuarioId, curriculoId);
-      const narracao =
-        dados ??
-        (await this.pipelineAts.narracaoDaGeracao(usuarioId, jobId)) ??
-        dadosDaNarracao(curriculo.analiseInicial, curriculo.analiseFinal, curriculo.degradacao);
-      if (!narracao) return;
-      const persistido = {
-        id: curriculo.id,
-        vagaId: curriculo.vagaId,
-        rotulo: curriculo.rotulo,
-        score: curriculo.score,
-        breakdown: curriculo.breakdown,
-        analiseInicial: curriculo.analiseInicial,
-        analiseFinal: curriculo.analiseFinal,
-        degradacao: curriculo.degradacao,
-      };
-      await this.conversas.anexarConclusaoGeracao(usuarioId, jobId, persistido, narrar(narracao), narracao);
-    } catch (err) {
-      this.logger.warn(`narracao da geracao ${jobId} adiada: ${(err as Error).message}`);
-    }
   }
 
   private async recuperarContexto(
@@ -790,13 +546,6 @@ export class CurriculosService implements OnModuleInit {
       );
     }
     return { docxPath, pdfPath, paginas, falhou };
-  }
-
-  private scoreDaAnalise(analise: AtsAnalysis) {
-    return {
-      score: analise.score,
-      breakdown: analise.breakdown,
-    };
   }
 
   private contarPaginasPdf(pdf: Buffer) {

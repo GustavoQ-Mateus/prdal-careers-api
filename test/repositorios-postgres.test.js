@@ -107,23 +107,6 @@ test('conversa: pendencia confirmada uma vez so e confirmacao duplicada mantem a
   assert.equal((await conversas.buscarCompleta(usuario.id, conversa.id)).pendencia, null);
 });
 
-test('conversa: conclusao da geracao entra uma vez so, mesmo com chamadas concorrentes', { skip: SEM_PG }, async (t) => {
-  const prisma = prismaDoBanco(t);
-  const { conversas } = repositorios(prisma);
-  const usuario = await novoUsuario(prisma);
-  const conversa = await conversas.criar(usuario.id, 'assistido', null);
-  await conversas.anexar(conversa.id, { papel: 'tool', tool: 'gerar_curriculo', conteudo: '{}', dados: { ok: true, resultado: { jobId: 'job-1' } } });
-  const narracao = { etapa1: 'Etapa 1', etapa3: 'Etapa 3' };
-
-  assert.equal(await conversas.anexarConclusaoGeracao(usuario.id, 'job-x', { id: 'cv' }, narracao, {}), false);
-  const vezes = await Promise.all(Array.from({ length: 4 }, () => conversas.anexarConclusaoGeracao(usuario.id, 'job-1', { id: 'cv' }, narracao, {})));
-  assert.equal(vezes.filter(Boolean).length, 1);
-  const completa = await conversas.buscarCompleta(usuario.id, conversa.id);
-  assert.deepEqual(completa.mensagens.map((m) => m.conteudo).slice(2), ['Etapa 1', 'Etapa 3']);
-  assert.equal(completa.mensagens[1].dados.origem, 'geracao_assincrona');
-  assert.equal(await conversas.anexarConclusaoGeracao('outro-usuario', 'job-1', { id: 'cv' }, narracao, {}), false);
-});
-
 test('banco de vagas: busca literal sem diferenciar maiusculas, paginacao e ativacao com chave estrangeira', { skip: SEM_PG }, async (t) => {
   const prisma = prismaDoBanco(t);
   const { bancoVagas } = repositorios(prisma);

@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CopilotoMensagem, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
-import type { DadosNarracao, MensagensNarracao } from '../pipeline-ats/narracao';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ConfirmacaoCopiloto,
@@ -169,62 +168,6 @@ export class ConversasRepositorio {
       ...(linha.erro !== null ? { erro: linha.erro } : {}),
       concluidaEm: linha.concluidaEm,
     };
-  }
-
-  async anexarConclusaoGeracao(
-    usuarioId: string,
-    jobId: string,
-    curriculo: Record<string, unknown>,
-    narracao: MensagensNarracao,
-    dados: DadosNarracao,
-  ): Promise<boolean> {
-    return this.prisma.$transaction(async (tx) => {
-      const candidatas = await tx.$queryRaw<{ id: string }[]>`
-        SELECT c.id FROM copiloto_conversas c
-         WHERE c.usuario_id = ${usuarioId}
-           AND EXISTS (SELECT 1 FROM copiloto_mensagens m
-                        WHERE m.conversa_id = c.id AND m.tool = 'gerar_curriculo'
-                          AND m.dados -> 'resultado' ->> 'jobId' = ${jobId})
-         ORDER BY c.atualizado_em DESC
-         LIMIT 1
-         FOR UPDATE`;
-      const conversaId = candidatas[0]?.id;
-      if (!conversaId) return false;
-      const jaAnexada = await tx.$queryRaw<{ existe: boolean }[]>`
-        SELECT EXISTS (SELECT 1 FROM copiloto_mensagens m
-                        WHERE m.conversa_id = ${conversaId}
-                          AND m.dados ->> 'origem' = 'geracao_assincrona'
-                          AND m.dados ->> 'jobId' = ${jobId}) AS existe`;
-      if (jaAnexada[0]?.existe) return false;
-      const callId = randomUUID();
-      await this.anexarEm(tx, conversaId, [
-        {
-          papel: 'tool',
-          tool: 'buscar_curriculo',
-          conteudo: JSON.stringify(curriculo),
-          dados: {
-            callId,
-            efeito: 'leitura',
-            args: { curriculoId: curriculo.id },
-            ok: true,
-            resultado: curriculo,
-            origem: 'geracao_assincrona',
-            jobId,
-          },
-        },
-        {
-          papel: 'assistant',
-          conteudo: narracao.etapa1,
-          dados: { origem: 'geracao_assincrona', jobId, etapa: 1, narracao: dados },
-        },
-        {
-          papel: 'assistant',
-          conteudo: narracao.etapa3,
-          dados: { origem: 'geracao_assincrona', jobId, etapa: 3 },
-        },
-      ]);
-      return true;
-    });
   }
 
   private async anexarEm(tx: Transacao, conversaId: string, mensagens: MensagemCopiloto[]): Promise<void> {

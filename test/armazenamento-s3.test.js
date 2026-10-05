@@ -43,7 +43,7 @@ test('chave do curriculo fica sob o usuario e o nome do anexo nao quebra o cabec
   assert.equal(disposicaoAnexo('a"b\\c.pdf'), `attachment; filename="abc.pdf"; filename*=UTF-8''a%22b%5Cc.pdf`);
 });
 
-test('gerar os arquivos de novo grava pdf e docx por chave e invalida o pacote antigo', async () => {
+test('gerar os arquivos de novo grava pdf e docx por chave, invalida o pacote antigo e pede um novo ao worker', async () => {
   const atualizacoes = [];
   const prisma = {
     curriculo: {
@@ -52,9 +52,13 @@ test('gerar os arquivos de novo grava pdf e docx por chave e invalida o pacote a
     },
   };
   const doc = { renderPdf: async () => Buffer.from('/Type /Page'), renderDocx: async () => Buffer.from('docx') };
+  prisma.$transaction = async (fn) => fn(prisma);
+  const enfileirados = [];
+  const jobs = { criar: async (_tx, job) => ({ id: 'job-pacote', ...job }), enfileirar: async (lista) => enfileirados.push(...lista) };
   const armazenamento = new ArmazenamentoMemoria();
-  const service = new CurriculosService(prisma, null, doc, null, null, null, null, armazenamento);
+  const service = new CurriculosService(prisma, null, doc, null, null, null, armazenamento, jobs);
   await service.gerarArquivos('u1', 'cv-1');
+  assert.deepEqual(enfileirados.map((j) => [j.tipo, j.referenciaId, j.usuarioId]), [['empacotar_curriculo', 'cv-1', 'u1']]);
   assert.deepEqual([atualizacoes[0].pdfPath, atualizacoes[0].docxPath, atualizacoes[0].pacotePath], ['usuarios/u1/curriculos/cv-1.pdf', 'usuarios/u1/curriculos/cv-1.docx', null]);
   assert.equal(armazenamento.objetos.get('usuarios/u1/curriculos/cv-1.pdf').tipo, 'application/pdf');
 });

@@ -1,63 +1,42 @@
-import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
-import { LoteItem } from '@prisma/client';
-import { AiClient } from '../clients/ai.client';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { LoteItem, TipoJob } from '@prisma/client';
+import { JobsService } from '../jobs/jobs.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { BancoVagasRepositorio } from '../repositorios/banco-vagas.repositorio';
-import { DocumentosRagRepositorio } from '../repositorios/documentos-rag.repositorio';
-import { RagService } from '../rag/rag.service';
 
-const CONCORRENCIA = Number(process.env.BATCH_CONCURRENCY ?? 3);
-const MAX_TENTATIVAS = 3;
 const TIPO_INGESTAO = 'INGESTAO';
 
 function referenciaDoItem(item: Pick<LoteItem, 'bancoVagaId' | 'documentoRagId' | 'referenciaLegada'>): string | null {
   return item.documentoRagId ?? item.bancoVagaId ?? item.referenciaLegada;
 }
 
-@Injectable()
-export class LotesService implements OnModuleInit {
-  private readonly logger = new Logger(LotesService.name);
+export function tipoDoJob(tipoLote: string): TipoJob {
+  return tipoLote === TIPO_INGESTAO ? 'reindexar_contexto' : 'importar_lote';
+}
 
+@Injectable()
+export class LotesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly bancoVagas: BancoVagasRepositorio,
-    private readonly documentos: DocumentosRagRepositorio,
-    private readonly ai: AiClient,
-    private readonly rag: RagService,
+    private readonly jobs: JobsService,
   ) {}
-
-  async onModuleInit() {
-    await this.prisma.loteItem.updateMany({
-      where: { status: 'PROCESSANDO' },
-      data: { status: 'PENDENTE' },
-    });
-    const inacabados = await this.prisma.lote.findMany({
-      where: { status: { not: 'CONCLUIDO' } },
-      select: { id: true },
-    });
-    setTimeout(() => {
-      for (const lote of inacabados) {
-        void this.processar(lote.id).catch((err) =>
-          this.logger.error(`retomada do lote ${lote.id}: ${err.message}`),
-        );
-      }
-    }, 3000);
-  }
 
   async criar(usuarioId: string, tipo: string, referencias: string[]) {
     const itens = referencias.map((id) => (tipo === TIPO_INGESTAO ? { documentoRagId: id } : { bancoVagaId: id }));
-    const lote = await this.prisma.lote.create({
-      data: {
-        usuarioId,
-        tipo,
-        total: referencias.length,
-        itens: { create: itens },
-      },
+    const { lote, jobs } = await this.prisma.$transaction(async (tx) => {
+      const lote = await tx.lote.create({
+        data: { usuarioId, tipo, total: referencias.length, itens: { create: itens } },
+        include: { itens: { select: { id: true } } },
+      });
+      const jobs = [];
+      for (const item of lote.itens) {
+        jobs.push(await this.jobs.criar(tx, { tipo: tipoDoJob(tipo), usuarioId, referenciaId: item.id }));
+      }
+      if (!lote.itens.length) await tx.lote.update({ where: { id: lote.id }, data: { status: 'CONCLUIDO' } });
+      return { lote, jobs };
     });
-    void this.processar(lote.id).catch((err) =>
-      this.logger.error(`processamento do lote ${lote.id}: ${err.message}`),
-    );
-    return lote;
+    await this.jobs.enfileirar(jobs);
+    const { itens: _itens, ...semItens } = lote;
+    return semItens;
   }
 
   async status(usuarioId: string, id: string) {
@@ -79,108 +58,5 @@ export class LotesService implements OnModuleInit {
         erro: i.erro,
       })),
     };
-  }
-
-  private async processar(loteId: string) {
-    const lote = await this.prisma.lote.findUnique({ where: { id: loteId } });
-    if (!lote || lote.status === 'CONCLUIDO') return;
-    await this.prisma.lote.update({
-      where: { id: loteId },
-      data: { status: 'PROCESSANDO' },
-    });
-
-    const pendentes = await this.prisma.loteItem.findMany({
-      where: { loteId, status: 'PENDENTE' },
-    });
-    const acao =
-      lote.tipo === TIPO_INGESTAO
-        ? (ref: string) => this.indexarDocumento(ref)
-        : (ref: string) => this.processarBancoVaga(ref, lote.usuarioId);
-    await this.executarComConcorrencia(pendentes, CONCORRENCIA, (item) =>
-      this.processarItem(item, acao),
-    );
-
-    const restantes = await this.prisma.loteItem.count({
-      where: { loteId, status: 'PENDENTE' },
-    });
-    if (restantes === 0) {
-      await this.prisma.lote.update({
-        where: { id: loteId },
-        data: { status: 'CONCLUIDO' },
-      });
-    }
-  }
-
-  private async processarItem(
-    item: LoteItem,
-    acao: (ref: string) => Promise<void>,
-  ) {
-    await this.prisma.loteItem.update({
-      where: { id: item.id },
-      data: { status: 'PROCESSANDO' },
-    });
-    let tentativas = item.tentativas;
-    let ultimoErro = '';
-    while (tentativas < MAX_TENTATIVAS) {
-      tentativas += 1;
-      try {
-        const referencia = referenciaDoItem(item);
-        if (!referencia) throw new Error('o registro deste item foi removido antes do processamento');
-        await acao(referencia);
-        await this.prisma.loteItem.update({
-          where: { id: item.id },
-          data: { status: 'CONCLUIDO', tentativas },
-        });
-        await this.prisma.lote.update({
-          where: { id: item.loteId },
-          data: { processados: { increment: 1 } },
-        });
-        return;
-      } catch (err) {
-        ultimoErro = (err as Error).message;
-      }
-    }
-    await this.prisma.loteItem.update({
-      where: { id: item.id },
-      data: { status: 'ERRO', tentativas, erro: ultimoErro },
-    });
-  }
-
-  private async processarBancoVaga(bancoVagaId: string, usuarioId: string) {
-    const doc = await this.bancoVagas.buscar(bancoVagaId);
-    if (!doc) throw new Error('postagem nao encontrada no banco de vagas');
-    const extracao = await this.ai.keywords(doc.descricao, { usuarioId });
-    const { categoria, nivel } = await this.ai.classify(doc.titulo, doc.descricao);
-    await this.bancoVagas.registrarExtracao(bancoVagaId, {
-      keywords: extracao.keywords,
-      keywordsStatus: extracao.status,
-      categoria,
-      nivel,
-    });
-  }
-
-  private async indexarDocumento(documentoId: string) {
-    const doc = await this.documentos.buscar(documentoId);
-    if (!doc) throw new Error('documento nao encontrado');
-    await this.rag.indexar(doc);
-  }
-
-  private async executarComConcorrencia<T>(
-    itens: T[],
-    limite: number,
-    fn: (item: T) => Promise<void>,
-  ) {
-    let indice = 0;
-    const trabalhador = async () => {
-      while (indice < itens.length) {
-        const atual = itens[indice++];
-        await fn(atual);
-      }
-    };
-    const trabalhadores = Array.from(
-      { length: Math.min(limite, itens.length) },
-      trabalhador,
-    );
-    await Promise.all(trabalhadores);
   }
 }

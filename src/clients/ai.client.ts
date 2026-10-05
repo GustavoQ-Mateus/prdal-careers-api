@@ -100,8 +100,16 @@ export interface EmbeddingDocumentos {
 export interface EmbeddingConsultas {
   modelo: string;
   dimensao: number;
-  limiar: number;
   vetores: number[][];
+}
+
+export interface ConsultaComTrechos {
+  consulta: string;
+  trechos: { id: string; texto: string }[];
+}
+
+export interface FiltroTrechos {
+  consultas: { consulta: string; aceitos: string[] }[];
 }
 
 export interface GeneratePipelineResult extends ComUso {
@@ -304,6 +312,13 @@ export class AiClient {
   async embeddingConsultas(consultas: string[]): Promise<EmbeddingConsultas> {
     const { data } = await firstValueFrom(
       this.http.post<EmbeddingConsultas>(`${this.baseUrl}/embeddings/consultas`, { consultas }),
+    );
+    return data;
+  }
+
+  async filtrarTrechos(consultas: ConsultaComTrechos[]): Promise<FiltroTrechos> {
+    const { data } = await firstValueFrom(
+      this.http.post<FiltroTrechos>(`${this.baseUrl}/rag/filtrar`, { consultas }),
     );
     return data;
   }

@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { randomUUID } = require('node:crypto');
 const { SEM_PG, prismaDoBanco, novoUsuario } = require('./helpers/postgres');
-const { RagService, consultasUnicas, TETO_CONSULTAS, TETO_CHUNKS, DEGRADACAO_REINDEXACAO } = require('../dist/rag/rag.service');
+const { RagService, consultasUnicas, TETO_CONSULTAS, TETO_CHUNKS, DEGRADACAO_REINDEXACAO, DEGRADACAO_FILTRO } = require('../dist/rag/rag.service');
 
 const MODELO = 'intfloat/multilingual-e5-small';
 
@@ -10,12 +10,20 @@ function encontrado(fonteId, similaridade, extra = {}) {
   return { consulta: 1, fonteId, texto: `texto ${fonteId}`, tipo: 'nota', factual: false, titulo: fonteId, origem: 'nota', similaridade, ...extra };
 }
 
-function rag({ encontrados = [], limiar = 0.86, dimensao = 384, deOutroModelo = 0 } = {}) {
-  const chamadas = { consultas: [], buscas: [] };
+function aceitarTudo(consultas) {
+  return { consultas: consultas.map((c) => ({ consulta: c.consulta, aceitos: c.trechos.map((t) => t.id) })) };
+}
+
+function rag({ encontrados = [], dimensao = 384, deOutroModelo = 0, filtro = aceitarTudo } = {}) {
+  const chamadas = { consultas: [], buscas: [], filtros: [] };
   const ai = {
     embeddingConsultas: async (consultas) => {
       chamadas.consultas.push(consultas);
-      return { modelo: MODELO, dimensao, limiar, vetores: consultas.map(() => [1]) };
+      return { modelo: MODELO, dimensao, vetores: consultas.map(() => [1]) };
+    },
+    filtrarTrechos: async (consultas) => {
+      chamadas.filtros.push(consultas);
+      return filtro(consultas);
     },
   };
   const vetores = {
@@ -40,22 +48,46 @@ test('consultas repetidas, vazias ou alem do teto nao vao ao embedding', async (
   assert.deepEqual(chamadas.consultas, []);
 });
 
-test('abaixo do limiar fica de fora, a melhor nota por fonte vale e factual segue separado de apoio', async () => {
+test('so entra o trecho que o filtro aceita para a propria consulta, a melhor nota por fonte vale e factual segue separado de apoio', async () => {
+  const filtro = (consultas) => ({
+    consultas: consultas.map((c) => ({ consulta: c.consulta, aceitos: c.trechos.filter((t) => t.texto.includes(c.consulta)).map((t) => t.id) })),
+  });
   const { servico, chamadas } = rag({
+    filtro,
     encontrados: [
-      encontrado('exp-a', 0.87, { tipo: 'experiencia', factual: true, origem: 'perfil' }),
-      encontrado('exp-a', 0.9, { tipo: 'experiencia', factual: true, origem: 'perfil', consulta: 2 }),
-      encontrado('n1#2', 0.861),
-      encontrado('n2', 0.859),
-      encontrado('n-hist', 0.88, { factual: true }),
+      encontrado('exp-a', 0.87, { tipo: 'experiencia', factual: true, origem: 'perfil', texto: 'SQL e Power BI' }),
+      encontrado('n-hist', 0.95, { factual: true, texto: 'Power BI' }),
+      encontrado('n-parecido', 0.93, { texto: 'consultas no banco relacional' }),
+      encontrado('exp-a', 0.9, { tipo: 'experiencia', factual: true, origem: 'perfil', consulta: 2, texto: 'SQL e Power BI' }),
+      encontrado('n-hist', 0.85, { factual: true, consulta: 2, texto: 'Power BI' }),
+      encontrado('n1#2', 0.7, { consulta: 2, texto: 'painel em Power BI' }),
     ],
   });
   const { chunks, degradacao } = await servico.recuperar('u1', ['SQL', 'Power BI'], 5);
   assert.equal(degradacao, null);
-  assert.deepEqual(chunks.map((c) => [c.id, c.similaridade, c.factual]), [['exp-a', 0.9, true], ['n-hist', 0.88, true], ['n1#2', 0.861, false]]);
+  assert.deepEqual(chunks.map((c) => [c.id, c.similaridade, c.factual]), [['exp-a', 0.9, true], ['n-hist', 0.85, true], ['n1#2', 0.7, false]]);
   assert.equal(chunks[0].tipo, 'experiencia');
+  assert.deepEqual(chamadas.filtros[0].map((c) => [c.consulta, c.trechos.map((t) => t.id)]), [
+    ['SQL', ['exp-a', 'n-hist', 'n-parecido']],
+    ['Power BI', ['exp-a', 'n-hist', 'n1#2']],
+  ]);
+  assert.deepEqual(chamadas.filtros[0][0].trechos[0], { id: 'exp-a', texto: 'SQL e Power BI' });
   assert.deepEqual(chamadas.buscas[0].slice(0, 2), ['u1', MODELO]);
   assert.equal(chamadas.buscas[0][3], 5);
+});
+
+test('sem candidato o filtro nem e chamado', async () => {
+  const { servico, chamadas } = rag();
+  assert.deepEqual(await servico.recuperar('u1', ['SQL']), { chunks: [], degradacao: null });
+  assert.deepEqual(chamadas.filtros, []);
+});
+
+test('filtro fora devolve contexto vazio com degradacao e nunca trecho sem filtro', async () => {
+  const filtro = () => { throw new Error('connect ECONNREFUSED ai-service:8000'); };
+  const { servico } = rag({ filtro, encontrados: [encontrado('n1', 0.99)], deOutroModelo: 2 });
+  assert.deepEqual(await servico.recuperar('u1', ['SQL']), { chunks: [], degradacao: DEGRADACAO_FILTRO });
+  const incompleto = rag({ filtro: () => ({ consultas: [] }), encontrados: [encontrado('n1', 0.99)] });
+  assert.deepEqual((await incompleto.servico.recuperar('u1', ['SQL'])).chunks, []);
 });
 
 test('no maximo vinte fontes voltam', async () => {

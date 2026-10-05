@@ -1,13 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AiClient, FonteContexto } from '../clients/ai.client';
+import { AiClient, ConsultaComTrechos, FonteContexto } from '../clients/ai.client';
 import { DocumentoRagRegistro } from '../repositorios/tipos';
-import { VetoresRepositorio } from '../repositorios/vetores.repositorio';
+import { ChunkEncontrado, VetoresRepositorio } from '../repositorios/vetores.repositorio';
 
 export const TETO_CONSULTAS = 12;
 export const TETO_CHUNKS = 20;
 export const POR_CONSULTA = 5;
 export const DEGRADACAO_REINDEXACAO =
   'Parte do histórico de notas e candidaturas ainda não foi reindexada com o modelo atual e ficou fora desta geração.';
+export const DEGRADACAO_FILTRO =
+  'O histórico de notas e candidaturas não pôde ser filtrado agora e ficou fora do contexto.';
 
 export interface ContextoRecuperado {
   chunks: FonteContexto[];
@@ -26,6 +28,10 @@ export function consultasUnicas(consultas: string[]): string[] {
     }
   }
   return unicas.slice(0, TETO_CONSULTAS);
+}
+
+function chave(consulta: number, fonteId: string): string {
+  return `${consulta}:${fonteId}`;
 }
 
 @Injectable()
@@ -56,15 +62,22 @@ export class RagService {
   async recuperar(usuarioId: string, consultas: string[], porConsulta = POR_CONSULTA): Promise<ContextoRecuperado> {
     const unicas = consultasUnicas(consultas);
     if (!unicas.length) return { chunks: [], degradacao: null };
-    const { modelo, dimensao, limiar, vetores } = await this.ai.embeddingConsultas(unicas);
+    const { modelo, dimensao, vetores } = await this.ai.embeddingConsultas(unicas);
     await this.vetores.exigirDimensao(dimensao);
     const [encontrados, deOutroModelo] = await Promise.all([
       this.vetores.buscar(usuarioId, modelo, vetores, porConsulta),
       this.vetores.contarDeOutroModelo(usuarioId, modelo),
     ]);
+    let aceitos: Set<string>;
+    try {
+      aceitos = await this.filtrar(unicas, encontrados);
+    } catch (err) {
+      this.logger.warn(`degradacao codigo=filtro_rag_indisponivel usuario=${usuarioId} causa=${(err as Error).message}`);
+      return { chunks: [], degradacao: DEGRADACAO_FILTRO };
+    }
     const melhores = new Map<string, FonteContexto & { similaridade: number }>();
     for (const chunk of encontrados) {
-      if (chunk.similaridade < limiar) continue;
+      if (!aceitos.has(chave(chunk.consulta, chunk.fonteId))) continue;
       const atual = melhores.get(chunk.fonteId);
       if (atual && atual.similaridade >= chunk.similaridade) continue;
       melhores.set(chunk.fonteId, {
@@ -79,11 +92,24 @@ export class RagService {
     }
     const ordenados = [...melhores.values()].sort((a, b) => b.similaridade - a.similaridade);
     this.logger.log(
-      `rag consultas=${unicas.length} candidatos=${encontrados.length} acima_do_limiar=${ordenados.length} limiar=${limiar} modelo=${modelo}`,
+      `rag consultas=${unicas.length} candidatos=${encontrados.length} no_contexto=${ordenados.length} modelo=${modelo}`,
     );
     return {
       chunks: ordenados.slice(0, TETO_CHUNKS),
       degradacao: deOutroModelo > 0 ? DEGRADACAO_REINDEXACAO : null,
     };
+  }
+
+  private async filtrar(consultas: string[], encontrados: ChunkEncontrado[]): Promise<Set<string>> {
+    const grupos = new Map<number, ConsultaComTrechos>();
+    for (const chunk of encontrados) {
+      const grupo = grupos.get(chunk.consulta) ?? { consulta: consultas[chunk.consulta - 1], trechos: [] };
+      grupo.trechos.push({ id: chunk.fonteId, texto: chunk.texto });
+      grupos.set(chunk.consulta, grupo);
+    }
+    if (!grupos.size) return new Set();
+    const ordem = [...grupos.keys()];
+    const { consultas: filtradas } = await this.ai.filtrarTrechos(ordem.map((n) => grupos.get(n)!));
+    return new Set(ordem.flatMap((n, i) => (filtradas[i]?.aceitos ?? []).map((id) => chave(n, id))));
   }
 }

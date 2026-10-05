@@ -33,10 +33,12 @@ test('clientes internos enviam o token de servico ao ai-service e ao doc-service
   t.after(() => app.close());
 
   await app.get(AiClient).embeddingConsultas(['consulta']);
+  await app.get(AiClient).filtrarTrechos([{ consulta: 'SQL', trechos: [{ id: 'n1', texto: 'SQL' }] }]);
   await app.get(DocClient).renderPdf('# Nome');
 
   assert.deepEqual(recebidas, [
     { url: '/embeddings/consultas', servico: TOKEN },
+    { url: '/rag/filtrar', servico: TOKEN },
     { url: '/render/pdf', servico: TOKEN },
   ]);
 });

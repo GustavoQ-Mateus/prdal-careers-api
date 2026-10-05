@@ -41,7 +41,7 @@ jobs:
       - name: Compilar
         run: npm run build
       - name: Testar
-        run: npm test
+        run: node --test --test-concurrency=1 --test-timeout=120000 "test/*.test.js"
       - name: Conferir contexto proprio
         id: contexto
         run: |

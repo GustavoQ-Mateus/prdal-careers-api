@@ -45,10 +45,10 @@ test('rotas de IA do copiloto sao limitadas por usuario', async (t) => {
   }
 });
 
-test('analisar-ats e reprocessar-keywords usam o mesmo limitador por usuario', () => {
+test('analisar-ats usa o limitador por usuario', () => {
   const { OportunidadesController } = require('../dist/oportunidades/oportunidades.controller');
   const { LimiteRequisicoesGuard, LIMITES } = require('../dist/limites/limite-requisicoes');
-  for (const [metodo, limite] of [['analisarAts', LIMITES.ia], ['reprocessarKeywords', LIMITES.lote]]) {
+  for (const [metodo, limite] of [['analisarAts', LIMITES.ia]]) {
     const handler = OportunidadesController.prototype[metodo];
     assert.ok(Reflect.getMetadata(GUARDS_METADATA, handler).includes(LimiteRequisicoesGuard), metodo);
     assert.equal(Reflect.getMetadata('THROTTLER:LIMITminuto', handler), limite.minuto, metodo);

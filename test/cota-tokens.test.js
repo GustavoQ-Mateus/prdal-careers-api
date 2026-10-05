@@ -269,7 +269,7 @@ test('as rotas que sempre chamam o Claude exigem a cota e o filtro e global', ()
   const { APP_FILTER } = require('@nestjs/core');
   const rotas = [
     [CopilotoController, ['mensagemRecrutador', 'respostasFormulario']],
-    [OportunidadesController, ['criar', 'reprocessarKeywords', 'importar', 'gerarCv']],
+    [OportunidadesController, ['criar', 'importar', 'gerarCv']],
   ];
   for (const [controller, metodos] of rotas) {
     for (const metodo of metodos) {

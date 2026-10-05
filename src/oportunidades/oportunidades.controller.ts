@@ -76,13 +76,6 @@ export class OportunidadesController {
     return this.oportunidades.criar(user.userId, dto);
   }
 
-  @Post('reprocessar-keywords')
-  @LimitarRequisicoes(LIMITES.lote)
-  @ExigirCotaTokens()
-  reprocessarKeywords(@CurrentUser() user: AuthUser) {
-    return this.oportunidades.reprocessarKeywords(user.userId);
-  }
-
   @Post('importar')
   @LimitarRequisicoes(LIMITES.criacao)
   @ExigirCotaTokens()

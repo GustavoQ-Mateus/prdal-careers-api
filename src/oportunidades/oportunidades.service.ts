@@ -358,35 +358,6 @@ export class OportunidadesService {
     return this.detalhe(vaga);
   }
 
-  async reprocessarKeywords(usuarioId: string) {
-    const vagas = await this.prisma.vaga.findMany({
-      where: { usuarioId, estagio: 'ATIVA', keywordsStatus: 'PENDENTE' },
-      select: { id: true, descricao: true },
-    });
-    let reprocessadas = 0;
-    let pendentes = 0;
-    for (const vaga of vagas) {
-      try {
-        const extracao = await this.ai.keywords(vaga.descricao, { usuarioId });
-        await this.prisma.vaga.update({
-          where: { id: vaga.id },
-          data: {
-            keywords: extracao.keywords as unknown as Prisma.InputJsonValue,
-            keywordsStatus: extracao.status,
-            keywordsExtracao: extracao.status === 'VALIDAS' ? 'PRONTAS' : 'ERRO',
-            keywordsErro: extracao.status === 'VALIDAS' ? null : extracao.degradacao ?? 'a extracao de keywords nao retornou termos validos',
-          },
-        });
-        if (extracao.status === 'VALIDAS') reprocessadas += 1;
-        else pendentes += 1;
-      } catch (err) {
-        pendentes += 1;
-        this.logger.warn(`keywords da vaga ${vaga.id} pendentes: ${(err as Error).message}`);
-      }
-    }
-    return { total: vagas.length, reprocessadas, pendentes };
-  }
-
   async atualizar(usuarioId: string, id: string, dto: AtualizarOportunidadeDto) {
     const atual = await this.garantirVaga(usuarioId, id);
     const extrair = atual.estagio !== 'ENTRADA' && dto.descricao !== undefined && dto.descricao !== atual.descricao;

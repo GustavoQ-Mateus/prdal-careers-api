@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EventosService } from '../eventos/eventos.service';
+import { JobsService } from '../jobs/jobs.service';
 import { OportunidadesService } from '../oportunidades/oportunidades.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AtualizarAcaoDto, CriarAcaoDto } from './acao.dto';
@@ -14,6 +15,7 @@ export class AcoesService {
     private readonly prisma: PrismaService,
     private readonly eventos: EventosService,
     private readonly oportunidades: OportunidadesService,
+    private readonly jobs: JobsService,
   ) {}
 
   async listar(usuarioId: string, vagaId: string) {
@@ -31,7 +33,7 @@ export class AcoesService {
     const lembrarEm = dto.lembrarEm ? new Date(dto.lembrarEm) : null;
     const principal = dto.principal ?? true;
 
-    return this.prisma.$transaction(async (tx) => {
+    const { acao, job } = await this.prisma.$transaction(async (tx) => {
       if (principal) {
         await tx.acaoOportunidade.updateMany({
           where: {
@@ -64,8 +66,11 @@ export class AcoesService {
         descricao: 'Acao criada',
         dados: { acaoId: acao.id, tipo: acao.tipo },
       });
-      return acao;
+      const job = await this.jobs.criar(tx, { tipo: 'sincronizar_lembrete', usuarioId, referenciaId: acao.id });
+      return { acao, job };
     });
+    await this.jobs.enfileirar([job]);
+    return acao;
   }
 
   async atualizar(usuarioId: string, id: string, dto: AtualizarAcaoDto) {
@@ -90,7 +95,7 @@ export class AcoesService {
       (venceEm?.getTime() ?? null) !== (acao.venceEm?.getTime() ?? null) ||
       (lembrarEm?.getTime() ?? null) !== (acao.lembrarEm?.getTime() ?? null);
 
-    return this.prisma.$transaction(async (tx) => {
+    const { atualizada, job } = await this.prisma.$transaction(async (tx) => {
       if (dto.principal === true) {
         await tx.acaoOportunidade.updateMany({
           where: {
@@ -110,7 +115,7 @@ export class AcoesService {
           ...(dto.tipo !== undefined ? { tipo: dto.tipo } : {}),
           ...(dto.principal !== undefined ? { principal: dto.principal } : {}),
           ...(dto.venceEm !== undefined ? { venceEm } : {}),
-          ...(dto.lembrarEm !== undefined ? { lembrarEm } : {}),
+          ...(dto.lembrarEm !== undefined ? { lembrarEm, lembreteEnviadoEm: null } : {}),
         },
       });
       if (reagendou) {
@@ -124,8 +129,11 @@ export class AcoesService {
           dados: { acaoId: id },
         });
       }
-      return atualizada;
+      const job = await this.jobs.criar(tx, { tipo: 'sincronizar_lembrete', usuarioId, referenciaId: id });
+      return { atualizada, job };
     });
+    await this.jobs.enfileirar([job]);
+    return atualizada;
   }
 
   async concluir(usuarioId: string, id: string) {
@@ -133,7 +141,7 @@ export class AcoesService {
     if (acao.concluidaEm || acao.canceladaEm) {
       throw new BadRequestException('acao ja encerrada');
     }
-    return this.prisma.$transaction(async (tx) => {
+    const { atualizada, job } = await this.prisma.$transaction(async (tx) => {
       const atualizada = await tx.acaoOportunidade.update({
         where: { id },
         data: { concluidaEm: new Date(), principal: false },
@@ -147,8 +155,11 @@ export class AcoesService {
         descricao: 'Acao concluida',
         dados: { acaoId: id },
       });
-      return atualizada;
+      const job = await this.jobs.criar(tx, { tipo: 'sincronizar_lembrete', usuarioId, referenciaId: id });
+      return { atualizada, job };
     });
+    await this.jobs.enfileirar([job]);
+    return atualizada;
   }
 
   async cancelar(usuarioId: string, id: string) {
@@ -156,7 +167,7 @@ export class AcoesService {
     if (acao.concluidaEm || acao.canceladaEm) {
       throw new BadRequestException('acao ja encerrada');
     }
-    return this.prisma.$transaction(async (tx) => {
+    const { atualizada, job } = await this.prisma.$transaction(async (tx) => {
       const atualizada = await tx.acaoOportunidade.update({
         where: { id },
         data: { canceladaEm: new Date(), principal: false },
@@ -170,8 +181,11 @@ export class AcoesService {
         descricao: 'Acao cancelada',
         dados: { acaoId: id },
       });
-      return atualizada;
+      const job = await this.jobs.criar(tx, { tipo: 'sincronizar_lembrete', usuarioId, referenciaId: id });
+      return { atualizada, job };
     });
+    await this.jobs.enfileirar([job]);
+    return atualizada;
   }
 
   private async buscarDoUsuario(usuarioId: string, id: string) {

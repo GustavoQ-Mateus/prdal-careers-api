@@ -22,7 +22,7 @@ test('contrato da api coincide com os controllers e DTOs', async () => {
   assert.ok(gerado.components.schemas[resposta.$ref.split('/').at(-1)].properties.csrfToken);
   assert.ok(gerado.paths['/v1/copiloto/chat'].post.responses['201'].content['text/event-stream']);
   assert.deepEqual(gerado.paths['/v1/copiloto/chat'].post['x-eventos'], { $ref: '#/components/schemas/CopilotoEvento' });
-  const resolver = (schema) => schema.$ref ? gerado.components.schemas[schema.$ref.split('/').at(-1)] : schema;
+  const resolver = (schema) => schema.$ref ? resolver(gerado.components.schemas[schema.$ref.split('/').at(-1)]) : schema.allOf ? resolver(schema.allOf[0]) : schema;
   const hoje = resolver(gerado.paths['/v1/hoje'].get.responses['200'].content['application/json'].schema);
   assert.equal(resolver(hoje.properties.hoje.items).properties.quando.format, 'date-time');
   assert.ok(resolver(hoje.properties.atividadeRecente.items).properties.descricao);

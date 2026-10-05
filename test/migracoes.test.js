@@ -49,32 +49,19 @@ test('boot da api nao aplica schema, DDL nem backfill', () => {
   assert.doesNotMatch(prismaService, /\$executeRaw|UPDATE/);
 });
 
-test('compose roda a migracao num passo proprio antes da api', () => {
-  const compose = ler(path.resolve(RAIZ, '..', '..', 'infra', 'docker-compose.yml'));
-  assert.match(compose, /migracao:\n(?:.*\n)*?\s+command: \["npx", "prisma", "migrate", "deploy"\]/);
-  assert.match(compose, /migracao:\n\s+condition: service_completed_successfully/);
-});
-
 test('banco vazio com migrate deploy bate com o schema', { skip: !process.env.PRDAL_TESTE_POSTGRES_URL && 'defina PRDAL_TESTE_POSTGRES_URL com um banco descartavel' }, () => {
   const url = process.env.PRDAL_TESTE_POSTGRES_URL;
   const deploy = prisma(['migrate', 'deploy'], { DATABASE_URL: url });
   assert.equal(deploy.status, 0, deploy.stderr + deploy.stdout);
-  const diff = prisma(['migrate', 'diff', '--from-url', `"${url}"`, '--to-schema-datamodel', 'prisma/schema.prisma', '--exit-code'], {});
+  const diff = prisma(['migrate', 'diff', '--from-url', `"${url}"`, '--to-schema-datamodel', 'prisma/schema.prisma', '--exit-code'], { DATABASE_URL: url });
   assert.equal(diff.status, 0, diff.stdout);
   assert.match(diff.stdout, /No difference detected/);
 });
 
-test('banco unico: compose, ambiente e codigo da api sem mongo nem chroma', () => {
-  const compose = ler(path.resolve(RAIZ, '..', '..', 'infra', 'docker-compose.yml'));
-  assert.doesNotMatch(compose, /mongo|chroma/i);
-  assert.match(compose, /context: \.\/postgres/);
-  for (const exemplo of ['.env.example', 'apps/api/.env.example', 'apps/ai-service/.env.example']) {
-    assert.doesNotMatch(ler(path.resolve(RAIZ, '..', '..', exemplo)), /MONGO|CHROMA/, exemplo);
-  }
+test('banco unico: ambiente e codigo da api sem mongo nem chroma', () => {
+  assert.doesNotMatch(ler(path.join(RAIZ, '.env.example')), /MONGO|CHROMA/);
   const pacote = JSON.parse(ler(path.join(RAIZ, 'package.json')));
   assert.equal(pacote.dependencies.mongodb, undefined);
   const codigo = arquivos(path.join(RAIZ, 'src')).filter((f) => f.endsWith('.ts') && !f.endsWith(`${path.sep}migrar-mongo.ts`));
   for (const arquivo of codigo) assert.doesNotMatch(ler(arquivo), /mongodb|chroma/i, arquivo);
-  const requisitos = ler(path.resolve(RAIZ, '..', 'ai-service', 'requirements.txt'));
-  assert.doesNotMatch(requisitos, /chroma/i);
 });

@@ -75,8 +75,6 @@ test('corpo acima do limite do parser retorna 413 no formato de erro da api', as
   const resposta = await enviar('oportunidade', oportunidade('a'.repeat(2 * 1024 * 1024)));
   assert.equal(resposta.status, 413);
   assert.deepEqual(await resposta.json(), {
-    statusCode: 413,
-    message: 'corpo da requisicao acima do limite de 1mb',
-    error: 'Payload Too Large',
+    erro: { codigo: 'corpo_grande_demais', mensagem: 'corpo da requisicao acima do limite de 1mb', requestId: null },
   });
 });

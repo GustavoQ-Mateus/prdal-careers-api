@@ -1,6 +1,7 @@
-import { HttpModule } from '@nestjs/axios';
+import { HttpModule, HttpService } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { cabecalhoServico } from '../config/servico';
+import { propagarRequestId } from '../observabilidade/propagacao';
 import { AiClient } from './ai.client';
 import { DocClient } from './doc.client';
 
@@ -13,4 +14,8 @@ import { DocClient } from './doc.client';
   providers: [AiClient, DocClient],
   exports: [AiClient, DocClient],
 })
-export class ClientsModule {}
+export class ClientsModule {
+  constructor(http: HttpService) {
+    propagarRequestId(http);
+  }
+}

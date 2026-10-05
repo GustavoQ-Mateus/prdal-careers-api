@@ -1,8 +1,18 @@
 import { RequestMethod, type INestApplication } from '@nestjs/common';
 
+export const VERSAO_API_PADRAO = 'v1';
+
+function segmento(valor: string | undefined): string {
+  return (valor ?? '').trim().replace(/^\/+|\/+$/g, '');
+}
+
+export function versaoApi(env: Record<string, string | undefined> = process.env): string {
+  return env.API_VERSAO === undefined ? VERSAO_API_PADRAO : segmento(env.API_VERSAO);
+}
+
 export function prefixoApi(env: Record<string, string | undefined> = process.env): string {
-  const limpo = (env.API_PREFIXO ?? '').trim().replace(/^\/+|\/+$/g, '');
-  return limpo ? `/${limpo}` : '';
+  const partes = [segmento(env.API_PREFIXO), versaoApi(env)].filter(Boolean);
+  return partes.length ? `/${partes.join('/')}` : '';
 }
 
 export function semPrefixo(caminho: string, env: Record<string, string | undefined> = process.env): string | null {

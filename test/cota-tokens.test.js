@@ -190,7 +190,10 @@ test('rota de IA responde 429 com Retry-After ate a virada do dia quando a cota 
   const bloqueada = await enviar('u1');
   assert.equal(bloqueada.status, 429);
   assert.equal(bloqueada.headers.get('retry-after'), '30');
-  assert.equal((await bloqueada.json()).message, MENSAGEM_COTA_ESGOTADA);
+  const corpo = await bloqueada.json();
+  assert.equal(corpo.erro.codigo, 'cota_tokens_esgotada');
+  assert.equal(corpo.erro.mensagem, MENSAGEM_COTA_ESGOTADA);
+  assert.deepEqual(corpo.erro.detalhes, { retryAfter: 30 });
   assert.equal(chamadasIa(), 0);
   assert.equal((await enviar('u2')).status, 201);
   assert.equal(chamadasIa(), 1);

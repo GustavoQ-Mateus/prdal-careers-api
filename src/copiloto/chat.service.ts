@@ -15,6 +15,7 @@ import { BlocoNativo, idDeTool, paraTrocas, resultadoTool } from './historico';
 import { oportunidadeDosArgs, prepararArgsTool } from './tool-args';
 import { ToolExecutor, validarArgs } from './tool-executor';
 import { ToolDef, TOOLS_NATIVAS, TOOLS_POR_NOME } from './tools';
+import { MENSAGEM_DESLIGAMENTO, registrarTurnoAberto } from '../observabilidade/desligamento';
 import { intervaloHeartbeatMs } from './turnos.service';
 
 const MAX_PASSOS = 8;
@@ -111,6 +112,11 @@ export class ChatService {
     const batimento = setInterval(() => this.batimento(res), intervaloHeartbeatMs());
     batimento.unref?.();
     this.enviar(res, 'conversa', { conversaId: conversa._id });
+    const removerTurno = registrarTurnoAberto(() => {
+      this.enviar(res, 'erro', { escopo: 'servidor', mensagem: MENSAGEM_DESLIGAMENTO, recuperavel: true });
+      this.finalizar(res, conversa._id, 'erro');
+      cancelamento.abort();
+    });
 
     try {
       if (dto.confirmacao) {
@@ -135,6 +141,7 @@ export class ChatService {
       this.finalizar(res, conversa._id, 'erro');
     } finally {
       clearInterval(batimento);
+      removerTurno();
       await soltar();
     }
   }

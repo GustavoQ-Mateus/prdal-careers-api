@@ -20,7 +20,7 @@ test('login vindo de outro site e recusado sem gravar cookie de sessao', async (
   const nav = navegador();
   const r = await entrar(nav, 'cross-site');
   assert.equal(r.status, 403);
-  assert.deepEqual(await r.json(), { statusCode: 403, message: 'requisicao de outro site recusada', error: 'Forbidden' });
+  assert.deepEqual(await r.json(), { erro: { codigo: 'origem_recusada', mensagem: 'requisicao de outro site recusada', requestId: null } });
   assert.deepEqual(r.headers.getSetCookie(), []);
   assert.equal(nav.jarra.size, 0);
 });

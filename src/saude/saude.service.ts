@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { cabecalhoServico } from '../config/servico';
+import { cabecalhoRequestId } from '../observabilidade/contexto';
 import { MongoService } from '../mongo/mongo.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -88,7 +89,7 @@ export class SaudeService {
   }
 
   private async http(url: string, ms: number, aceitaQualquerStatus = false): Promise<Response> {
-    const resposta = await fetch(url, { headers: cabecalhoServico(), signal: AbortSignal.timeout(ms) });
+    const resposta = await fetch(url, { headers: { ...cabecalhoServico(), ...cabecalhoRequestId() }, signal: AbortSignal.timeout(ms) });
     if (!aceitaQualquerStatus && !resposta.ok) throw new Error(`respondeu ${resposta.status}`);
     return resposta;
   }

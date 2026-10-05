@@ -9,7 +9,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { CotaTokensEsgotada, CotaTokensService } from './cota-tokens.service';
+import { responderErro } from '../observabilidade/erros';
+import { CotaTokensEsgotada, CotaTokensService, MENSAGEM_COTA_ESGOTADA } from './cota-tokens.service';
 
 @Injectable()
 export class CotaTokensGuard implements CanActivate {
@@ -27,10 +28,8 @@ export class CotaTokensFiltro implements ExceptionFilter {
   catch(erro: CotaTokensEsgotada, host: ArgumentsHost) {
     const res = host.switchToHttp().getResponse<Response>();
     if (res.headersSent) return;
-    res
-      .status(erro.getStatus())
-      .header('Retry-After', String(erro.retryAfterSegundos))
-      .json(erro.getResponse());
+    res.header('Retry-After', String(erro.retryAfterSegundos));
+    responderErro(res, erro.getStatus(), 'cota_tokens_esgotada', MENSAGEM_COTA_ESGOTADA, { retryAfter: erro.retryAfterSegundos });
   }
 }
 

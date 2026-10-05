@@ -1,5 +1,6 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { NextFunction, Request, Response } from 'express';
+import { responderErro } from '../observabilidade/erros';
 
 export const LIMITE_CORPO_PADRAO = '1mb';
 
@@ -9,10 +10,6 @@ export function configurarCorpo(app: NestExpressApplication): void {
   app.useBodyParser('urlencoded', { limit: limite, extended: true });
   app.use((erro: { type?: string }, _req: Request, res: Response, next: NextFunction) => {
     if (erro?.type !== 'entity.too.large') return next(erro);
-    res.status(413).json({
-      statusCode: 413,
-      message: `corpo da requisicao acima do limite de ${limite}`,
-      error: 'Payload Too Large',
-    });
+    responderErro(res, 413, 'corpo_grande_demais', `corpo da requisicao acima do limite de ${limite}`);
   });
 }

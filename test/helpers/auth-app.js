@@ -23,6 +23,10 @@ function controllerProtegido() {
 }
 
 async function subirAuth(t, { usuarios = [] } = {}) {
+  if (process.env.API_VERSAO === undefined) {
+    process.env.API_VERSAO = '';
+    t.after(() => delete process.env.API_VERSAO);
+  }
   const { AuthController } = require('../../dist/auth/auth.controller');
   const { AuthService } = require('../../dist/auth/auth.service');
   const { SessoesService } = require('../../dist/auth/sessoes.service');

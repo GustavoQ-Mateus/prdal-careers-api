@@ -48,7 +48,7 @@ export class TurnosService {
 
   async exigir(conversaId: string): Promise<TurnoAdquirido> {
     const turno = await this.adquirir(conversaId);
-    if (!turno) throw new ConflictException(MENSAGEM_TURNO_EM_ANDAMENTO);
+    if (!turno) throw new ConflictException({ message: MENSAGEM_TURNO_EM_ANDAMENTO, codigo: 'turno_em_andamento' });
     return turno;
   }
 

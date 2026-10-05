@@ -23,7 +23,7 @@ function turnosEmMemoria(travas = new Map()) {
   return {
     travas,
     async exigir(conversaId) {
-      if (travas.has(conversaId)) throw new ConflictException(MENSAGEM_TURNO_EM_ANDAMENTO);
+      if (travas.has(conversaId)) throw new ConflictException({ message: MENSAGEM_TURNO_EM_ANDAMENTO, codigo: 'turno_em_andamento' });
       const turno = { conversaId, turnoId: `turno-${++sequencia}` };
       travas.set(conversaId, turno.turnoId);
       return turno;

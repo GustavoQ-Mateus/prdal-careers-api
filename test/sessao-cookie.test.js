@@ -58,7 +58,7 @@ test('escrita sem X-CSRF-Token ou com token errado retorna 403', async (t) => {
   assert.equal((await nav.chamar('/protegido/escrever', { metodo: 'POST', csrf: false })).status, 403);
   const errado = await nav.chamar('/protegido/escrever', { metodo: 'POST', csrf: false, cabecalhos: { 'X-CSRF-Token': 'outro-valor' } });
   assert.equal(errado.status, 403);
-  assert.deepEqual(await errado.json(), { statusCode: 403, message: 'token csrf ausente ou invalido', error: 'Forbidden' });
+  assert.deepEqual(await errado.json(), { erro: { codigo: 'csrf_invalido', mensagem: 'token csrf ausente ou invalido', requestId: null } });
   for (const metodo of ['PUT', 'PATCH', 'DELETE']) {
     assert.equal((await nav.chamar('/protegido/escrever', { metodo, csrf: false })).status, 403, metodo);
   }

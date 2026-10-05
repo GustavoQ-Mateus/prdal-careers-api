@@ -20,6 +20,7 @@ import { PipelineAtsService } from '../pipeline-ats/pipeline-ats.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EditarCurriculoDto } from './curriculo.dto';
 import { lerArquivo, salvarArquivo } from './storage';
+import { acompanharTrabalho } from '../observabilidade/desligamento';
 
 const GERACAO_EM_ANDAMENTO: StatusGeracaoCurriculo[] = ['PENDENTE', 'ANALISANDO', 'GERANDO', 'VALIDANDO'];
 
@@ -102,7 +103,7 @@ export class CurriculosService implements OnModuleInit {
       select: { id: true },
     });
     for (const geracao of pendentes) {
-      void this.processar(geracao.id);
+      void acompanharTrabalho(this.processar(geracao.id));
     }
     void this.reidratarConcluidas().catch((err) => {
       this.logger.warn(`reidratação de conclusões adiada: ${(err as Error).message}`);
@@ -144,7 +145,7 @@ export class CurriculosService implements OnModuleInit {
       await this.pipelineAts.aplicar(usuarioId, vagaId, { tipo: 'geracao_iniciada', jobId: criada.id, origem }, tx);
       return criada;
     });
-    void this.processar(geracao.id);
+    void acompanharTrabalho(this.processar(geracao.id));
     return { jobId: geracao.id };
   }
 

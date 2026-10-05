@@ -1,7 +1,7 @@
+import { Module } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { PrismaClient } from '@prisma/client';
-import { MongoClient } from 'mongodb';
 import { randomUUID } from 'node:crypto';
-import { cabecalhoServico } from '../config/servico';
 import {
   listaCertificacoes,
   listaFormacao,
@@ -10,6 +10,17 @@ import {
   textoExperiencia,
   tituloExperiencia,
 } from '../perfil/perfil.normalizacao';
+import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaService } from '../prisma/prisma.service';
+import { RagModule } from '../rag/rag.module';
+import { RagService } from '../rag/rag.service';
+import { reindexarDesatualizados } from '../rag/reindexacao';
+import { DocumentosRagRepositorio, NovoDocumentoRag } from '../repositorios/documentos-rag.repositorio';
+import { RepositoriosModule } from '../repositorios/repositorios.module';
+import { tipoPadraoRag } from '../repositorios/tipos';
+
+@Module({ imports: [PrismaModule, RepositoriosModule, RagModule] })
+class LimparContaTesteModule {}
 
 const AMBIENTES_PERMITIDOS = ['teste', 'desenvolvimento'];
 
@@ -46,16 +57,6 @@ export function lerOpcoes(argv: string[], env: Record<string, string | undefined
   return { email, executar };
 }
 
-type DocumentoRag = {
-  _id: string;
-  usuarioId: string;
-  origem: 'perfil' | 'candidatura' | 'nota';
-  origemId: string;
-  titulo: string;
-  texto: string;
-  criadoEm: Date;
-};
-
 function perfilSnapshot(perfil: Record<string, unknown>) {
   return JSON.stringify({
     id: perfil.id,
@@ -77,15 +78,18 @@ function documento(
   origemId: string,
   titulo: string,
   texto: string,
-): DocumentoRag {
+): NovoDocumentoRag {
   return {
-    _id: randomUUID(),
+    id: randomUUID(),
     usuarioId,
     origem: 'perfil',
     origemId,
+    tipo: tipoPadraoRag('perfil', origemId),
+    factual: true,
     titulo,
     texto,
-    criadoEm: new Date(),
+    notaId: null,
+    candidaturaId: null,
   };
 }
 
@@ -99,8 +103,8 @@ function documentosDoPerfil(
     idiomas: unknown;
     skills: unknown;
   },
-): DocumentoRag[] {
-  const documentos: DocumentoRag[] = [];
+): NovoDocumentoRag[] {
+  const documentos: NovoDocumentoRag[] = [];
   if (perfil.resumo?.trim()) documentos.push(documento(usuarioId, 'resumo', 'Resumo', perfil.resumo));
 
   normalizarExperiencias(perfil.experiencias).forEach((experiencia) => {
@@ -123,8 +127,10 @@ function documentosDoPerfil(
   return documentos;
 }
 
-async function reindexarConhecimento(
-  mongoDb: ReturnType<MongoClient['db']>,
+export async function reindexarConhecimento(
+  documentos: DocumentosRagRepositorio,
+  prisma: PrismaService,
+  rag: RagService,
   usuarioId: string,
   perfil: {
     resumo: string;
@@ -135,37 +141,17 @@ async function reindexarConhecimento(
     skills: unknown;
   },
 ) {
-  const colecao = mongoDb.collection<DocumentoRag>('documentos_rag');
-  const removidos = await colecao.deleteMany({
-    usuarioId,
-    origem: { $in: ['perfil', 'candidatura'] },
-  });
+  const removidos = await prisma.documentoRag.count({ where: { usuarioId, origem: { in: ['perfil', 'candidatura'] } } });
   const perfilDocs = documentosDoPerfil(usuarioId, perfil);
-  if (perfilDocs.length) await colecao.insertMany(perfilDocs);
-
-  const documentos = await colecao.find({ usuarioId }).toArray();
-  const aiUrl = process.env.AI_SERVICE_URL ?? 'http://localhost:8000';
-  const resposta = await fetch(aiUrl + '/context/replace', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...cabecalhoServico() },
-    body: JSON.stringify({
-      usuarioId,
-      documentos: documentos.map(({ usuarioId: id, origem, origemId, titulo, texto }) => ({
-        usuarioId: id,
-        origem,
-        origemId,
-        titulo,
-        texto,
-      })),
-    }),
-  });
-  if (!resposta.ok) {
-    throw new Error('reindexacao do conhecimento falhou: HTTP ' + resposta.status);
+  const ids = await documentos.substituirPerfilECandidaturas(usuarioId, perfilDocs);
+  const reindexacao = await reindexarDesatualizados(prisma, rag, { usuarioId, todos: true });
+  if (reindexacao.falhas.length) {
+    throw new Error('reindexacao do conhecimento falhou: ' + reindexacao.falhas.map((f) => f.motivo).join('; '));
   }
-  return { removidos: removidos.deletedCount, inseridos: perfilDocs.length, total: documentos.length };
+  return { removidos, inseridos: perfilDocs.length, total: ids.length, chunks: reindexacao.chunks };
 }
 
-async function simular(prisma: PrismaClient, mongoDb: ReturnType<MongoClient['db']>, usuarioId: string) {
+export async function simular(prisma: PrismaClient, usuarioId: string) {
   const [candidaturas, acoes, layouts, eventos, geracoes, curriculos, vagas, conversas, rag] = await Promise.all([
     prisma.candidatura.count({ where: { vaga: { usuarioId } } }),
     prisma.acaoOportunidade.count({ where: { usuarioId } }),
@@ -174,8 +160,8 @@ async function simular(prisma: PrismaClient, mongoDb: ReturnType<MongoClient['db
     prisma.geracaoCurriculo.count({ where: { usuarioId } }),
     prisma.curriculo.count({ where: { vaga: { usuarioId } } }),
     prisma.vaga.count({ where: { usuarioId } }),
-    mongoDb.collection('copiloto_conversas').countDocuments({ usuarioId }),
-    mongoDb.collection('documentos_rag').countDocuments({ usuarioId, origem: { $in: ['perfil', 'candidatura'] } }),
+    prisma.copilotoConversa.count({ where: { usuarioId } }),
+    prisma.documentoRag.count({ where: { usuarioId, origem: { in: ['perfil', 'candidatura'] } } }),
   ]);
   return {
     candidaturas,
@@ -192,18 +178,17 @@ async function simular(prisma: PrismaClient, mongoDb: ReturnType<MongoClient['db
 
 async function main() {
   const opcoes = lerOpcoes(process.argv.slice(2), process.env);
-  const prisma = new PrismaClient();
-  const mongo = new MongoClient(process.env.MONGO_URL ?? 'mongodb://localhost:27017');
+  const app = await NestFactory.createApplicationContext(LimparContaTesteModule, { logger: ['error', 'warn'] });
+  const prisma = app.get(PrismaService);
   try {
     const usuario = await prisma.usuario.findUnique({ where: { email: opcoes.email } });
     if (!usuario) throw new Error('conta nao encontrada: ' + opcoes.email);
 
     if (!opcoes.executar) {
-      const mongoDb = mongo.db(process.env.MONGO_DB ?? 'prdal_careers');
       console.log(JSON.stringify({
         modo: 'dry-run',
         usuarioId: usuario.id.slice(0, 8) + '...',
-        apagaria: await simular(prisma, mongoDb, usuario.id),
+        apagaria: await simular(prisma, usuario.id),
         preservaria: ['perfil-mestre', 'notas enviadas', 'conta'],
         executar: 'repita com --executar para apagar',
       }, null, 2));
@@ -215,6 +200,7 @@ async function main() {
     const antes = perfilSnapshot(perfil as unknown as Record<string, unknown>);
 
     const apagadas = await prisma.$transaction(async (tx) => {
+      const conversas = await tx.copilotoConversa.deleteMany({ where: { usuarioId: usuario.id } });
       const candidaturas = await tx.candidatura.deleteMany({ where: { vaga: { usuarioId: usuario.id } } });
       const acoes = await tx.acaoOportunidade.deleteMany({ where: { usuarioId: usuario.id } });
       const layouts = await tx.pipelineLayout.deleteMany({ where: { usuarioId: usuario.id } });
@@ -230,12 +216,17 @@ async function main() {
         geracoes_curriculo: geracoes.count,
         curriculos: curriculos.count,
         vagas: vagas.count,
+        copiloto_conversas: conversas.count,
       };
     });
 
-    const mongoDb = mongo.db(process.env.MONGO_DB ?? 'prdal_careers');
-    const conversas = await mongoDb.collection('copiloto_conversas').deleteMany({ usuarioId: usuario.id });
-    const conhecimento = await reindexarConhecimento(mongoDb, usuario.id, perfil);
+    const conhecimento = await reindexarConhecimento(
+      app.get(DocumentosRagRepositorio),
+      prisma,
+      app.get(RagService),
+      usuario.id,
+      perfil,
+    );
 
     const depois = await prisma.perfilMestre.findUnique({ where: { usuarioId: usuario.id } });
     const preservado = !!depois && perfilSnapshot(depois as unknown as Record<string, unknown>) === antes;
@@ -245,7 +236,6 @@ async function main() {
       usuarioId: usuario.id.slice(0, 8) + '...',
       linhasApagadas: {
         ...apagadas,
-        copiloto_conversas: conversas.deletedCount,
         documentos_rag_perfil_ou_candidatura: conhecimento.removidos,
         scores_analises: {
           curriculos: apagadas.curriculos,
@@ -256,8 +246,7 @@ async function main() {
       perfilMestre: { id: depois.id, preservado: true, inalterado: true },
     }, null, 2));
   } finally {
-    await mongo.close();
-    await prisma.$disconnect();
+    await app.close();
   }
 }
 

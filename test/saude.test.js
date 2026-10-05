@@ -35,11 +35,10 @@ const AI_PRONTO = {
   corpo: { servico: 'ai-service', status: 'pronto', dependencias: [{ nome: 'embeddings', obrigatoria: false, estado: 'ok' }] },
 };
 
-async function subir(t, { ai, doc, prisma, mongo, prefixo } = {}) {
+async function subir(t, { ai, doc, prisma, prefixo } = {}) {
   const { SaudeController } = require('../dist/saude/saude.controller');
   const { SaudeService } = require('../dist/saude/saude.service');
   const { PrismaService } = require('../dist/prisma/prisma.service');
-  const { MongoService } = require('../dist/mongo/mongo.service');
   const { configurarPrefixo } = require('../dist/config/prefixo');
   const env = {
     AI_SERVICE_URL: ai ?? (await servidor(t, { '/ready': AI_PRONTO })),
@@ -64,7 +63,6 @@ async function subir(t, { ai, doc, prisma, mongo, prefixo } = {}) {
     providers: [
       SaudeService,
       { provide: PrismaService, useValue: prisma ?? { $queryRaw: async () => [{ '?column?': 1 }] } },
-      { provide: MongoService, useValue: mongo ?? { ping: async () => undefined } },
     ],
     configurar: (app) => {
       app.useLogger(logger);
@@ -93,7 +91,7 @@ test('tudo no ar: ready 200 com cada dependencia e se e obrigatoria', async (t) 
   const { status, corpo, deps } = await ready(url);
   assert.equal(status, 200);
   assert.equal(corpo.status, 'pronto');
-  assert.deepEqual(Object.keys(deps), ['postgres', 'mongo', 'ai-service', 'embeddings', 'doc-service']);
+  assert.deepEqual(Object.keys(deps), ['postgres', 'ai-service', 'embeddings', 'doc-service']);
   for (const d of Object.values(deps)) assert.equal(d.estado, 'ok', d.nome);
   assert.equal(deps.postgres.obrigatoria, true);
   assert.equal(deps['ai-service'].obrigatoria, false);
@@ -151,13 +149,14 @@ test('postgres fora: ready 503', async (t) => {
   assert.equal(deps.postgres.estado, 'indisponivel');
 });
 
-test('mongo sem resposta: ready 503 dentro do prazo', async (t) => {
-  const { url } = await subir(t, { mongo: { ping: () => new Promise(() => {}) } });
+test('postgres sem resposta: ready 503 dentro do prazo e postgres e a unica obrigatoria', async (t) => {
+  const { url } = await subir(t, { prisma: { $queryRaw: () => new Promise(() => {}) } });
   const inicio = Date.now();
   const { status, deps } = await ready(url);
   assert.equal(status, 503);
-  assert.equal(deps.mongo.estado, 'indisponivel');
-  assert.match(motivoNoLog('mongo').detalhe, /sem resposta/);
+  assert.equal(deps.postgres.estado, 'indisponivel');
+  assert.deepEqual(Object.values(deps).filter((d) => d.obrigatoria).map((d) => d.nome), ['postgres']);
+  assert.match(motivoNoLog('postgres').detalhe, /sem resposta/);
   assert.ok(Date.now() - inicio < 2000);
 });
 

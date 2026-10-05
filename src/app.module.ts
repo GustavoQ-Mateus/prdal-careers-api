@@ -15,7 +15,6 @@ import { CotaModule } from './cota/cota.module';
 import { CurriculosModule } from './curriculos/curriculos.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { LotesModule } from './lotes/lotes.module';
-import { MongoModule } from './mongo/mongo.module';
 import { PerfilModule } from './perfil/perfil.module';
 import { EventosModule } from './eventos/eventos.module';
 import { HojeModule } from './hoje/hoje.module';
@@ -40,7 +39,6 @@ import { VagasModule } from './vagas/vagas.module';
     PipelineAtsModule,
     CotaModule,
     RepositoriosModule,
-    MongoModule,
     AuthModule,
     PerfilModule,
     EventosModule,

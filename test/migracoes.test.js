@@ -63,3 +63,18 @@ test('banco vazio com migrate deploy bate com o schema', { skip: !process.env.PR
   assert.equal(diff.status, 0, diff.stdout);
   assert.match(diff.stdout, /No difference detected/);
 });
+
+test('banco unico: compose, ambiente e codigo da api sem mongo nem chroma', () => {
+  const compose = ler(path.resolve(RAIZ, '..', '..', 'infra', 'docker-compose.yml'));
+  assert.doesNotMatch(compose, /mongo|chroma/i);
+  assert.match(compose, /context: \.\/postgres/);
+  for (const exemplo of ['.env.example', 'apps/api/.env.example', 'apps/ai-service/.env.example']) {
+    assert.doesNotMatch(ler(path.resolve(RAIZ, '..', '..', exemplo)), /MONGO|CHROMA/, exemplo);
+  }
+  const pacote = JSON.parse(ler(path.join(RAIZ, 'package.json')));
+  assert.equal(pacote.dependencies.mongodb, undefined);
+  const codigo = arquivos(path.join(RAIZ, 'src')).filter((f) => f.endsWith('.ts') && !f.endsWith(`${path.sep}migrar-mongo.ts`));
+  for (const arquivo of codigo) assert.doesNotMatch(ler(arquivo), /mongodb|chroma/i, arquivo);
+  const requisitos = ler(path.resolve(RAIZ, '..', 'ai-service', 'requirements.txt'));
+  assert.doesNotMatch(requisitos, /chroma/i);
+});

@@ -23,6 +23,7 @@ import {
 import { OportunidadesService } from './oportunidades.service';
 import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
 import { ExigirCotaTokens } from '../cota/cota-tokens.guard';
+import { ExigirConsentimento } from '../conta/consentimento.guard';
 
 function numeroPaginacao(valor: string | undefined, nome: 'limit' | 'offset') {
   if (valor === undefined) return undefined;
@@ -143,6 +144,7 @@ export class OportunidadesController {
   }
 
   @Post(':id/gerar-cv')
+  @ExigirConsentimento()
   @LimitarRequisicoes(LIMITES.geracao)
   @ExigirCotaTokens()
   @HttpCode(202)

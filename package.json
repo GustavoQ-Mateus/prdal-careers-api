@@ -22,7 +22,8 @@
     "migracao:marcar-baseline": "prisma migrate resolve --applied 20261005000000_baseline",
     "postinstall": "prisma generate",
     "migrar:mongo": "nest build && node dist/scripts/migrar-mongo.js",
-    "migrar:entradas": "nest build && node dist/scripts/migrar-entradas.js"
+    "migrar:entradas": "nest build && node dist/scripts/migrar-entradas.js",
+    "migrar:emails": "nest build && node dist/scripts/migrar-emails.js"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"

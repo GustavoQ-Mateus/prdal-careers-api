@@ -14,6 +14,8 @@ model Usuario {
   email         String               @unique
   senhaHash     String               @map("senha_hash")
   criadoEm      DateTime             @default(now()) @map("criado_em")
+  consentimentoLlmEm DateTime?        @map("consentimento_llm_em")
+  exclusaoAgendadaPara DateTime?      @map("exclusao_agendada_para")
   perfil        PerfilMestre?
   vagas         Vaga[]
   lotes         Lote[]
@@ -549,6 +551,8 @@ enum TipoJob {
   importar_lote
   reindexar_contexto
   empacotar_curriculo
+  exportar_dados
+  excluir_conta
 }
 
 enum StatusJob {

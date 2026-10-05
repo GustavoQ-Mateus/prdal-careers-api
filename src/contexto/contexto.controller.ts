@@ -8,6 +8,8 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { UploadContextoDto } from './contexto.dto';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ContextoService } from './contexto.service';
@@ -30,6 +32,8 @@ export class ContextoController {
   }
 
   @Post('upload')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: UploadContextoDto })
   @UseInterceptors(LimiteUploadInterceptor, FilesInterceptor('arquivos', undefined, opcoesMulter()))
   upload(
     @CurrentUser() user: AuthUser,

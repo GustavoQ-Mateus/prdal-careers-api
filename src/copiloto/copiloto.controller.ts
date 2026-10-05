@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
+import { ApiResponse } from '@nestjs/swagger';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CapacidadesService } from './capacidades.service';
@@ -48,6 +49,7 @@ export class CopilotoController {
   }
 
   @Post('chat')
+  @ApiResponse({ status: 201, content: { 'text/event-stream': { schema: { type: 'string' } } } })
   @ExigirConsentimento()
   @LimitarRequisicoes(LIMITES.chat)
   async chatSse(

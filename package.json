@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "nest build",
+    "build": "node scripts/gerar-respostas.cjs && nest build",
+    "contrato": "npm run build && node dist/scripts/contrato.js",
+    "test:contrato": "npm run build && node --test test/contrato.test.js",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --test \"test/*.test.js\"",
     "test:copiloto": "npm run build && node --test test/copiloto-chat.test.js",
@@ -39,6 +41,7 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.2.7",
+    "@nestjs/swagger": "11.4.5",
     "@nestjs/throttler": "^6.7.1",
     "@prisma/client": "^6.2.1",
     "axios": "^1.7.9",
@@ -63,6 +66,7 @@
     "typescript": "^5.7.3"
   },
   "overrides": {
-    "deepmerge-ts": "^8.0.2"
+    "deepmerge-ts": "^8.0.2",
+    "js-yaml": "^4.3.2"
   }
 }

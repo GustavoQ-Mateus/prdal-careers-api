@@ -1,0 +1,7358 @@
+{
+  "components": {
+    "schemas": {
+      "AgendarExclusaoDto": {
+        "properties": {
+          "senha": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "senha"
+        ],
+        "type": "object"
+      },
+      "AtualizarAcaoDto": {
+        "properties": {
+          "lembrarEm": {
+            "nullable": true,
+            "type": "string"
+          },
+          "principal": {
+            "type": "boolean"
+          },
+          "tipo": {
+            "enum": [
+              "REVISAR_VAGA",
+              "GERAR_CURRICULO",
+              "ENVIAR_CANDIDATURA",
+              "FAZER_FOLLOW_UP",
+              "PREPARAR_ENTREVISTA",
+              "PARTICIPAR_ENTREVISTA",
+              "ENVIAR_MATERIAL",
+              "OUTRO"
+            ],
+            "type": "string"
+          },
+          "titulo": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "venceEm": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AtualizarCandidaturaDto": {
+        "properties": {
+          "curriculoId": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "notas": {
+            "maxLength": 10000,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "RASCUNHO",
+              "INSCRITA",
+              "EM_PROCESSO",
+              "ENTREVISTA",
+              "OFERTA",
+              "REJEITADA",
+              "DESISTIU"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AtualizarOportunidadeDto": {
+        "properties": {
+          "arquivar": {
+            "type": "boolean"
+          },
+          "descricao": {
+            "maxLength": 30000,
+            "type": "string"
+          },
+          "empresa": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "fonte": {
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "prioridade": {
+            "enum": [
+              "BAIXA",
+              "MEDIA",
+              "ALTA"
+            ],
+            "type": "string"
+          },
+          "titulo": {
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CadastroDto": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "maxLength": 254,
+            "type": "string"
+          },
+          "senha": {
+            "maxLength": 128,
+            "minLength": 10,
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "senha"
+        ],
+        "type": "object"
+      },
+      "CertificacaoPerfilDto": {
+        "properties": {
+          "descricao": {
+            "maxLength": 1000,
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "titulo": {
+            "maxLength": 1000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "descricao"
+        ],
+        "type": "object"
+      },
+      "ChatDto": {
+        "properties": {
+          "confirmacao": {
+            "$ref": "#/components/schemas/ConfirmacaoDto"
+          },
+          "conversaId": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "mensagem": {
+            "maxLength": 8000,
+            "type": "string"
+          },
+          "modo": {
+            "enum": [
+              "assistido",
+              "autopiloto"
+            ],
+            "type": "string"
+          },
+          "oportunidadeId": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ConfirmacaoDto": {
+        "properties": {
+          "ajustes": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "callId": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "decisao": {
+            "enum": [
+              "confirmar",
+              "recusar"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "callId",
+          "decisao"
+        ],
+        "type": "object"
+      },
+      "CriarAcaoDto": {
+        "properties": {
+          "candidaturaId": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "lembrarEm": {
+            "type": "string"
+          },
+          "principal": {
+            "type": "boolean"
+          },
+          "tipo": {
+            "enum": [
+              "REVISAR_VAGA",
+              "GERAR_CURRICULO",
+              "ENVIAR_CANDIDATURA",
+              "FAZER_FOLLOW_UP",
+              "PREPARAR_ENTREVISTA",
+              "PARTICIPAR_ENTREVISTA",
+              "ENVIAR_MATERIAL",
+              "OUTRO"
+            ],
+            "type": "string"
+          },
+          "titulo": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "venceEm": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "titulo",
+          "tipo"
+        ],
+        "type": "object"
+      },
+      "CriarCandidaturaDto": {
+        "properties": {
+          "curriculoId": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "vagaId": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "required": [
+          "vagaId"
+        ],
+        "type": "object"
+      },
+      "CriarOportunidadeDto": {
+        "properties": {
+          "descricao": {
+            "maxLength": 30000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "empresa": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "fonte": {
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "titulo": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "titulo",
+          "empresa",
+          "descricao"
+        ],
+        "type": "object"
+      },
+      "EditarCurriculoDto": {
+        "properties": {
+          "markdown": {
+            "maxLength": 50000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "rotulo": {
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "markdown"
+        ],
+        "type": "object"
+      },
+      "EmailPerfilDto": {
+        "properties": {
+          "id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "principal": {
+            "type": "boolean"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "valor": {
+            "maxLength": 254,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "valor",
+          "principal"
+        ],
+        "type": "object"
+      },
+      "EnderecoPerfilDto": {
+        "properties": {
+          "bairro": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "cidade": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "complemento": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "estado": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "legado": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "logradouro": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "pais": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "pais",
+          "estado",
+          "cidade"
+        ],
+        "type": "object"
+      },
+      "ExperienciaPerfilDto": {
+        "properties": {
+          "atual": {
+            "type": "boolean"
+          },
+          "cargo": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "dataFimAno": {
+            "maximum": 2100,
+            "minimum": 1900,
+            "nullable": true,
+            "type": "number"
+          },
+          "dataFimMes": {
+            "maximum": 12,
+            "minimum": 1,
+            "nullable": true,
+            "type": "number"
+          },
+          "dataInicioAno": {
+            "maximum": 2100,
+            "minimum": 1900,
+            "nullable": true,
+            "type": "number"
+          },
+          "dataInicioMes": {
+            "maximum": 12,
+            "minimum": 1,
+            "nullable": true,
+            "type": "number"
+          },
+          "descricao": {
+            "maxLength": 20000,
+            "type": "string"
+          },
+          "empresa": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "local": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/LocalPerfilDto"
+              }
+            ]
+          },
+          "localLegado": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "periodo": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "periodoLegado": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "cargo",
+          "empresa",
+          "descricao"
+        ],
+        "type": "object"
+      },
+      "FormacaoPerfilDto": {
+        "properties": {
+          "curso": {
+            "maxLength": 1000,
+            "type": "string"
+          },
+          "fimAno": {
+            "maximum": 2100,
+            "minimum": 1900,
+            "nullable": true,
+            "type": "number"
+          },
+          "fimMes": {
+            "maximum": 12,
+            "minimum": 1,
+            "nullable": true,
+            "type": "number"
+          },
+          "grau": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "inicioAno": {
+            "maximum": 2100,
+            "minimum": 1900,
+            "nullable": true,
+            "type": "number"
+          },
+          "inicioMes": {
+            "maximum": 12,
+            "minimum": 1,
+            "nullable": true,
+            "type": "number"
+          },
+          "instituicao": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "concluido",
+              "em_andamento",
+              "trancado",
+              ""
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "grau",
+          "status",
+          "instituicao",
+          "curso"
+        ],
+        "type": "object"
+      },
+      "HealthResponseDto": {
+        "properties": {
+          "service": {
+            "enum": [
+              "api"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "status"
+        ],
+        "type": "object"
+      },
+      "ImportarOportunidadesDto": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ItemImportacaoDto"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "itens"
+        ],
+        "type": "object"
+      },
+      "ItemImportacaoDto": {
+        "properties": {
+          "descricao": {
+            "maxLength": 30000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "empresa": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "fonte": {
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "titulo": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "titulo",
+          "empresa",
+          "descricao"
+        ],
+        "type": "object"
+      },
+      "LinkPerfilDto": {
+        "properties": {
+          "id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tipo": {
+            "enum": [
+              "linkedin",
+              "github",
+              "facebook",
+              "instagram",
+              "site"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tipo",
+          "url"
+        ],
+        "type": "object"
+      },
+      "LocalPerfilDto": {
+        "properties": {
+          "cidade": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "estado": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "pais": {
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "pais",
+          "estado",
+          "cidade"
+        ],
+        "type": "object"
+      },
+      "LoginDto": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "maxLength": 254,
+            "type": "string"
+          },
+          "senha": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "senha"
+        ],
+        "type": "object"
+      },
+      "MensagemRecrutadorDto": {
+        "properties": {
+          "contexto": {
+            "maxLength": 8000,
+            "type": "string"
+          },
+          "oportunidadeId": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "required": [
+          "oportunidadeId"
+        ],
+        "type": "object"
+      },
+      "NotaTimelineDto": {
+        "properties": {
+          "descricao": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "descricao"
+        ],
+        "type": "object"
+      },
+      "OutroContatoPerfilDto": {
+        "properties": {
+          "id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "rotulo": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "valor": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "rotulo",
+          "valor"
+        ],
+        "type": "object"
+      },
+      "PatchPreferenciasDto": {
+        "properties": {
+          "fusoHorario": {
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PerfilMestreDto": {
+        "properties": {
+          "certificacoes": {
+            "items": {
+              "$ref": "#/components/schemas/CertificacaoPerfilDto"
+            },
+            "type": "array"
+          },
+          "emails": {
+            "items": {
+              "$ref": "#/components/schemas/EmailPerfilDto"
+            },
+            "type": "array"
+          },
+          "endereco": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/EnderecoPerfilDto"
+              }
+            ]
+          },
+          "experiencias": {
+            "items": {
+              "$ref": "#/components/schemas/ExperienciaPerfilDto"
+            },
+            "type": "array"
+          },
+          "formacao": {
+            "items": {
+              "$ref": "#/components/schemas/FormacaoPerfilDto"
+            },
+            "type": "array"
+          },
+          "idiomas": {
+            "items": {
+              "maxLength": 200,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/LinkPerfilDto"
+            },
+            "type": "array"
+          },
+          "nome": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "outrosContatos": {
+            "items": {
+              "$ref": "#/components/schemas/OutroContatoPerfilDto"
+            },
+            "type": "array"
+          },
+          "resumo": {
+            "maxLength": 10000,
+            "type": "string"
+          },
+          "skills": {
+            "items": {
+              "maxLength": 200,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "telefones": {
+            "items": {
+              "$ref": "#/components/schemas/TelefonePerfilDto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "nome",
+          "emails",
+          "telefones",
+          "links",
+          "resumo",
+          "experiencias",
+          "formacao",
+          "skills"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto100Dto": {
+        "properties": {
+          "estado": {
+            "enum": [
+              "ok",
+              "indisponivel",
+              "desconhecido"
+            ],
+            "type": "string"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "obrigatoria": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "nome",
+          "obrigatoria",
+          "estado"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto101Dto": {
+        "properties": {
+          "categorias": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "niveis": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "categorias",
+          "niveis"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto10Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rotulo": {
+            "type": "string"
+          },
+          "score": {
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "rotulo",
+          "score"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto11Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "venceEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "venceEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto12Dto": {
+        "properties": {
+          "consentimento": {
+            "$ref": "#/components/schemas/RespostaObjeto13Dto"
+          },
+          "email": {
+            "type": "string"
+          },
+          "exclusaoAgendadaPara": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "consentimento",
+          "exclusaoAgendadaPara"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto13Dto": {
+        "properties": {
+          "aceitoEm": {
+            "nullable": true,
+            "type": "string"
+          },
+          "provedor": {
+            "type": "string"
+          },
+          "regiao": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "aceitoEm",
+          "provedor",
+          "regiao"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto14Dto": {
+        "properties": {
+          "jobId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto15Dto": {
+        "properties": {
+          "expiraEm": {
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "PENDENTE",
+              "PROCESSANDO",
+              "ERRO"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto16Dto": {
+        "properties": {
+          "expiraEm": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "CONCLUIDO"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "url",
+          "expiraEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto17Dto": {
+        "properties": {
+          "exclusaoAgendadaPara": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "exclusaoAgendadaPara"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto18Dto": {
+        "properties": {
+          "loteId": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "loteId",
+          "total"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto19Dto": {
+        "properties": {
+          "loteId": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "loteId",
+          "total"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto1Dto": {
+        "properties": {
+          "atualizadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "canceladaEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "candidaturaId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "concluidaEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "criadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "lembrarEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "lembreteEnviadoEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "principal": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "tipo": {
+            "enum": [
+              "REVISAR_VAGA",
+              "GERAR_CURRICULO",
+              "ENVIAR_CANDIDATURA",
+              "FAZER_FOLLOW_UP",
+              "PREPARAR_ENTREVISTA",
+              "PARTICIPAR_ENTREVISTA",
+              "ENVIAR_MATERIAL",
+              "OUTRO"
+            ],
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "usuarioId": {
+            "type": "string"
+          },
+          "vagaId": {
+            "type": "string"
+          },
+          "venceEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "usuarioId",
+          "vagaId",
+          "candidaturaId",
+          "titulo",
+          "tipo",
+          "principal",
+          "venceEm",
+          "lembrarEm",
+          "lembreteEnviadoEm",
+          "concluidaEm",
+          "canceladaEm",
+          "criadoEm",
+          "atualizadoEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto20Dto": {
+        "properties": {
+          "disponivel": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "documentos": {
+            "type": "number"
+          },
+          "porOrigem": {
+            "$ref": "#/components/schemas/RespostaObjeto21Dto"
+          },
+          "ultimaIndexacao": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentos",
+          "ultimaIndexacao",
+          "porOrigem",
+          "disponivel"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto21Dto": {
+        "properties": {
+          "candidatura": {
+            "type": "number"
+          },
+          "nota": {
+            "type": "number"
+          },
+          "perfil": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "perfil",
+          "candidatura",
+          "nota"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto22Dto": {
+        "properties": {
+          "atualizadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "criadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "modo": {
+            "enum": [
+              "assistido",
+              "autopiloto"
+            ],
+            "type": "string"
+          },
+          "oportunidadeId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "totalMensagens": {
+            "type": "number"
+          },
+          "ultimaMensagem": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "modo",
+          "oportunidadeId",
+          "titulo",
+          "ultimaMensagem",
+          "totalMensagens",
+          "criadoEm",
+          "atualizadoEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto23Dto": {
+        "properties": {
+          "atualizadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "criadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mensagens": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto24Dto"
+            },
+            "type": "array"
+          },
+          "modo": {
+            "enum": [
+              "assistido",
+              "autopiloto"
+            ],
+            "type": "string"
+          },
+          "oportunidadeId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "pendencia": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto33Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "modo",
+          "oportunidadeId",
+          "mensagens",
+          "pendencia",
+          "criadoEm",
+          "atualizadoEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto24Dto": {
+        "properties": {
+          "blocos": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/RespostaObjeto25Dto"
+                },
+                {
+                  "$ref": "#/components/schemas/RespostaObjeto26Dto"
+                },
+                {
+                  "$ref": "#/components/schemas/RespostaObjeto27Dto"
+                },
+                {
+                  "$ref": "#/components/schemas/RespostaObjeto28Dto"
+                },
+                {
+                  "$ref": "#/components/schemas/RespostaObjeto29Dto"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "conteudo": {
+            "type": "string"
+          },
+          "dados": {
+            "$ref": "#/components/schemas/RespostaObjeto30Dto"
+          },
+          "papel": {
+            "enum": [
+              "user",
+              "assistant",
+              "tool",
+              "evento"
+            ],
+            "type": "string"
+          },
+          "tool": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "papel",
+          "conteudo"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto25Dto": {
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "text"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto26Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "input": {
+            "additionalProperties": {
+              "oneOf": [
+                {}
+              ]
+            },
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "tool_use"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "name",
+          "input"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto27Dto": {
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "is_error": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "tool_use_id": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "tool_result"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "tool_use_id",
+          "content"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto28Dto": {
+        "properties": {
+          "signature": {
+            "type": "string"
+          },
+          "thinking": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "thinking"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "thinking",
+          "signature"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto29Dto": {
+        "properties": {
+          "data": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "redacted_thinking"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "data"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto2Dto": {
+        "properties": {
+          "mensagem": {
+            "enum": [
+              "cadastro recebido; entre com seu e-mail e senha"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "mensagem"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto30Dto": {
+        "properties": {
+          "args": {
+            "additionalProperties": {
+              "oneOf": [
+                {}
+              ]
+            },
+            "type": "object"
+          },
+          "callId": {
+            "type": "string"
+          },
+          "efeito": {
+            "enum": [
+              "leitura",
+              "escrita",
+              "entrega_externa"
+            ],
+            "type": "string"
+          },
+          "entrega": {
+            "$ref": "#/components/schemas/RespostaObjeto31Dto"
+          },
+          "erro": {
+            "type": "string"
+          },
+          "escopo": {
+            "type": "string"
+          },
+          "etapa": {
+            "enum": [
+              1,
+              3
+            ],
+            "type": "number"
+          },
+          "evento": {
+            "enum": [
+              "erro",
+              "cancelado"
+            ],
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "narracao": {
+            "$ref": "#/components/schemas/RespostaObjeto32Dto"
+          },
+          "ok": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "origem": {
+            "enum": [
+              "geracao_assincrona"
+            ],
+            "type": "string"
+          },
+          "resultado": {
+            "oneOf": [
+              {}
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "RespostaObjeto31Dto": {
+        "properties": {
+          "destino": {
+            "type": "string"
+          },
+          "texto": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "titulo",
+          "texto"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto32Dto": {
+        "properties": {
+          "degradacao": {
+            "nullable": true,
+            "type": "string"
+          },
+          "keywordsAusentes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "keywordsAusentesIniciais": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "keywordsCobertas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "keywordsEncontradas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "pontosDeAtencao": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "scoreFinal": {
+            "type": "number"
+          },
+          "scoreInicial": {
+            "type": "number"
+          },
+          "veredicto": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scoreInicial",
+          "scoreFinal",
+          "keywordsEncontradas",
+          "keywordsAusentesIniciais",
+          "pontosDeAtencao",
+          "veredicto",
+          "keywordsCobertas",
+          "keywordsAusentes",
+          "degradacao"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto33Dto": {
+        "properties": {
+          "args": {
+            "additionalProperties": {
+              "oneOf": [
+                {}
+              ]
+            },
+            "type": "object"
+          },
+          "callId": {
+            "type": "string"
+          },
+          "efeito": {
+            "enum": [
+              "escrita"
+            ],
+            "type": "string"
+          },
+          "executando": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "resumo": {
+            "type": "string"
+          },
+          "tool": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "callId",
+          "tool",
+          "efeito",
+          "args"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto34Dto": {
+        "properties": {
+          "destino": {
+            "type": "string"
+          },
+          "texto": {
+            "type": "string"
+          },
+          "tipo": {
+            "enum": [
+              "mensagem_recrutador"
+            ],
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "titulo",
+          "texto",
+          "destino"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto35Dto": {
+        "properties": {
+          "respostas": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto36Dto"
+            },
+            "type": "array"
+          },
+          "texto": {
+            "type": "string"
+          },
+          "tipo": {
+            "enum": [
+              "resposta_formulario"
+            ],
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "titulo",
+          "respostas",
+          "texto"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto36Dto": {
+        "properties": {
+          "campo": {
+            "type": "string"
+          },
+          "texto": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "campo",
+          "texto"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto37Dto": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto38Dto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "nullable": true,
+            "type": "number"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "itens",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto38Dto": {
+        "properties": {
+          "analiseFinal": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "analiseInicial": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "breakdown": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "categoria": {
+            "nullable": true,
+            "type": "string"
+          },
+          "degradacao": {
+            "nullable": true,
+            "type": "string"
+          },
+          "downloadDocxUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "downloadPdfUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "geradoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "nivel": {
+            "nullable": true,
+            "type": "string"
+          },
+          "oportunidade": {
+            "$ref": "#/components/schemas/RespostaObjeto39Dto"
+          },
+          "rotulo": {
+            "type": "string"
+          },
+          "score": {
+            "nullable": true,
+            "type": "number"
+          },
+          "vagaId": {
+            "type": "string"
+          },
+          "vinculo": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto40Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "rotulo",
+          "score",
+          "breakdown",
+          "analiseInicial",
+          "analiseFinal",
+          "degradacao",
+          "geradoEm",
+          "vagaId",
+          "categoria",
+          "nivel",
+          "oportunidade",
+          "vinculo",
+          "downloadDocxUrl",
+          "downloadPdfUrl"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto39Dto": {
+        "properties": {
+          "empresa": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "empresa"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto3Dto": {
+        "properties": {
+          "csrfToken": {
+            "type": "string"
+          },
+          "usuario": {
+            "$ref": "#/components/schemas/RespostaObjeto4Dto"
+          }
+        },
+        "required": [
+          "usuario",
+          "csrfToken"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto40Dto": {
+        "properties": {
+          "candidaturaId": {
+            "type": "string"
+          },
+          "principal": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "RASCUNHO",
+              "INSCRITA",
+              "EM_PROCESSO",
+              "ENTREVISTA",
+              "OFERTA",
+              "REJEITADA",
+              "DESISTIU"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidaturaId",
+          "principal",
+          "status"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto41Dto": {
+        "properties": {
+          "curriculoId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "erro": {
+            "nullable": true,
+            "type": "string"
+          },
+          "etapas": {
+            "$ref": "#/components/schemas/RespostaObjeto42Dto"
+          },
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "PENDENTE",
+              "ERRO",
+              "ANALISANDO",
+              "GERANDO",
+              "VALIDANDO",
+              "CONCLUIDA"
+            ],
+            "type": "string"
+          },
+          "vagaId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "vagaId",
+          "status",
+          "erro",
+          "curriculoId",
+          "etapas"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto42Dto": {
+        "properties": {
+          "analiseFinal": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "analiseInicial": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "degradacao": {
+            "nullable": true,
+            "type": "string"
+          },
+          "reescrita": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "analiseInicial",
+          "reescrita",
+          "analiseFinal",
+          "degradacao"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto43Dto": {
+        "properties": {
+          "analiseFinal": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "analiseInicial": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "breakdown": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "degradacao": {
+            "nullable": true,
+            "type": "string"
+          },
+          "downloadDocxUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "downloadPdfUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "geradoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "markdown": {
+            "type": "string"
+          },
+          "oportunidade": {
+            "$ref": "#/components/schemas/RespostaObjeto44Dto"
+          },
+          "rotulo": {
+            "type": "string"
+          },
+          "score": {
+            "nullable": true,
+            "type": "number"
+          },
+          "vagaId": {
+            "type": "string"
+          },
+          "vinculo": {
+            "$ref": "#/components/schemas/RespostaObjeto45Dto"
+          }
+        },
+        "required": [
+          "id",
+          "vagaId",
+          "rotulo",
+          "markdown",
+          "score",
+          "breakdown",
+          "analiseInicial",
+          "analiseFinal",
+          "degradacao",
+          "geradoEm",
+          "oportunidade",
+          "vinculo",
+          "downloadDocxUrl",
+          "downloadPdfUrl"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto44Dto": {
+        "properties": {},
+        "type": "object"
+      },
+      "RespostaObjeto45Dto": {
+        "properties": {},
+        "type": "object"
+      },
+      "RespostaObjeto46Dto": {
+        "properties": {
+          "expiraEm": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expiraEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto47Dto": {
+        "properties": {
+          "atividadeRecente": {
+            "items": {
+              "oneOf": [
+                {}
+              ]
+            },
+            "type": "array"
+          },
+          "atrasadas": {
+            "items": {
+              "oneOf": [
+                {}
+              ]
+            },
+            "type": "array"
+          },
+          "entrada": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto53Dto"
+            },
+            "type": "array"
+          },
+          "fimDia": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "fusoHorario": {
+            "type": "string"
+          },
+          "geracoesConcluidas": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto52Dto"
+            },
+            "type": "array"
+          },
+          "hoje": {
+            "items": {
+              "oneOf": [
+                {}
+              ]
+            },
+            "type": "array"
+          },
+          "inicioDia": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "proximosDias": {
+            "items": {
+              "oneOf": [
+                {}
+              ]
+            },
+            "type": "array"
+          },
+          "resumoAts": {
+            "$ref": "#/components/schemas/RespostaObjeto49Dto"
+          },
+          "semProximoPasso": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto48Dto"
+            },
+            "type": "array"
+          },
+          "serieTemporal": {
+            "$ref": "#/components/schemas/RespostaObjeto50Dto"
+          }
+        },
+        "required": [
+          "fusoHorario",
+          "inicioDia",
+          "fimDia",
+          "atrasadas",
+          "hoje",
+          "proximosDias",
+          "semProximoPasso",
+          "atividadeRecente",
+          "resumoAts",
+          "serieTemporal",
+          "geracoesConcluidas",
+          "entrada"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto48Dto": {
+        "properties": {
+          "empresa": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "empresa"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto49Dto": {
+        "properties": {
+          "comScore": {
+            "type": "number"
+          },
+          "curriculos": {
+            "type": "number"
+          },
+          "media": {
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "curriculos",
+          "comScore",
+          "media"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto4Dto": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto50Dto": {
+        "properties": {
+          "fim": {
+            "type": "string"
+          },
+          "inicio": {
+            "type": "string"
+          },
+          "periodoDias": {
+            "enum": [
+              7,
+              30,
+              90
+            ],
+            "type": "number"
+          },
+          "pontos": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto51Dto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "inicio",
+          "fim",
+          "periodoDias",
+          "pontos"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto51Dto": {
+        "properties": {
+          "acoesConcluidas": {
+            "type": "number"
+          },
+          "curriculosGerados": {
+            "type": "number"
+          },
+          "data": {
+            "type": "string"
+          },
+          "oportunidadesCriadas": {
+            "type": "number"
+          },
+          "scoreMedio": {
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "data",
+          "oportunidadesCriadas",
+          "acoesConcluidas",
+          "curriculosGerados",
+          "scoreMedio"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto52Dto": {
+        "properties": {
+          "concluidaEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "curriculoId": {
+            "type": "string"
+          },
+          "empresa": {
+            "type": "string"
+          },
+          "oportunidadeId": {
+            "type": "string"
+          },
+          "score": {
+            "nullable": true,
+            "type": "number"
+          },
+          "titulo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "curriculoId",
+          "oportunidadeId",
+          "titulo",
+          "empresa",
+          "score",
+          "concluidaEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto53Dto": {
+        "properties": {
+          "criadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "empresa": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "empresa",
+          "criadoEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto54Dto": {
+        "properties": {
+          "atualizadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "fusoHorario": {
+            "type": "string"
+          },
+          "usuarioId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "usuarioId",
+          "atualizadoEm",
+          "fusoHorario"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto55Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto56Dto"
+            },
+            "type": "array"
+          },
+          "processados": {
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "PENDENTE",
+              "PROCESSANDO",
+              "CONCLUIDO"
+            ],
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "tipo",
+          "status",
+          "total",
+          "processados",
+          "itens"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto56Dto": {
+        "properties": {
+          "bancoVagaId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "erro": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "PENDENTE",
+              "PROCESSANDO",
+              "CONCLUIDO",
+              "ERRO"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "bancoVagaId",
+          "status",
+          "erro"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto57Dto": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto58Dto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "nullable": true,
+            "type": "number"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "itens",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto58Dto": {
+        "properties": {
+          "apresentacao": {
+            "enum": [
+              "ENTRADA"
+            ],
+            "type": "string"
+          },
+          "categoria": {
+            "nullable": true,
+            "type": "string"
+          },
+          "curriculoVinculado": {
+            "nullable": true,
+            "type": "object"
+          },
+          "empresa": {
+            "type": "string"
+          },
+          "etapa": {
+            "nullable": true,
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "keywords": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "keywordsStatus": {
+            "enum": [
+              "PENDENTE",
+              "VALIDAS"
+            ],
+            "type": "string"
+          },
+          "nivel": {
+            "nullable": true,
+            "type": "string"
+          },
+          "origem": {
+            "enum": [
+              "IMPORTACAO"
+            ],
+            "type": "string"
+          },
+          "prioridade": {
+            "nullable": true,
+            "type": "object"
+          },
+          "proximoPasso": {
+            "nullable": true,
+            "type": "object"
+          },
+          "score": {
+            "nullable": true,
+            "type": "object"
+          },
+          "tipo": {
+            "enum": [
+              "ENTRADA"
+            ],
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "ultimaAtividade": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "id",
+          "titulo",
+          "empresa",
+          "categoria",
+          "nivel",
+          "prioridade",
+          "etapa",
+          "apresentacao",
+          "curriculoVinculado",
+          "score",
+          "proximoPasso",
+          "ultimaAtividade",
+          "origem",
+          "keywords",
+          "keywordsStatus"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto59Dto": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto60Dto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "itens",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto5Dto": {
+        "properties": {
+          "csrfToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "csrfToken"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto60Dto": {
+        "properties": {
+          "apresentacao": {
+            "enum": [
+              "ENTRADA",
+              "ATIVA",
+              "ENCERRADA"
+            ],
+            "type": "string"
+          },
+          "arquivadaEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "categoria": {
+            "nullable": true,
+            "type": "string"
+          },
+          "curriculoVinculado": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto61Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "empresa": {
+            "type": "string"
+          },
+          "etapa": {
+            "enum": [
+              "INSCRITA",
+              "EM_PROCESSO",
+              "ENTREVISTA",
+              "OFERTA",
+              "PREPARACAO",
+              "ENCERRADAS"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "keywords": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "keywordsErro": {
+            "nullable": true,
+            "type": "string"
+          },
+          "keywordsExtracao": {
+            "enum": [
+              "PENDENTE",
+              "ERRO",
+              "EXTRAINDO",
+              "PRONTAS"
+            ],
+            "type": "string"
+          },
+          "keywordsStatus": {
+            "enum": [
+              "PENDENTE",
+              "VALIDAS"
+            ],
+            "type": "string"
+          },
+          "nivel": {
+            "nullable": true,
+            "type": "string"
+          },
+          "origem": {
+            "enum": [
+              "MANUAL",
+              "IMPORTACAO"
+            ],
+            "type": "string"
+          },
+          "prioridade": {
+            "enum": [
+              "BAIXA",
+              "MEDIA",
+              "ALTA"
+            ],
+            "type": "string"
+          },
+          "proximoPasso": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto62Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "score": {
+            "nullable": true,
+            "type": "number"
+          },
+          "statusCandidatura": {
+            "enum": [
+              "RASCUNHO",
+              "INSCRITA",
+              "EM_PROCESSO",
+              "ENTREVISTA",
+              "OFERTA",
+              "REJEITADA",
+              "DESISTIU"
+            ],
+            "type": "string"
+          },
+          "tipo": {
+            "enum": [
+              "OPORTUNIDADE"
+            ],
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "ultimaAtividade": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "id",
+          "titulo",
+          "empresa",
+          "categoria",
+          "nivel",
+          "prioridade",
+          "etapa",
+          "apresentacao",
+          "curriculoVinculado",
+          "score",
+          "proximoPasso",
+          "ultimaAtividade",
+          "origem",
+          "keywords",
+          "keywordsStatus",
+          "keywordsExtracao",
+          "keywordsErro",
+          "statusCandidatura",
+          "arquivadaEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto61Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rotulo": {
+            "type": "string"
+          },
+          "score": {
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "rotulo",
+          "score"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto62Dto": {
+        "properties": {
+          "canceladaEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "concluidaEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "lembrarEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "principal": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "venceEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "tipo",
+          "principal",
+          "venceEm",
+          "lembrarEm",
+          "concluidaEm",
+          "canceladaEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto63Dto": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto60Dto"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "nullable": true,
+            "type": "object"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "itens",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto64Dto": {
+        "properties": {
+          "arquivadaEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "atualizadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "categoria": {
+            "nullable": true,
+            "type": "string"
+          },
+          "criadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "empresa": {
+            "type": "string"
+          },
+          "estagio": {
+            "enum": [
+              "ENTRADA",
+              "ATIVA"
+            ],
+            "type": "string"
+          },
+          "fonte": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "keywords": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "keywordsErro": {
+            "nullable": true,
+            "type": "string"
+          },
+          "keywordsExtracao": {
+            "enum": [
+              "PENDENTE",
+              "ERRO",
+              "EXTRAINDO",
+              "PRONTAS"
+            ],
+            "type": "string"
+          },
+          "keywordsStatus": {
+            "enum": [
+              "PENDENTE",
+              "VALIDAS"
+            ],
+            "type": "string"
+          },
+          "nivel": {
+            "nullable": true,
+            "type": "string"
+          },
+          "origem": {
+            "enum": [
+              "MANUAL",
+              "IMPORTACAO"
+            ],
+            "type": "string"
+          },
+          "origemImportacaoId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "prioridade": {
+            "enum": [
+              "BAIXA",
+              "MEDIA",
+              "ALTA"
+            ],
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "usuarioId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "usuarioId",
+          "titulo",
+          "criadoEm",
+          "atualizadoEm",
+          "empresa",
+          "descricao",
+          "fonte",
+          "keywords",
+          "keywordsStatus",
+          "keywordsExtracao",
+          "keywordsErro",
+          "categoria",
+          "nivel",
+          "prioridade",
+          "origem",
+          "estagio",
+          "origemImportacaoId",
+          "arquivadaEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto65Dto": {
+        "properties": {
+          "loteId": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "loteId",
+          "total"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto66Dto": {
+        "properties": {
+          "acaoPrincipal": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto1Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "acoes": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto1Dto"
+            },
+            "type": "array"
+          },
+          "candidatura": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto68Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "curriculos": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto72Dto"
+            },
+            "type": "array"
+          },
+          "oportunidade": {
+            "$ref": "#/components/schemas/RespostaObjeto67Dto"
+          },
+          "timeline": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto73Dto"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "oportunidade",
+          "candidatura",
+          "curriculos",
+          "acaoPrincipal",
+          "acoes",
+          "timeline"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto67Dto": {
+        "properties": {
+          "apresentacao": {
+            "enum": [
+              "ENTRADA",
+              "ATIVA",
+              "ENCERRADA"
+            ],
+            "type": "string"
+          },
+          "arquivadaEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "atualizadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "categoria": {
+            "nullable": true,
+            "type": "string"
+          },
+          "criadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "curriculoVinculado": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto61Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "empresa": {
+            "type": "string"
+          },
+          "etapa": {
+            "enum": [
+              "INSCRITA",
+              "EM_PROCESSO",
+              "ENTREVISTA",
+              "OFERTA",
+              "PREPARACAO",
+              "ENCERRADAS"
+            ],
+            "type": "string"
+          },
+          "fonte": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "keywords": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "keywordsErro": {
+            "nullable": true,
+            "type": "string"
+          },
+          "keywordsExtracao": {
+            "enum": [
+              "PENDENTE",
+              "ERRO",
+              "EXTRAINDO",
+              "PRONTAS"
+            ],
+            "type": "string"
+          },
+          "keywordsStatus": {
+            "enum": [
+              "PENDENTE",
+              "VALIDAS"
+            ],
+            "type": "string"
+          },
+          "nivel": {
+            "nullable": true,
+            "type": "string"
+          },
+          "origem": {
+            "enum": [
+              "MANUAL",
+              "IMPORTACAO"
+            ],
+            "type": "string"
+          },
+          "prioridade": {
+            "enum": [
+              "BAIXA",
+              "MEDIA",
+              "ALTA"
+            ],
+            "type": "string"
+          },
+          "proximoPasso": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto62Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "score": {
+            "nullable": true,
+            "type": "number"
+          },
+          "statusCandidatura": {
+            "enum": [
+              "RASCUNHO",
+              "INSCRITA",
+              "EM_PROCESSO",
+              "ENTREVISTA",
+              "OFERTA",
+              "REJEITADA",
+              "DESISTIU"
+            ],
+            "type": "string"
+          },
+          "tipo": {
+            "enum": [
+              "OPORTUNIDADE"
+            ],
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "ultimaAtividade": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "descricao",
+          "fonte",
+          "criadoEm",
+          "atualizadoEm",
+          "tipo",
+          "id",
+          "titulo",
+          "empresa",
+          "categoria",
+          "nivel",
+          "prioridade",
+          "etapa",
+          "apresentacao",
+          "curriculoVinculado",
+          "score",
+          "proximoPasso",
+          "ultimaAtividade",
+          "origem",
+          "keywords",
+          "keywordsStatus",
+          "keywordsExtracao",
+          "keywordsErro",
+          "statusCandidatura",
+          "arquivadaEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto68Dto": {
+        "properties": {
+          "curriculoId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "encerradaEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "enviadaEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "motivoEncerramento": {
+            "nullable": true,
+            "type": "string"
+          },
+          "notas": {
+            "type": "string"
+          },
+          "principal": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "RASCUNHO",
+              "INSCRITA",
+              "EM_PROCESSO",
+              "ENTREVISTA",
+              "OFERTA",
+              "REJEITADA",
+              "DESISTIU"
+            ],
+            "type": "string"
+          },
+          "vinculo": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto69Dto"
+              },
+              {
+                "$ref": "#/components/schemas/RespostaObjeto70Dto"
+              },
+              {
+                "$ref": "#/components/schemas/RespostaObjeto71Dto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "notas",
+          "principal",
+          "enviadaEm",
+          "encerradaEm",
+          "motivoEncerramento",
+          "curriculoId",
+          "vinculo"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto69Dto": {
+        "properties": {
+          "curriculoId": {
+            "type": "string"
+          },
+          "rotulo": {
+            "type": "string"
+          },
+          "score": {
+            "nullable": true,
+            "type": "number"
+          },
+          "situacao": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "curriculoId",
+          "rotulo",
+          "score",
+          "situacao"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto6Dto": {
+        "properties": {
+          "csrfToken": {
+            "type": "string"
+          },
+          "usuario": {
+            "$ref": "#/components/schemas/RespostaObjeto7Dto"
+          }
+        },
+        "required": [
+          "usuario",
+          "csrfToken"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto70Dto": {
+        "properties": {
+          "curriculoId": {
+            "type": "string"
+          },
+          "rotulo": {
+            "type": "object"
+          },
+          "score": {
+            "type": "object"
+          },
+          "situacao": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "curriculoId",
+          "situacao"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto71Dto": {
+        "properties": {
+          "curriculoId": {
+            "nullable": true,
+            "type": "object"
+          },
+          "rotulo": {
+            "type": "object"
+          },
+          "score": {
+            "type": "object"
+          },
+          "situacao": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "curriculoId",
+          "situacao"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto72Dto": {
+        "properties": {
+          "geradoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "rotulo": {
+            "type": "string"
+          },
+          "score": {
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "rotulo",
+          "score",
+          "geradoEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto73Dto": {
+        "properties": {
+          "candidaturaId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "curriculoId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "dados": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "ocorridoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "origem": {
+            "enum": [
+              "SISTEMA",
+              "USUARIO"
+            ],
+            "type": "string"
+          },
+          "registradoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "usuarioId": {
+            "type": "string"
+          },
+          "vagaId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "usuarioId",
+          "vagaId",
+          "candidaturaId",
+          "tipo",
+          "curriculoId",
+          "descricao",
+          "origem",
+          "ocorridoEm",
+          "dados",
+          "registradoEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto74Dto": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto73Dto"
+            },
+            "type": "array"
+          },
+          "proximoCursor": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "itens",
+          "proximoCursor"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto75Dto": {
+        "properties": {
+          "candidatura": {
+            "$ref": "#/components/schemas/RespostaObjeto8Dto"
+          },
+          "evento": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto73Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "oportunidade": {
+            "$ref": "#/components/schemas/RespostaObjeto76Dto"
+          }
+        },
+        "required": [
+          "oportunidade",
+          "candidatura",
+          "evento"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto76Dto": {
+        "properties": {
+          "arquivadaEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "atualizadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "categoria": {
+            "nullable": true,
+            "type": "string"
+          },
+          "criadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "empresa": {
+            "type": "string"
+          },
+          "estagio": {
+            "enum": [
+              "ENTRADA",
+              "ATIVA"
+            ],
+            "type": "string"
+          },
+          "fonte": {
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "keywords": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "keywordsErro": {
+            "nullable": true,
+            "type": "string"
+          },
+          "keywordsExtracao": {
+            "enum": [
+              "PENDENTE",
+              "ERRO",
+              "EXTRAINDO",
+              "PRONTAS"
+            ],
+            "type": "string"
+          },
+          "keywordsStatus": {
+            "enum": [
+              "PENDENTE",
+              "VALIDAS"
+            ],
+            "type": "string"
+          },
+          "nivel": {
+            "nullable": true,
+            "type": "string"
+          },
+          "origem": {
+            "enum": [
+              "MANUAL",
+              "IMPORTACAO"
+            ],
+            "type": "string"
+          },
+          "origemImportacaoId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "prioridade": {
+            "enum": [
+              "BAIXA",
+              "MEDIA",
+              "ALTA"
+            ],
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "usuarioId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "usuarioId",
+          "titulo",
+          "criadoEm",
+          "atualizadoEm",
+          "empresa",
+          "descricao",
+          "fonte",
+          "keywords",
+          "keywordsStatus",
+          "keywordsExtracao",
+          "keywordsErro",
+          "categoria",
+          "nivel",
+          "prioridade",
+          "origem",
+          "estagio",
+          "origemImportacaoId",
+          "arquivadaEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto77Dto": {
+        "properties": {
+          "curriculoId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "PENDENTE",
+              "ERRO",
+              "ANALISANDO",
+              "GERANDO",
+              "VALIDANDO",
+              "CONCLUIDA"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId",
+          "status",
+          "curriculoId"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto78Dto": {
+        "properties": {
+          "curriculoId": {
+            "type": "object"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "jobId"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto79Dto": {
+        "properties": {
+          "breakdown": {
+            "$ref": "#/components/schemas/RespostaObjeto80Dto"
+          },
+          "degradacao": {
+            "type": "string"
+          },
+          "keywordsCriticasAusentes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "keywordsEncontradas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "pontosEliminatorios": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "score": {
+            "type": "number"
+          },
+          "scoreVersao": {
+            "type": "number"
+          },
+          "veredicto": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "score",
+          "keywordsEncontradas",
+          "keywordsCriticasAusentes",
+          "pontosEliminatorios",
+          "veredicto",
+          "breakdown"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto7Dto": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto80Dto": {
+        "properties": {
+          "densidade": {
+            "type": "number"
+          },
+          "faltando": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "keywordMatch": {
+            "type": "number"
+          },
+          "secoes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "keywordMatch",
+          "densidade",
+          "secoes",
+          "faltando"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto81Dto": {
+        "properties": {
+          "analiseFinal": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "analiseInicial": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "breakdown": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "degradacao": {
+            "nullable": true,
+            "type": "string"
+          },
+          "geradoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "rotulo": {
+            "type": "string"
+          },
+          "score": {
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "rotulo",
+          "score",
+          "breakdown",
+          "analiseInicial",
+          "analiseFinal",
+          "degradacao",
+          "geradoEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto82Dto": {
+        "properties": {
+          "atualizadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "certificacoes": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto86Dto"
+            },
+            "type": "array"
+          },
+          "emails": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto87Dto"
+            },
+            "type": "array"
+          },
+          "endereco": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto90Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "experiencias": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto83Dto"
+            },
+            "type": "array"
+          },
+          "formacao": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto85Dto"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "idiomas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto89Dto"
+            },
+            "type": "array"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "outrosContatos": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto91Dto"
+            },
+            "type": "array"
+          },
+          "resumo": {
+            "type": "string"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "telefones": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto88Dto"
+            },
+            "type": "array"
+          },
+          "usuarioId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "usuarioId",
+          "atualizadoEm",
+          "nome",
+          "resumo",
+          "experiencias",
+          "formacao",
+          "certificacoes",
+          "idiomas",
+          "skills",
+          "emails",
+          "telefones",
+          "links",
+          "endereco",
+          "outrosContatos"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto83Dto": {
+        "properties": {
+          "atual": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "cargo": {
+            "type": "string"
+          },
+          "dataFimAno": {
+            "nullable": true,
+            "type": "number"
+          },
+          "dataFimMes": {
+            "nullable": true,
+            "type": "number"
+          },
+          "dataInicioAno": {
+            "nullable": true,
+            "type": "number"
+          },
+          "dataInicioMes": {
+            "nullable": true,
+            "type": "number"
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "empresa": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "local": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto84Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "localLegado": {
+            "type": "string"
+          },
+          "periodoLegado": {
+            "type": "string"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "cargo",
+          "empresa",
+          "dataInicioMes",
+          "dataInicioAno",
+          "dataFimMes",
+          "dataFimAno",
+          "atual",
+          "local",
+          "descricao"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto84Dto": {
+        "properties": {
+          "cidade": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "pais": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pais",
+          "estado",
+          "cidade"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto85Dto": {
+        "properties": {
+          "curso": {
+            "type": "string"
+          },
+          "fimAno": {
+            "nullable": true,
+            "type": "number"
+          },
+          "fimMes": {
+            "nullable": true,
+            "type": "number"
+          },
+          "grau": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "inicioAno": {
+            "nullable": true,
+            "type": "number"
+          },
+          "inicioMes": {
+            "nullable": true,
+            "type": "number"
+          },
+          "instituicao": {
+            "type": "string"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "",
+              "concluido",
+              "em_andamento",
+              "trancado"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "grau",
+          "status",
+          "instituicao",
+          "curso",
+          "inicioMes",
+          "inicioAno",
+          "fimMes",
+          "fimAno"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto86Dto": {
+        "properties": {
+          "descricao": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "titulo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "descricao"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto87Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "principal": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "valor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "valor",
+          "principal"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto88Dto": {
+        "properties": {
+          "ddi": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "numero": {
+            "type": "string"
+          },
+          "principal": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "ddi",
+          "numero",
+          "principal"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto89Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tipo": {
+            "enum": [
+              "linkedin",
+              "github",
+              "facebook",
+              "instagram",
+              "site"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tipo",
+          "url"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto8Dto": {
+        "properties": {
+          "atualizadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "criadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "curriculoId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "encerradaEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "enviadaEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "motivoEncerramento": {
+            "nullable": true,
+            "type": "string"
+          },
+          "notas": {
+            "type": "string"
+          },
+          "principal": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "RASCUNHO",
+              "INSCRITA",
+              "EM_PROCESSO",
+              "ENTREVISTA",
+              "OFERTA",
+              "REJEITADA",
+              "DESISTIU"
+            ],
+            "type": "string"
+          },
+          "vagaId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "vagaId",
+          "principal",
+          "criadoEm",
+          "atualizadoEm",
+          "status",
+          "notas",
+          "enviadaEm",
+          "encerradaEm",
+          "motivoEncerramento",
+          "curriculoId"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto90Dto": {
+        "properties": {
+          "bairro": {
+            "type": "string"
+          },
+          "cidade": {
+            "type": "string"
+          },
+          "complemento": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "legado": {
+            "type": "string"
+          },
+          "logradouro": {
+            "type": "string"
+          },
+          "pais": {
+            "type": "string"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "pais",
+          "estado",
+          "cidade"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto91Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "rotulo": {
+            "type": "string"
+          },
+          "valor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "rotulo",
+          "valor"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto92Dto": {
+        "properties": {
+          "apresentacao": {
+            "enum": [
+              "ENTRADA",
+              "ATIVA",
+              "ENCERRADA"
+            ],
+            "type": "string"
+          },
+          "arquivadaEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "categoria": {
+            "nullable": true,
+            "type": "string"
+          },
+          "curriculo": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto93Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "empresa": {
+            "type": "string"
+          },
+          "etapa": {
+            "enum": [
+              "INSCRITA",
+              "EM_PROCESSO",
+              "ENTREVISTA",
+              "OFERTA",
+              "PREPARACAO",
+              "ENCERRADAS"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "keywords": {
+            "nullable": true,
+            "oneOf": [
+              {}
+            ]
+          },
+          "nivel": {
+            "nullable": true,
+            "type": "string"
+          },
+          "prioridade": {
+            "enum": [
+              "BAIXA",
+              "MEDIA",
+              "ALTA"
+            ],
+            "type": "string"
+          },
+          "proximoPasso": {
+            "$ref": "#/components/schemas/RespostaObjeto1Dto"
+          },
+          "score": {
+            "nullable": true,
+            "type": "number"
+          },
+          "statusCandidatura": {
+            "enum": [
+              "RASCUNHO",
+              "INSCRITA",
+              "EM_PROCESSO",
+              "ENTREVISTA",
+              "OFERTA",
+              "REJEITADA",
+              "DESISTIU"
+            ],
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "ultimaAtividade": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "empresa",
+          "categoria",
+          "nivel",
+          "prioridade",
+          "apresentacao",
+          "etapa",
+          "statusCandidatura",
+          "arquivadaEm",
+          "score",
+          "curriculo",
+          "proximoPasso",
+          "ultimaAtividade",
+          "keywords"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto93Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rotulo": {
+            "type": "string"
+          },
+          "score": {
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "rotulo",
+          "score"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto94Dto": {
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto96Dto"
+            },
+            "type": "array"
+          },
+          "facets": {
+            "$ref": "#/components/schemas/RespostaObjeto97Dto"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto95Dto"
+            },
+            "type": "array"
+          },
+          "schemaVersion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "nodes",
+          "edges",
+          "facets"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto95Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rotulo": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tipo",
+          "rotulo"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto96Dto": {
+        "properties": {
+          "destino": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "origem": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "origem",
+          "destino",
+          "tipo"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto97Dto": {
+        "properties": {
+          "categorias": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "empresas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "niveis": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "empresas",
+          "categorias",
+          "niveis",
+          "skills"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto99Dto": {
+        "properties": {
+          "dependencias": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto100Dto"
+            },
+            "type": "array"
+          },
+          "servico": {
+            "enum": [
+              "api"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pronto",
+              "indisponivel"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "servico",
+          "status",
+          "dependencias"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto9Dto": {
+        "properties": {
+          "atualizadoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "curriculo": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto10Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "curriculoId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "empresa": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "notas": {
+            "type": "string"
+          },
+          "principal": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "proximoPasso": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto11Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "status": {
+            "enum": [
+              "RASCUNHO",
+              "INSCRITA",
+              "EM_PROCESSO",
+              "ENTREVISTA",
+              "OFERTA",
+              "REJEITADA",
+              "DESISTIU"
+            ],
+            "type": "string"
+          },
+          "tituloVaga": {
+            "type": "string"
+          },
+          "vagaId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "vagaId",
+          "tituloVaga",
+          "empresa",
+          "curriculoId",
+          "status",
+          "notas",
+          "principal",
+          "atualizadoEm",
+          "curriculo",
+          "proximoPasso"
+        ],
+        "type": "object"
+      },
+      "RespostasFormularioDto": {
+        "properties": {
+          "campos": {
+            "items": {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "oportunidadeId": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "required": [
+          "oportunidadeId",
+          "campos"
+        ],
+        "type": "object"
+      },
+      "TelefonePerfilDto": {
+        "properties": {
+          "ddi": {
+            "pattern": "^(\\+\\d{1,4})?$",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "numero": {
+            "maxLength": 500,
+            "minLength": 1,
+            "type": "string"
+          },
+          "principal": {
+            "type": "boolean"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "ddi",
+          "numero",
+          "principal"
+        ],
+        "type": "object"
+      },
+      "TransicaoDto": {
+        "properties": {
+          "destino": {
+            "enum": [
+              "PREPARACAO",
+              "INSCRITA",
+              "EM_PROCESSO",
+              "ENTREVISTA",
+              "OFERTA",
+              "REJEITADA",
+              "DESISTIU",
+              "ARQUIVADA",
+              "REABRIR"
+            ],
+            "type": "string"
+          },
+          "motivo": {
+            "maxLength": 1000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "destino"
+        ],
+        "type": "object"
+      },
+      "TrocaSenhaDto": {
+        "properties": {
+          "novaSenha": {
+            "maxLength": 128,
+            "minLength": 10,
+            "type": "string"
+          },
+          "senhaAtual": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "senhaAtual",
+          "novaSenha"
+        ],
+        "type": "object"
+      },
+      "UploadContextoDto": {
+        "properties": {
+          "arquivos": {
+            "items": {
+              "format": "binary",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "historico": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "enum": [
+                  "true",
+                  "false",
+                  ""
+                ],
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "contact": {},
+    "description": "",
+    "title": "prdal-careers-api",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "SaudeController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Saude"
+        ]
+      }
+    },
+    "/ready": {
+      "get": {
+        "operationId": "SaudeController_ready",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto99Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Saude"
+        ]
+      }
+    },
+    "/v1/acoes/{id}": {
+      "patch": {
+        "operationId": "AcoesController_atualizar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtualizarAcaoDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto1Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Acoes"
+        ]
+      }
+    },
+    "/v1/acoes/{id}/cancelar": {
+      "post": {
+        "operationId": "AcoesController_cancelar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto1Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Acoes"
+        ]
+      }
+    },
+    "/v1/acoes/{id}/concluir": {
+      "post": {
+        "operationId": "AcoesController_concluir",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto1Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Acoes"
+        ]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto3Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto5Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CadastroDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto2Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v1/auth/senha": {
+      "post": {
+        "operationId": "AuthController_trocarSenha",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrocaSenhaDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v1/auth/sessao": {
+      "get": {
+        "operationId": "AuthController_sessao",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto6Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v1/candidaturas": {
+      "get": {
+        "operationId": "CandidaturasController_listar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RespostaObjeto9Dto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Candidaturas"
+        ]
+      },
+      "post": {
+        "operationId": "CandidaturasController_criar",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriarCandidaturaDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto8Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Candidaturas"
+        ]
+      }
+    },
+    "/v1/candidaturas/{id}": {
+      "patch": {
+        "operationId": "CandidaturasController_atualizar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtualizarCandidaturaDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto8Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Candidaturas"
+        ]
+      }
+    },
+    "/v1/conta": {
+      "get": {
+        "operationId": "ContaController_buscar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto12Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Conta"
+        ]
+      }
+    },
+    "/v1/conta/consentimento": {
+      "delete": {
+        "operationId": "ContaController_revogar",
+        "parameters": [],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Conta"
+        ]
+      },
+      "post": {
+        "operationId": "ContaController_consentir",
+        "parameters": [],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Conta"
+        ]
+      }
+    },
+    "/v1/conta/exclusao": {
+      "delete": {
+        "operationId": "ContaController_cancelarExclusao",
+        "parameters": [],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Conta"
+        ]
+      },
+      "post": {
+        "operationId": "ContaController_agendarExclusao",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgendarExclusaoDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto17Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Conta"
+        ]
+      }
+    },
+    "/v1/conta/exportacoes": {
+      "post": {
+        "operationId": "ContaController_exportar",
+        "parameters": [],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto14Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Conta"
+        ]
+      }
+    },
+    "/v1/conta/exportacoes/{jobId}": {
+      "get": {
+        "operationId": "ContaController_statusExportacao",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/RespostaObjeto15Dto"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RespostaObjeto16Dto"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Conta"
+        ]
+      }
+    },
+    "/v1/contexto/reindexar": {
+      "post": {
+        "operationId": "ContextoController_reindexar",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto18Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Contexto"
+        ]
+      }
+    },
+    "/v1/contexto/status": {
+      "get": {
+        "operationId": "ContextoController_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto20Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Contexto"
+        ]
+      }
+    },
+    "/v1/contexto/upload": {
+      "post": {
+        "operationId": "ContextoController_upload",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadContextoDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto19Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Contexto"
+        ]
+      }
+    },
+    "/v1/copiloto/chat": {
+      "post": {
+        "operationId": "CopilotoController_chatSse",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Copiloto"
+        ]
+      }
+    },
+    "/v1/copiloto/conversas": {
+      "get": {
+        "operationId": "CopilotoController_listarConversas",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "oportunidadeId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RespostaObjeto22Dto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Copiloto"
+        ]
+      }
+    },
+    "/v1/copiloto/conversas/{id}": {
+      "get": {
+        "operationId": "CopilotoController_buscarConversa",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto23Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Copiloto"
+        ]
+      }
+    },
+    "/v1/copiloto/mensagem-recrutador": {
+      "post": {
+        "operationId": "CopilotoController_mensagemRecrutador",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MensagemRecrutadorDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto34Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Copiloto"
+        ]
+      }
+    },
+    "/v1/copiloto/respostas-formulario": {
+      "post": {
+        "operationId": "CopilotoController_respostasFormulario",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RespostasFormularioDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto35Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Copiloto"
+        ]
+      }
+    },
+    "/v1/curriculos": {
+      "get": {
+        "operationId": "CurriculosController_listar",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "vagaId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scoreMinimo",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vinculado",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "categoria",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "nivel",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ordenarPor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "de",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ate",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto37Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Curriculos"
+        ]
+      }
+    },
+    "/v1/curriculos/{id}": {
+      "get": {
+        "operationId": "CurriculosController_buscar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto43Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Curriculos"
+        ]
+      },
+      "put": {
+        "operationId": "CurriculosController_editar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditarCurriculoDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto43Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Curriculos"
+        ]
+      }
+    },
+    "/v1/curriculos/{id}/arquivos": {
+      "post": {
+        "operationId": "CurriculosController_gerarArquivos",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto43Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Curriculos"
+        ]
+      }
+    },
+    "/v1/curriculos/{id}/docx": {
+      "get": {
+        "operationId": "CurriculosController_docx",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto46Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Curriculos"
+        ]
+      }
+    },
+    "/v1/curriculos/{id}/pacote": {
+      "get": {
+        "operationId": "CurriculosController_pacote",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto46Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Curriculos"
+        ]
+      }
+    },
+    "/v1/curriculos/{id}/pdf": {
+      "get": {
+        "operationId": "CurriculosController_pdf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto46Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Curriculos"
+        ]
+      }
+    },
+    "/v1/geracoes-curriculo/{jobId}": {
+      "get": {
+        "operationId": "CurriculosController_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto41Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Curriculos"
+        ]
+      }
+    },
+    "/v1/hoje": {
+      "get": {
+        "operationId": "HojeController_agenda",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "de",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ate",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "periodo",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7",
+                "30",
+                "90"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-timezone",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto47Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Hoje"
+        ]
+      }
+    },
+    "/v1/lotes/{id}": {
+      "get": {
+        "operationId": "LotesController_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto55Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Lotes"
+        ]
+      }
+    },
+    "/v1/oportunidades": {
+      "get": {
+        "operationId": "OportunidadesController_listar",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "visao",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "busca",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "categoria",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "nivel",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "prioridade",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ordenarPor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ordenarDirecao",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/RespostaObjeto57Dto"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RespostaObjeto59Dto"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RespostaObjeto63Dto"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      },
+      "post": {
+        "operationId": "OportunidadesController_criar",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriarOportunidadeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto64Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      }
+    },
+    "/v1/oportunidades/entradas/{id}/ativar": {
+      "post": {
+        "operationId": "OportunidadesController_ativar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto64Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      }
+    },
+    "/v1/oportunidades/importar": {
+      "post": {
+        "operationId": "OportunidadesController_importar",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportarOportunidadesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto65Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      }
+    },
+    "/v1/oportunidades/{id}": {
+      "get": {
+        "operationId": "OportunidadesController_buscar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto67Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      },
+      "patch": {
+        "operationId": "OportunidadesController_atualizar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtualizarOportunidadeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto64Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      }
+    },
+    "/v1/oportunidades/{id}/acoes": {
+      "get": {
+        "operationId": "AcoesController_listar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RespostaObjeto1Dto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Acoes"
+        ]
+      },
+      "post": {
+        "operationId": "AcoesController_criar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CriarAcaoDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto1Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Acoes"
+        ]
+      }
+    },
+    "/v1/oportunidades/{id}/analisar-ats": {
+      "post": {
+        "operationId": "OportunidadesController_analisarAts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto79Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      }
+    },
+    "/v1/oportunidades/{id}/candidatura-principal": {
+      "post": {
+        "operationId": "OportunidadesController_candidaturaPrincipal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto8Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      }
+    },
+    "/v1/oportunidades/{id}/curriculos": {
+      "get": {
+        "operationId": "OportunidadesController_curriculosDaOportunidade",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RespostaObjeto81Dto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      }
+    },
+    "/v1/oportunidades/{id}/gerar-cv": {
+      "post": {
+        "operationId": "OportunidadesController_gerarCv",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/RespostaObjeto77Dto"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RespostaObjeto78Dto"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      }
+    },
+    "/v1/oportunidades/{id}/timeline": {
+      "get": {
+        "operationId": "OportunidadesController_timeline",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limite",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto74Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      }
+    },
+    "/v1/oportunidades/{id}/timeline/notas": {
+      "post": {
+        "operationId": "OportunidadesController_nota",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotaTimelineDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto73Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      }
+    },
+    "/v1/oportunidades/{id}/transicoes": {
+      "post": {
+        "operationId": "OportunidadesController_transicionar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransicaoDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto75Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      }
+    },
+    "/v1/oportunidades/{id}/workspace": {
+      "get": {
+        "operationId": "OportunidadesController_workspace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto66Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Oportunidades"
+        ]
+      }
+    },
+    "/v1/perfil-mestre": {
+      "get": {
+        "operationId": "PerfilController_buscar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto82Dto",
+                  "nullable": true
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Perfil"
+        ]
+      },
+      "put": {
+        "operationId": "PerfilController_salvar",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PerfilMestreDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto82Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Perfil"
+        ]
+      }
+    },
+    "/v1/pipeline": {
+      "get": {
+        "operationId": "PipelineController_listar",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "busca",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "apresentacao",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "statusCandidatura",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "categoria",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "nivel",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "empresa",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "prioridade",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "comCurriculo",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scoreMinimo",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "prazo",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "atividadeDesde",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ordenarPor",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ordenarDirecao",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RespostaObjeto92Dto"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Pipeline"
+        ]
+      }
+    },
+    "/v1/pipeline/grafo": {
+      "get": {
+        "operationId": "PipelineController_grafo",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "busca",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "apresentacao",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "statusCandidatura",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "categoria",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "nivel",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "empresa",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "prioridade",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "comCurriculo",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scoreMinimo",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "prazo",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "atividadeDesde",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ordenarPor",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ordenarDirecao",
+            "required": false,
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto94Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Pipeline"
+        ]
+      }
+    },
+    "/v1/preferencias": {
+      "get": {
+        "operationId": "HojeController_preferencias",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-timezone",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto54Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Hoje"
+        ]
+      },
+      "patch": {
+        "operationId": "HojeController_atualizar",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchPreferenciasDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto54Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Hoje"
+        ]
+      }
+    },
+    "/v1/taxonomia": {
+      "get": {
+        "operationId": "TaxonomiaController_listar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaObjeto101Dto"
+                }
+              }
+            },
+            "description": ""
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Taxonomia"
+        ]
+      }
+    }
+  },
+  "servers": [],
+  "tags": []
+}

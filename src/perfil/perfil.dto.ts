@@ -1,4 +1,5 @@
 import { plainToInstance, Type } from 'class-transformer';
+import { ApiExtraModels, ApiPropertyOptional, getSchemaPath } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   IsArray,
@@ -242,6 +243,7 @@ export class CertificacaoPerfilDto extends RevisavelDto {
   descricao!: string;
 }
 
+@ApiExtraModels(LocalPerfilDto)
 export class ExperienciaPerfilDto extends RevisavelDto {
   @IsString()
   @MinLength(1)
@@ -285,6 +287,7 @@ export class ExperienciaPerfilDto extends RevisavelDto {
   atual?: boolean;
 
   @Validate(TextoOuObjeto, [LocalPerfilDto])
+  @ApiPropertyOptional({ oneOf: [{ type: 'string', maxLength: LIMITE.textoCurto }, { $ref: getSchemaPath(LocalPerfilDto) }], nullable: true })
   local?: LocalPerfilDto | string | null;
 
   @IsString()
@@ -307,6 +310,7 @@ export class ExperienciaPerfilDto extends RevisavelDto {
   localLegado?: string;
 }
 
+@ApiExtraModels(EnderecoPerfilDto)
 export class PerfilMestreDto {
   @IsString()
   @MaxLength(LIMITE.titulo)
@@ -331,6 +335,7 @@ export class PerfilMestreDto {
   links!: LinkPerfilDto[];
 
   @Validate(TextoOuObjeto, [EnderecoPerfilDto])
+  @ApiPropertyOptional({ oneOf: [{ type: 'string', maxLength: LIMITE.textoCurto }, { $ref: getSchemaPath(EnderecoPerfilDto) }], nullable: true })
   endereco?: EnderecoPerfilDto | string | null;
 
   @IsOptional()

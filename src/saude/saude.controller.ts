@@ -2,14 +2,15 @@ import { Controller, Get, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import type { HealthResponse } from '@prdal/contracts';
 import { Prontidao, SaudeService } from './saude.service';
+import { HealthResponseDto } from './saude.dto';
 
 @Controller()
 export class SaudeController {
   constructor(private readonly saude: SaudeService) {}
 
   @Get('health')
-  health(): HealthResponse {
-    return { service: 'api', status: 'ok' };
+  health(): HealthResponseDto {
+    return { service: 'api', status: 'ok' } satisfies HealthResponse;
   }
 
   @Get('ready')

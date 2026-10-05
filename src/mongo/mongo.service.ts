@@ -138,6 +138,11 @@ export class MongoService implements OnModuleInit, OnModuleDestroy {
     this.db = this.client.db(process.env.MONGO_DB ?? 'prdal_careers');
   }
 
+  async ping(): Promise<void> {
+    await this.pronto;
+    await this.db.command({ ping: 1 });
+  }
+
   async onModuleDestroy() {
     await this.client?.close();
   }

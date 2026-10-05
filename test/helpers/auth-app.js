@@ -30,13 +30,13 @@ async function subirAuth(t, { usuarios = [] } = {}) {
   const { JANELAS } = require('../../dist/limites/limite-requisicoes');
   const { configurarCsrf } = require('../../dist/config/csrf');
   const { configurarPrefixo } = require('../../dist/config/prefixo');
-  const { AppController } = require('../../dist/app.controller');
-  const { AppService } = require('../../dist/app.service');
+  const { SaudeController } = require('../../dist/saude/saude.controller');
+  const { SaudeService } = require('../../dist/saude/saude.service');
   const prisma = prismaMemoria({ usuarios });
   const { url } = await subirApp(t, {
     imports: [ThrottlerModule.forRoot(JANELAS), JwtModule.register({ secret: SEGREDO, signOptions: { expiresIn: '15m' } })],
-    controllers: [AuthController, AppController, controllerProtegido()],
-    providers: [AuthService, SessoesService, { provide: PrismaService, useValue: prisma }, { provide: AppService, useValue: {} }],
+    controllers: [AuthController, SaudeController, controllerProtegido()],
+    providers: [AuthService, SessoesService, { provide: PrismaService, useValue: prisma }, { provide: SaudeService, useValue: {} }],
     sessoes: false,
     configurar: (app) => {
       configurarPrefixo(app);

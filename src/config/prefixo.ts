@@ -13,5 +13,12 @@ export function semPrefixo(caminho: string, env: Record<string, string | undefin
 
 export function configurarPrefixo(app: INestApplication, env: Record<string, string | undefined> = process.env): void {
   const prefixo = prefixoApi(env);
-  if (prefixo) app.setGlobalPrefix(prefixo, { exclude: [{ path: 'health', method: RequestMethod.GET }] });
+  if (prefixo) {
+    app.setGlobalPrefix(prefixo, {
+      exclude: [
+        { path: 'health', method: RequestMethod.GET },
+        { path: 'ready', method: RequestMethod.GET },
+      ],
+    });
+  }
 }

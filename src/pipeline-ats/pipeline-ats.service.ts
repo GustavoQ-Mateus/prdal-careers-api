@@ -172,9 +172,9 @@ export class PipelineAtsService {
     });
   }
 
-  private async legado(banco: Banco, usuarioId: string, vagaId: string): Promise<SituacaoAts> {
+  private async legado(banco: Banco, usuarioId: string, vagaId: string, ignorarGeracaoId?: string): Promise<SituacaoAts> {
     const geracao = await banco.geracaoCurriculo.findFirst({
-      where: { usuarioId, vagaId },
+      where: { usuarioId, vagaId, ...(ignorarGeracaoId ? { id: { not: ignorarGeracaoId } } : {}) },
       orderBy: { criadoEm: 'desc' },
       select: { id: true, status: true, curriculoId: true },
     });
@@ -189,7 +189,7 @@ export class PipelineAtsService {
   ): Promise<SituacaoAts> {
     const linha = (await db.pipelineAts.findUnique({ where: { vagaId } })) as LinhaPipeline | null;
     if (linha && linha.usuarioId !== usuarioId) throw new NotFoundException('vaga nao encontrada');
-    const atual = linha ? daLinha(linha) : await this.legado(db, usuarioId, vagaId);
+    const atual = linha ? daLinha(linha) : await this.legado(db, usuarioId, vagaId, evento.tipo === 'geracao_iniciada' ? evento.jobId : undefined);
     const transicao = transicionar(atual, evento);
     if (!transicao.aceita) {
       throw new TransicaoRecusada(atual, foraDaTransicao(transicao), evento.tipo);

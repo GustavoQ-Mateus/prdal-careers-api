@@ -9,6 +9,7 @@ import { cabecalhoServico } from './config/servico';
 import { CandidaturasModule } from './candidaturas/candidaturas.module';
 import { ContextoModule } from './contexto/contexto.module';
 import { CopilotoModule } from './copiloto/copiloto.module';
+import { ContaModule } from './conta/conta.module';
 import { CotaModule } from './cota/cota.module';
 import { CurriculosModule } from './curriculos/curriculos.module';
 import { LotesModule } from './lotes/lotes.module';
@@ -39,6 +40,7 @@ import { TaxonomiaModule } from './taxonomia/taxonomia.module';
     CotaModule,
     RepositoriosModule,
     AuthModule,
+    ContaModule,
     PerfilModule,
     EventosModule,
     CurriculosModule,

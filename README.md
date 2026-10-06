@@ -28,7 +28,7 @@ Cada evento validado gera uma linha JSON no logger da API, com `requestId` do co
 {"horario":"2026-10-05T12:00:00.000Z","nivel":"log","servico":"api","contexto":"TelemetriaController","requestId":"req-exemplo","mensagem":"evento de telemetria","telemetria":true,"usuarioId":"usuario-exemplo","evento":"copiloto_acao_rapida","sessaoId":"aba-exemplo","acao":"preparar_envio"}
 ```
 
-Quando não há ação, `acao` é `null`. A API não persiste esses eventos nem deduplica sessões. O cliente deve emitir a primeira mensagem uma vez por sessão. A infraestrutura cria posteriormente o filtro de métrica do CloudWatch com `{ $.telemetria = true }`, valor 1 por linha, e pode filtrar por `evento` e `acao`. A API não possui módulo de métricas nem publica métricas diretamente.
+Quando não há ação, `acao` é `null`. A API não persiste esses eventos nem deduplica sessões. O cliente deve emitir a primeira mensagem uma vez por sessão. A rota limita cada usuário a 30 requisições por minuto e 300 por hora; ao exceder, responde 429 com `Retry-After` sem registrar o evento. A infraestrutura cria posteriormente o filtro de métrica do CloudWatch com `{ $.telemetria = true }`, valor 1 por linha, e pode filtrar por `evento` e `acao`. A API não possui módulo de métricas nem publica métricas diretamente.
 
 ## Imagem
 

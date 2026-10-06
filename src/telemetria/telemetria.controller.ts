@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, Logger, Post, UseGuards, UsePipes, Validati
 import { ApiBody, ApiCookieAuth } from '@nestjs/swagger';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
 import { ACOES_RAPIDAS, EVENTOS_TELEMETRIA, SESSAO_ID_PADRAO, TelemetriaEventoDto } from './telemetria.dto';
 
 @ApiCookieAuth('prdal_access')
@@ -12,6 +13,7 @@ export class TelemetriaController {
 
   @Post('eventos')
   @HttpCode(204)
+  @LimitarRequisicoes(LIMITES.telemetria)
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   @ApiBody({ schema: {
     oneOf: EVENTOS_TELEMETRIA.map((evento) => ({

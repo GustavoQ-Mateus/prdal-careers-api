@@ -101,3 +101,20 @@ test('log estruturado permite contar eventos sem guardar texto livre', async (t)
   assert.equal(eventos.filter((linha) => linha.evento === 'copiloto_primeira_mensagem').length, 1);
   assert.doesNotMatch(JSON.stringify(linhas), /texto privado|usuario-forjado|req-forjado/);
 });
+
+test('limite por usuario bloqueia abuso sem registrar eventos recusados', async (t) => {
+  const { LIMITES } = require('../dist/limites/limite-requisicoes');
+  const { LoggerJson } = require('../dist/observabilidade/logger');
+  const linhas = [];
+  const logger = new LoggerJson('api', (linha) => linhas.push(JSON.parse(linha)));
+  const { url } = await subirTelemetria(t, (app) => app.useLogger(logger));
+  const corpo = { evento: 'copiloto_acao_rapida', sessaoId: 'aba-limite', acao: 'preparar_envio' };
+  for (let i = 0; i < LIMITES.telemetria.minuto; i++) {
+    assert.equal((await enviar(url, corpo, autenticado('usuario-limite'))).status, 204);
+  }
+  const bloqueada = await enviar(url, corpo, autenticado('usuario-limite'));
+  assert.equal(bloqueada.status, 429);
+  assert.ok(Number(bloqueada.headers.get('retry-after')) > 0);
+  assert.equal(linhas.filter((linha) => linha.telemetria === true).length, LIMITES.telemetria.minuto);
+  assert.equal((await enviar(url, corpo, autenticado('outro-usuario'))).status, 204);
+});

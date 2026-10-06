@@ -20,6 +20,7 @@ export const LIMITES = {
   cadastro: { minuto: 5, hora: 10 },
   refresh: { minuto: 30, hora: 300 },
   chat: { minuto: 30, hora: 300 },
+  telemetria: { minuto: 30, hora: 300 },
   geracao: { minuto: 5, hora: 30 },
   criacao: { minuto: 20, hora: 200 },
   ia: { minuto: 10, hora: 100 },

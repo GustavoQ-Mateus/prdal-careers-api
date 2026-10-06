@@ -1,5 +1,6 @@
 import type { BlocoNativo } from '../copiloto/historico';
 import type { DadosNarracao } from '../pipeline-ats/narracao';
+import type { CopilotoEvento } from '../copiloto/eventos';
 
 export type OrigemDocumentoRag = 'perfil' | 'candidatura' | 'nota';
 
@@ -55,7 +56,7 @@ export interface MensagemCopiloto {
     ok?: boolean;
     resultado?: unknown;
     erro?: string;
-    entrega?: { tipo: string; titulo: string; texto: string; destino?: string };
+    entrega?: Extract<CopilotoEvento, { evento: 'entrega_externa' }>['data'];
     evento?: 'erro' | 'cancelado';
     escopo?: string;
     origem?: 'geracao_assincrona';

@@ -1,28 +1,25 @@
-FROM node:22-slim AS deps
-WORKDIR /repo/apps/api
-COPY apps/api/package.json apps/api/package-lock.json ./
-COPY apps/api/prisma ./prisma
-RUN npm ci --omit=dev
-RUN npm prune --omit=dev --omit=optional --ignore-scripts
+FROM node:22-slim AS base
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 
-FROM node:22-slim AS build
-WORKDIR /repo
-COPY apps/api/package.json apps/api/package-lock.json ./apps/api/
-COPY apps/api/prisma ./apps/api/prisma
-WORKDIR /repo/apps/api
+FROM base AS build
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY package*.json ./
+COPY prisma ./prisma
 RUN npm ci
-COPY packages/shared-types /repo/packages/shared-types
-RUN npx tsc -p /repo/packages/shared-types/tsconfig.json
-COPY apps/api ./
+COPY . .
 RUN npm run build
 
-FROM node:22-slim
+FROM build AS deps
+RUN npm prune --omit=dev --omit=optional --ignore-scripts
+
+FROM base
 WORKDIR /app
 ENV NODE_ENV=production
 RUN mkdir -p /app/storage && chown node:node /app /app/storage
-COPY --from=deps /repo/apps/api/node_modules ./node_modules
-COPY --from=deps /repo/apps/api/prisma ./prisma
-COPY --from=build /repo/apps/api/dist ./dist
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/prisma ./prisma
 EXPOSE 3000
 USER node
 CMD ["node", "dist/main.js"]

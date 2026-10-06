@@ -14,7 +14,7 @@ const respostas = [];
 function esquema(tipo) {
   if (tipo.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) return { oneOf: [{}] };
   if (tipo.flags & ts.TypeFlags.Never) return {};
-  if (tipo.flags & ts.TypeFlags.Null) return { nullable: true };
+  if (tipo.flags & ts.TypeFlags.Null) return { type: 'string', enum: [null], nullable: true };
   if (tipo.isUnion()) {
     const partes = tipo.types.filter((parte) => !(parte.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Null)));
     const nullable = tipo.types.some((parte) => parte.flags & ts.TypeFlags.Null);
@@ -39,7 +39,7 @@ function esquema(tipo) {
     return { type: 'object', additionalProperties: indice ? esquema(indice) ?? {} : true };
   }
   if (objetos.has(tipo.id)) return { $ref: `#/components/schemas/${objetos.get(tipo.id)}` };
-  const nome = tipo.symbol?.name === 'HealthResponseDto' ? 'HealthResponseDto' : `RespostaObjeto${objetos.size + 1}Dto`;
+  const nome = tiposNomeados.get(tipo.id) ?? (tipo.symbol?.name === 'HealthResponseDto' ? 'HealthResponseDto' : `RespostaObjeto${objetos.size + 1}Dto`);
   objetos.set(tipo.id, nome);
   const campos = [];
   classes.push({ nome, campos });
@@ -47,12 +47,34 @@ function esquema(tipo) {
     const local = prop.valueDeclaration ?? prop.declarations?.[0];
     if (!local) continue;
     const tipoCampo = checker.getTypeOfSymbolAtLocation(prop, local);
-    const schema = esquema(tipoCampo) ?? {};
+    if (tipoCampo.flags & ts.TypeFlags.Undefined) continue;
+    const tipoJson = tiposJson.get(prop.name);
+    const json = tipoCampo.aliasSymbol?.name === 'JsonValue' || (tipoCampo.isUnion() && tipoCampo.types.some((parte) => parte.aliasSymbol?.name === 'JsonValue'));
+    const schema = json && prop.name === 'keywords'
+      ? { type: 'array', items: esquema(tiposContrato.get('Keyword')), nullable: true }
+      : json && tipoJson ? { ...esquema(tipoJson), nullable: true } : esquema(tipoCampo) ?? {};
     campos.push({ nome: prop.name, schema, obrigatorio: !(prop.flags & ts.SymbolFlags.Optional) });
   }
   return { $ref: `#/components/schemas/${nome}` };
 }
 
+const tiposNomeados = new Map();
+const tiposJson = new Map();
+const tiposContrato = new Map();
+for (const arquivo of programa.getSourceFiles()) {
+  if (!/[/\\]src[/\\](clients[/\\]ai.client|copiloto[/\\]eventos|observabilidade[/\\]erros)\.ts$/.test(arquivo.fileName)) continue;
+  for (const declaracao of arquivo.statements) {
+    if (!ts.isInterfaceDeclaration(declaracao) && !ts.isTypeAliasDeclaration(declaracao)) continue;
+    const nome = declaracao.name.text;
+    if (!['Keyword', 'ScoreBreakdown', 'AtsAnalysis', 'CopilotoEvento', 'AvisoAcao', 'CorpoErro', 'RespostaExcecao'].includes(nome)) continue;
+    const tipo = checker.getTypeAtLocation(declaracao);
+    tiposNomeados.set(tipo.id, nome);
+    tiposContrato.set(nome, tipo);
+  }
+}
+for (const [campo, nome] of [['breakdown', 'ScoreBreakdown'], ['analiseInicial', 'AtsAnalysis'], ['analiseFinal', 'AtsAnalysis']]) {
+  tiposJson.set(campo, tiposContrato.get(nome));
+}
 for (const arquivo of programa.getSourceFiles().filter((arquivo) => arquivo.fileName.endsWith('.controller.ts')).sort((a, b) => a.fileName.localeCompare(b.fileName))) {
   for (const classe of arquivo.statements.filter(ts.isClassDeclaration)) {
     for (const metodo of classe.members.filter(ts.isMethodDeclaration)) {
@@ -65,6 +87,9 @@ for (const arquivo of programa.getSourceFiles().filter((arquivo) => arquivo.file
   }
 }
 
+const eventosCopiloto = esquema(tiposContrato.get('CopilotoEvento'));
+for (const tipo of tiposContrato.values()) esquema(tipo);
+
 const linhas = ["import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';", ''];
 for (const { nome, campos } of classes) {
   linhas.push(`export class ${nome} {`);
@@ -75,6 +100,6 @@ for (const { nome, campos } of classes) {
   }
   linhas.push('}', '');
 }
-linhas.push(`export const modelosResposta = [${classes.map((classe) => classe.nome).join(', ')}];`, `export const respostasContrato = ${JSON.stringify(respostas, null, 2)};`, '');
+linhas.push(`export const modelosResposta = [${classes.map((classe) => classe.nome).join(', ')}];`, `export const respostasContrato = ${JSON.stringify(respostas, null, 2)};`, `export const eventosCopiloto = ${JSON.stringify(eventosCopiloto)};`, '');
 fs.mkdirSync(path.join(raiz, 'src/contrato'), { recursive: true });
 fs.writeFileSync(path.join(raiz, 'src/contrato/respostas.dto.ts'), linhas.join('\n'));

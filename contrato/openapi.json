@@ -14,6 +14,49 @@
         ],
         "type": "object"
       },
+      "AtsAnalysis": {
+        "properties": {
+          "breakdown": {
+            "$ref": "#/components/schemas/ScoreBreakdown"
+          },
+          "keywordsCriticasAusentes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "keywordsEncontradas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "pontosEliminatorios": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "score": {
+            "type": "number"
+          },
+          "scoreVersao": {
+            "type": "number"
+          },
+          "veredicto": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "score",
+          "keywordsEncontradas",
+          "keywordsCriticasAusentes",
+          "pontosEliminatorios",
+          "veredicto",
+          "breakdown"
+        ],
+        "type": "object"
+      },
       "AtualizarAcaoDto": {
         "properties": {
           "lembrarEm": {
@@ -102,6 +145,25 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "AvisoAcao": {
+        "properties": {
+          "mensagem": {
+            "type": "string"
+          },
+          "sugestao": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "mensagem",
+          "sugestao"
+        ],
         "type": "object"
       },
       "CadastroDto": {
@@ -210,6 +272,45 @@
         "required": [
           "callId",
           "decisao"
+        ],
+        "type": "object"
+      },
+      "CopilotoEvento": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RespostaObjeto108Dto"
+          },
+          {
+            "$ref": "#/components/schemas/RespostaObjeto110Dto"
+          },
+          {
+            "$ref": "#/components/schemas/RespostaObjeto112Dto"
+          },
+          {
+            "$ref": "#/components/schemas/RespostaObjeto114Dto"
+          },
+          {
+            "$ref": "#/components/schemas/RespostaObjeto117Dto"
+          },
+          {
+            "$ref": "#/components/schemas/RespostaObjeto118Dto"
+          },
+          {
+            "$ref": "#/components/schemas/RespostaObjeto120Dto"
+          },
+          {
+            "$ref": "#/components/schemas/RespostaObjeto122Dto"
+          }
+        ]
+      },
+      "CorpoErro": {
+        "properties": {
+          "erro": {
+            "$ref": "#/components/schemas/RespostaObjeto125Dto"
+          }
+        },
+        "required": [
+          "erro"
         ],
         "type": "object"
       },
@@ -646,6 +747,21 @@
         ],
         "type": "object"
       },
+      "Keyword": {
+        "properties": {
+          "peso": {
+            "type": "number"
+          },
+          "termo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "termo",
+          "peso"
+        ],
+        "type": "object"
+      },
       "LinkPerfilDto": {
         "properties": {
           "id": {
@@ -886,7 +1002,163 @@
         ],
         "type": "object"
       },
+      "RespostaExcecao": {
+        "properties": {
+          "message": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
       "RespostaObjeto100Dto": {
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto102Dto"
+            },
+            "type": "array"
+          },
+          "facets": {
+            "$ref": "#/components/schemas/RespostaObjeto103Dto"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto101Dto"
+            },
+            "type": "array"
+          },
+          "schemaVersion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "nodes",
+          "edges",
+          "facets"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto101Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rotulo": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tipo",
+          "rotulo"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto102Dto": {
+        "properties": {
+          "destino": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "origem": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "origem",
+          "destino",
+          "tipo"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto103Dto": {
+        "properties": {
+          "categorias": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "empresas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "niveis": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "empresas",
+          "categorias",
+          "niveis",
+          "skills"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto105Dto": {
+        "properties": {
+          "dependencias": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto106Dto"
+            },
+            "type": "array"
+          },
+          "servico": {
+            "enum": [
+              "api"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pronto",
+              "indisponivel"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "servico",
+          "status",
+          "dependencias"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto106Dto": {
         "properties": {
           "estado": {
             "enum": [
@@ -914,7 +1186,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto101Dto": {
+      "RespostaObjeto107Dto": {
         "properties": {
           "categorias": {
             "items": {
@@ -932,6 +1204,35 @@
         "required": [
           "categorias",
           "niveis"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto108Dto": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RespostaObjeto109Dto"
+          },
+          "evento": {
+            "enum": [
+              "token"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "evento",
+          "data"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto109Dto": {
+        "properties": {
+          "delta": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "delta"
         ],
         "type": "object"
       },
@@ -955,6 +1256,248 @@
         ],
         "type": "object"
       },
+      "RespostaObjeto110Dto": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RespostaObjeto111Dto"
+          },
+          "evento": {
+            "enum": [
+              "tool_call"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "evento",
+          "data"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto111Dto": {
+        "properties": {
+          "args": {
+            "additionalProperties": {
+              "oneOf": [
+                {}
+              ]
+            },
+            "type": "object"
+          },
+          "callId": {
+            "type": "string"
+          },
+          "efeito": {
+            "enum": [
+              "leitura",
+              "escrita"
+            ],
+            "type": "string"
+          },
+          "exigeConfirmacao": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "tool": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "callId",
+          "tool",
+          "efeito",
+          "args",
+          "exigeConfirmacao"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto112Dto": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RespostaObjeto113Dto"
+          },
+          "evento": {
+            "enum": [
+              "confirmacao"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "evento",
+          "data"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto113Dto": {
+        "properties": {
+          "args": {
+            "additionalProperties": {
+              "oneOf": [
+                {}
+              ]
+            },
+            "type": "object"
+          },
+          "callId": {
+            "type": "string"
+          },
+          "resumo": {
+            "type": "string"
+          },
+          "tool": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "callId",
+          "tool",
+          "resumo",
+          "args"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto114Dto": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RespostaObjeto115Dto"
+          },
+          "evento": {
+            "enum": [
+              "tool_resultado"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "evento",
+          "data"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto115Dto": {
+        "properties": {
+          "callId": {
+            "type": "string"
+          },
+          "erro": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RespostaObjeto116Dto"
+              }
+            ],
+            "nullable": true,
+            "type": "object"
+          },
+          "ok": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "resultado": {
+            "oneOf": [
+              {}
+            ]
+          },
+          "tool": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "callId",
+          "tool",
+          "ok",
+          "resultado",
+          "erro"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto116Dto": {
+        "properties": {
+          "mensagem": {
+            "type": "string"
+          },
+          "recuperavel": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mensagem",
+          "recuperavel"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto117Dto": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RespostaObjeto31Dto"
+          },
+          "evento": {
+            "enum": [
+              "entrega_externa"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "evento",
+          "data"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto118Dto": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RespostaObjeto119Dto"
+          },
+          "evento": {
+            "enum": [
+              "erro"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "evento",
+          "data"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto119Dto": {
+        "properties": {
+          "escopo": {
+            "type": "string"
+          },
+          "mensagem": {
+            "type": "string"
+          },
+          "recuperavel": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "retryAfter": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "escopo",
+          "mensagem",
+          "recuperavel"
+        ],
+        "type": "object"
+      },
       "RespostaObjeto11Dto": {
         "properties": {
           "id": {
@@ -973,6 +1516,96 @@
           "id",
           "titulo",
           "venceEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto120Dto": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RespostaObjeto121Dto"
+          },
+          "evento": {
+            "enum": [
+              "fim_turno"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "evento",
+          "data"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto121Dto": {
+        "properties": {
+          "conversaId": {
+            "type": "string"
+          },
+          "motivo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "motivo",
+          "conversaId"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto122Dto": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RespostaObjeto123Dto"
+          },
+          "evento": {
+            "enum": [
+              "conversa"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "evento",
+          "data"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto123Dto": {
+        "properties": {
+          "conversaId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversaId"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto125Dto": {
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "detalhes": {
+            "additionalProperties": {
+              "oneOf": [
+                {}
+              ]
+            },
+            "type": "object"
+          },
+          "mensagem": {
+            "type": "string"
+          },
+          "requestId": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "codigo",
+          "mensagem",
+          "requestId"
         ],
         "type": "object"
       },
@@ -1029,9 +1662,6 @@
       },
       "RespostaObjeto15Dto": {
         "properties": {
-          "expiraEm": {
-            "type": "object"
-          },
           "status": {
             "enum": [
               "PENDENTE",
@@ -1039,9 +1669,6 @@
               "ERRO"
             ],
             "type": "string"
-          },
-          "url": {
-            "type": "object"
           }
         },
         "required": [
@@ -1329,7 +1956,7 @@
           "pendencia": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RespostaObjeto33Dto"
+                "$ref": "#/components/schemas/RespostaObjeto34Dto"
               }
             ],
             "nullable": true,
@@ -1577,7 +2204,7 @@
             "type": "string"
           },
           "narracao": {
-            "$ref": "#/components/schemas/RespostaObjeto32Dto"
+            "$ref": "#/components/schemas/RespostaObjeto33Dto"
           },
           "ok": {
             "enum": [
@@ -1602,6 +2229,9 @@
       },
       "RespostaObjeto31Dto": {
         "properties": {
+          "aviso": {
+            "$ref": "#/components/schemas/AvisoAcao"
+          },
           "destino": {
             "type": "string"
           },
@@ -1622,7 +2252,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto32Dto": {
+      "RespostaObjeto33Dto": {
         "properties": {
           "degradacao": {
             "nullable": true,
@@ -1681,7 +2311,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto33Dto": {
+      "RespostaObjeto34Dto": {
         "properties": {
           "args": {
             "additionalProperties": {
@@ -1722,7 +2352,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto34Dto": {
+      "RespostaObjeto35Dto": {
         "properties": {
           "destino": {
             "type": "string"
@@ -1748,11 +2378,11 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto35Dto": {
+      "RespostaObjeto36Dto": {
         "properties": {
           "respostas": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto36Dto"
+              "$ref": "#/components/schemas/RespostaObjeto37Dto"
             },
             "type": "array"
           },
@@ -1777,7 +2407,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto36Dto": {
+      "RespostaObjeto37Dto": {
         "properties": {
           "campo": {
             "type": "string"
@@ -1792,11 +2422,11 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto37Dto": {
+      "RespostaObjeto38Dto": {
         "properties": {
           "itens": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto38Dto"
+              "$ref": "#/components/schemas/RespostaObjeto39Dto"
             },
             "type": "array"
           },
@@ -1819,25 +2449,34 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto38Dto": {
+      "RespostaObjeto39Dto": {
         "properties": {
           "analiseFinal": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AtsAnalysis"
+              }
+            ],
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "object"
           },
           "analiseInicial": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AtsAnalysis"
+              }
+            ],
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "object"
           },
           "breakdown": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ScoreBreakdown"
+              }
+            ],
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "object"
           },
           "categoria": {
             "nullable": true,
@@ -1867,7 +2506,7 @@
             "type": "string"
           },
           "oportunidade": {
-            "$ref": "#/components/schemas/RespostaObjeto39Dto"
+            "$ref": "#/components/schemas/RespostaObjeto42Dto"
           },
           "rotulo": {
             "type": "string"
@@ -1882,7 +2521,7 @@
           "vinculo": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RespostaObjeto40Dto"
+                "$ref": "#/components/schemas/RespostaObjeto43Dto"
               }
             ],
             "nullable": true,
@@ -1908,7 +2547,22 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto39Dto": {
+      "RespostaObjeto3Dto": {
+        "properties": {
+          "csrfToken": {
+            "type": "string"
+          },
+          "usuario": {
+            "$ref": "#/components/schemas/RespostaObjeto4Dto"
+          }
+        },
+        "required": [
+          "usuario",
+          "csrfToken"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto42Dto": {
         "properties": {
           "empresa": {
             "type": "string"
@@ -1927,22 +2581,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto3Dto": {
-        "properties": {
-          "csrfToken": {
-            "type": "string"
-          },
-          "usuario": {
-            "$ref": "#/components/schemas/RespostaObjeto4Dto"
-          }
-        },
-        "required": [
-          "usuario",
-          "csrfToken"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto40Dto": {
+      "RespostaObjeto43Dto": {
         "properties": {
           "candidaturaId": {
             "type": "string"
@@ -1974,7 +2613,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto41Dto": {
+      "RespostaObjeto44Dto": {
         "properties": {
           "curriculoId": {
             "nullable": true,
@@ -1985,7 +2624,7 @@
             "type": "string"
           },
           "etapas": {
-            "$ref": "#/components/schemas/RespostaObjeto42Dto"
+            "$ref": "#/components/schemas/RespostaObjeto45Dto"
           },
           "id": {
             "type": "string"
@@ -2015,19 +2654,25 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto42Dto": {
+      "RespostaObjeto45Dto": {
         "properties": {
           "analiseFinal": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AtsAnalysis"
+              }
+            ],
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "object"
           },
           "analiseInicial": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AtsAnalysis"
+              }
+            ],
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "object"
           },
           "degradacao": {
             "nullable": true,
@@ -2049,25 +2694,34 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto43Dto": {
+      "RespostaObjeto46Dto": {
         "properties": {
           "analiseFinal": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AtsAnalysis"
+              }
+            ],
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "object"
           },
           "analiseInicial": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AtsAnalysis"
+              }
+            ],
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "object"
           },
           "breakdown": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ScoreBreakdown"
+              }
+            ],
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "object"
           },
           "degradacao": {
             "nullable": true,
@@ -2092,7 +2746,7 @@
             "type": "string"
           },
           "oportunidade": {
-            "$ref": "#/components/schemas/RespostaObjeto44Dto"
+            "$ref": "#/components/schemas/RespostaObjeto47Dto"
           },
           "rotulo": {
             "type": "string"
@@ -2105,7 +2759,7 @@
             "type": "string"
           },
           "vinculo": {
-            "$ref": "#/components/schemas/RespostaObjeto45Dto"
+            "$ref": "#/components/schemas/RespostaObjeto48Dto"
           }
         },
         "required": [
@@ -2126,15 +2780,15 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto44Dto": {
+      "RespostaObjeto47Dto": {
         "properties": {},
         "type": "object"
       },
-      "RespostaObjeto45Dto": {
+      "RespostaObjeto48Dto": {
         "properties": {},
         "type": "object"
       },
-      "RespostaObjeto46Dto": {
+      "RespostaObjeto49Dto": {
         "properties": {
           "expiraEm": {
             "type": "string"
@@ -2146,131 +2800,6 @@
         "required": [
           "url",
           "expiraEm"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto47Dto": {
-        "properties": {
-          "atividadeRecente": {
-            "items": {
-              "oneOf": [
-                {}
-              ]
-            },
-            "type": "array"
-          },
-          "atrasadas": {
-            "items": {
-              "oneOf": [
-                {}
-              ]
-            },
-            "type": "array"
-          },
-          "entrada": {
-            "items": {
-              "$ref": "#/components/schemas/RespostaObjeto53Dto"
-            },
-            "type": "array"
-          },
-          "fimDia": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "fusoHorario": {
-            "type": "string"
-          },
-          "geracoesConcluidas": {
-            "items": {
-              "$ref": "#/components/schemas/RespostaObjeto52Dto"
-            },
-            "type": "array"
-          },
-          "hoje": {
-            "items": {
-              "oneOf": [
-                {}
-              ]
-            },
-            "type": "array"
-          },
-          "inicioDia": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "proximosDias": {
-            "items": {
-              "oneOf": [
-                {}
-              ]
-            },
-            "type": "array"
-          },
-          "resumoAts": {
-            "$ref": "#/components/schemas/RespostaObjeto49Dto"
-          },
-          "semProximoPasso": {
-            "items": {
-              "$ref": "#/components/schemas/RespostaObjeto48Dto"
-            },
-            "type": "array"
-          },
-          "serieTemporal": {
-            "$ref": "#/components/schemas/RespostaObjeto50Dto"
-          }
-        },
-        "required": [
-          "fusoHorario",
-          "inicioDia",
-          "fimDia",
-          "atrasadas",
-          "hoje",
-          "proximosDias",
-          "semProximoPasso",
-          "atividadeRecente",
-          "resumoAts",
-          "serieTemporal",
-          "geracoesConcluidas",
-          "entrada"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto48Dto": {
-        "properties": {
-          "empresa": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "titulo": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "titulo",
-          "empresa"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto49Dto": {
-        "properties": {
-          "comScore": {
-            "type": "number"
-          },
-          "curriculos": {
-            "type": "number"
-          },
-          "media": {
-            "nullable": true,
-            "type": "number"
-          }
-        },
-        "required": [
-          "curriculos",
-          "comScore",
-          "media"
         ],
         "type": "object"
       },
@@ -2291,6 +2820,230 @@
       },
       "RespostaObjeto50Dto": {
         "properties": {
+          "atividadeRecente": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto54Dto"
+            },
+            "type": "array"
+          },
+          "atrasadas": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto51Dto"
+            },
+            "type": "array"
+          },
+          "entrada": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto59Dto"
+            },
+            "type": "array"
+          },
+          "fimDia": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "fusoHorario": {
+            "type": "string"
+          },
+          "geracoesConcluidas": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto58Dto"
+            },
+            "type": "array"
+          },
+          "hoje": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto51Dto"
+            },
+            "type": "array"
+          },
+          "inicioDia": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "proximosDias": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto51Dto"
+            },
+            "type": "array"
+          },
+          "resumoAts": {
+            "$ref": "#/components/schemas/RespostaObjeto55Dto"
+          },
+          "semProximoPasso": {
+            "items": {
+              "$ref": "#/components/schemas/RespostaObjeto53Dto"
+            },
+            "type": "array"
+          },
+          "serieTemporal": {
+            "$ref": "#/components/schemas/RespostaObjeto56Dto"
+          }
+        },
+        "required": [
+          "fusoHorario",
+          "inicioDia",
+          "fimDia",
+          "atrasadas",
+          "hoje",
+          "proximosDias",
+          "semProximoPasso",
+          "atividadeRecente",
+          "resumoAts",
+          "serieTemporal",
+          "geracoesConcluidas",
+          "entrada"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto51Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "lembrarEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "oportunidade": {
+            "$ref": "#/components/schemas/RespostaObjeto52Dto"
+          },
+          "principal": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "quando": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "vagaId": {
+            "type": "string"
+          },
+          "venceEm": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "vagaId",
+          "titulo",
+          "tipo",
+          "principal",
+          "venceEm",
+          "lembrarEm",
+          "quando",
+          "oportunidade"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto52Dto": {
+        "properties": {
+          "empresa": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "empresa"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto53Dto": {
+        "properties": {
+          "empresa": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "empresa"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto54Dto": {
+        "properties": {
+          "descricao": {
+            "type": "string"
+          },
+          "empresa": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "ocorridoEm": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "titulo": {
+            "type": "string"
+          },
+          "vagaId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "vagaId",
+          "titulo",
+          "empresa",
+          "tipo",
+          "descricao",
+          "ocorridoEm"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto55Dto": {
+        "properties": {
+          "comScore": {
+            "type": "number"
+          },
+          "curriculos": {
+            "type": "number"
+          },
+          "media": {
+            "nullable": true,
+            "type": "number"
+          }
+        },
+        "required": [
+          "curriculos",
+          "comScore",
+          "media"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto56Dto": {
+        "properties": {
           "fim": {
             "type": "string"
           },
@@ -2307,7 +3060,7 @@
           },
           "pontos": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto51Dto"
+              "$ref": "#/components/schemas/RespostaObjeto57Dto"
             },
             "type": "array"
           }
@@ -2320,7 +3073,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto51Dto": {
+      "RespostaObjeto57Dto": {
         "properties": {
           "acoesConcluidas": {
             "type": "number"
@@ -2348,7 +3101,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto52Dto": {
+      "RespostaObjeto58Dto": {
         "properties": {
           "concluidaEm": {
             "format": "date-time",
@@ -2381,7 +3134,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto53Dto": {
+      "RespostaObjeto59Dto": {
         "properties": {
           "criadoEm": {
             "format": "date-time",
@@ -2405,7 +3158,18 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto54Dto": {
+      "RespostaObjeto5Dto": {
+        "properties": {
+          "csrfToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "csrfToken"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto60Dto": {
         "properties": {
           "atualizadoEm": {
             "format": "date-time",
@@ -2425,14 +3189,14 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto55Dto": {
+      "RespostaObjeto61Dto": {
         "properties": {
           "id": {
             "type": "string"
           },
           "itens": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto56Dto"
+              "$ref": "#/components/schemas/RespostaObjeto62Dto"
             },
             "type": "array"
           },
@@ -2464,7 +3228,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto56Dto": {
+      "RespostaObjeto62Dto": {
         "properties": {
           "bancoVagaId": {
             "nullable": true,
@@ -2495,11 +3259,11 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto57Dto": {
+      "RespostaObjeto63Dto": {
         "properties": {
           "itens": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto58Dto"
+              "$ref": "#/components/schemas/RespostaObjeto64Dto"
             },
             "type": "array"
           },
@@ -2522,7 +3286,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto58Dto": {
+      "RespostaObjeto64Dto": {
         "properties": {
           "apresentacao": {
             "enum": [
@@ -2535,24 +3299,31 @@
             "type": "string"
           },
           "curriculoVinculado": {
+            "enum": [
+              null
+            ],
             "nullable": true,
-            "type": "object"
+            "type": "string"
           },
           "empresa": {
             "type": "string"
           },
           "etapa": {
+            "enum": [
+              null
+            ],
             "nullable": true,
-            "type": "object"
+            "type": "string"
           },
           "id": {
             "type": "string"
           },
           "keywords": {
+            "items": {
+              "$ref": "#/components/schemas/Keyword"
+            },
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "array"
           },
           "keywordsStatus": {
             "enum": [
@@ -2572,16 +3343,25 @@
             "type": "string"
           },
           "prioridade": {
+            "enum": [
+              null
+            ],
             "nullable": true,
-            "type": "object"
+            "type": "string"
           },
           "proximoPasso": {
+            "enum": [
+              null
+            ],
             "nullable": true,
-            "type": "object"
+            "type": "string"
           },
           "score": {
+            "enum": [
+              null
+            ],
             "nullable": true,
-            "type": "object"
+            "type": "string"
           },
           "tipo": {
             "enum": [
@@ -2617,11 +3397,11 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto59Dto": {
+      "RespostaObjeto66Dto": {
         "properties": {
           "itens": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto60Dto"
+              "$ref": "#/components/schemas/RespostaObjeto67Dto"
             },
             "type": "array"
           },
@@ -2643,18 +3423,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto5Dto": {
-        "properties": {
-          "csrfToken": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "csrfToken"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto60Dto": {
+      "RespostaObjeto67Dto": {
         "properties": {
           "apresentacao": {
             "enum": [
@@ -2676,7 +3445,7 @@
           "curriculoVinculado": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RespostaObjeto61Dto"
+                "$ref": "#/components/schemas/RespostaObjeto68Dto"
               }
             ],
             "nullable": true,
@@ -2700,10 +3469,11 @@
             "type": "string"
           },
           "keywords": {
+            "items": {
+              "$ref": "#/components/schemas/Keyword"
+            },
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "array"
           },
           "keywordsErro": {
             "nullable": true,
@@ -2747,7 +3517,7 @@
           "proximoPasso": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RespostaObjeto62Dto"
+                "$ref": "#/components/schemas/RespostaObjeto69Dto"
               }
             ],
             "nullable": true,
@@ -2807,7 +3577,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto61Dto": {
+      "RespostaObjeto68Dto": {
         "properties": {
           "id": {
             "type": "string"
@@ -2827,7 +3597,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto62Dto": {
+      "RespostaObjeto69Dto": {
         "properties": {
           "canceladaEm": {
             "format": "date-time",
@@ -2878,17 +3648,35 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto63Dto": {
+      "RespostaObjeto6Dto": {
+        "properties": {
+          "csrfToken": {
+            "type": "string"
+          },
+          "usuario": {
+            "$ref": "#/components/schemas/RespostaObjeto7Dto"
+          }
+        },
+        "required": [
+          "usuario",
+          "csrfToken"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto70Dto": {
         "properties": {
           "itens": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto60Dto"
+              "$ref": "#/components/schemas/RespostaObjeto67Dto"
             },
             "type": "array"
           },
           "limit": {
+            "enum": [
+              null
+            ],
             "nullable": true,
-            "type": "object"
+            "type": "string"
           },
           "offset": {
             "type": "number"
@@ -2905,7 +3693,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto64Dto": {
+      "RespostaObjeto71Dto": {
         "properties": {
           "arquivadaEm": {
             "format": "date-time",
@@ -2945,10 +3733,11 @@
             "type": "string"
           },
           "keywords": {
+            "items": {
+              "$ref": "#/components/schemas/Keyword"
+            },
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "array"
           },
           "keywordsErro": {
             "nullable": true,
@@ -3023,7 +3812,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto65Dto": {
+      "RespostaObjeto72Dto": {
         "properties": {
           "loteId": {
             "type": "string"
@@ -3038,7 +3827,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto66Dto": {
+      "RespostaObjeto73Dto": {
         "properties": {
           "acaoPrincipal": {
             "allOf": [
@@ -3058,7 +3847,7 @@
           "candidatura": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RespostaObjeto68Dto"
+                "$ref": "#/components/schemas/RespostaObjeto75Dto"
               }
             ],
             "nullable": true,
@@ -3066,16 +3855,16 @@
           },
           "curriculos": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto72Dto"
+              "$ref": "#/components/schemas/RespostaObjeto79Dto"
             },
             "type": "array"
           },
           "oportunidade": {
-            "$ref": "#/components/schemas/RespostaObjeto67Dto"
+            "$ref": "#/components/schemas/RespostaObjeto74Dto"
           },
           "timeline": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto73Dto"
+              "$ref": "#/components/schemas/RespostaObjeto80Dto"
             },
             "type": "array"
           }
@@ -3090,7 +3879,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto67Dto": {
+      "RespostaObjeto74Dto": {
         "properties": {
           "apresentacao": {
             "enum": [
@@ -3120,7 +3909,7 @@
           "curriculoVinculado": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RespostaObjeto61Dto"
+                "$ref": "#/components/schemas/RespostaObjeto68Dto"
               }
             ],
             "nullable": true,
@@ -3151,10 +3940,11 @@
             "type": "string"
           },
           "keywords": {
+            "items": {
+              "$ref": "#/components/schemas/Keyword"
+            },
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "array"
           },
           "keywordsErro": {
             "nullable": true,
@@ -3198,7 +3988,7 @@
           "proximoPasso": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RespostaObjeto62Dto"
+                "$ref": "#/components/schemas/RespostaObjeto69Dto"
               }
             ],
             "nullable": true,
@@ -3262,7 +4052,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto68Dto": {
+      "RespostaObjeto75Dto": {
         "properties": {
           "curriculoId": {
             "nullable": true,
@@ -3310,13 +4100,13 @@
           "vinculo": {
             "oneOf": [
               {
-                "$ref": "#/components/schemas/RespostaObjeto69Dto"
+                "$ref": "#/components/schemas/RespostaObjeto76Dto"
               },
               {
-                "$ref": "#/components/schemas/RespostaObjeto70Dto"
+                "$ref": "#/components/schemas/RespostaObjeto77Dto"
               },
               {
-                "$ref": "#/components/schemas/RespostaObjeto71Dto"
+                "$ref": "#/components/schemas/RespostaObjeto78Dto"
               }
             ]
           }
@@ -3334,7 +4124,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto69Dto": {
+      "RespostaObjeto76Dto": {
         "properties": {
           "curriculoId": {
             "type": "string"
@@ -3358,31 +4148,10 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto6Dto": {
-        "properties": {
-          "csrfToken": {
-            "type": "string"
-          },
-          "usuario": {
-            "$ref": "#/components/schemas/RespostaObjeto7Dto"
-          }
-        },
-        "required": [
-          "usuario",
-          "csrfToken"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto70Dto": {
+      "RespostaObjeto77Dto": {
         "properties": {
           "curriculoId": {
             "type": "string"
-          },
-          "rotulo": {
-            "type": "object"
-          },
-          "score": {
-            "type": "object"
           },
           "situacao": {
             "type": "string"
@@ -3394,17 +4163,14 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto71Dto": {
+      "RespostaObjeto78Dto": {
         "properties": {
           "curriculoId": {
+            "enum": [
+              null
+            ],
             "nullable": true,
-            "type": "object"
-          },
-          "rotulo": {
-            "type": "object"
-          },
-          "score": {
-            "type": "object"
+            "type": "string"
           },
           "situacao": {
             "type": "string"
@@ -3416,7 +4182,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto72Dto": {
+      "RespostaObjeto79Dto": {
         "properties": {
           "geradoEm": {
             "format": "date-time",
@@ -3441,7 +4207,22 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto73Dto": {
+      "RespostaObjeto7Dto": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto80Dto": {
         "properties": {
           "candidaturaId": {
             "nullable": true,
@@ -3503,11 +4284,11 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto74Dto": {
+      "RespostaObjeto81Dto": {
         "properties": {
           "itens": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto73Dto"
+              "$ref": "#/components/schemas/RespostaObjeto80Dto"
             },
             "type": "array"
           },
@@ -3522,7 +4303,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto75Dto": {
+      "RespostaObjeto82Dto": {
         "properties": {
           "candidatura": {
             "$ref": "#/components/schemas/RespostaObjeto8Dto"
@@ -3530,14 +4311,14 @@
           "evento": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RespostaObjeto73Dto"
+                "$ref": "#/components/schemas/RespostaObjeto80Dto"
               }
             ],
             "nullable": true,
             "type": "object"
           },
           "oportunidade": {
-            "$ref": "#/components/schemas/RespostaObjeto76Dto"
+            "$ref": "#/components/schemas/RespostaObjeto83Dto"
           }
         },
         "required": [
@@ -3547,7 +4328,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto76Dto": {
+      "RespostaObjeto83Dto": {
         "properties": {
           "arquivadaEm": {
             "format": "date-time",
@@ -3587,10 +4368,11 @@
             "type": "string"
           },
           "keywords": {
+            "items": {
+              "$ref": "#/components/schemas/Keyword"
+            },
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "array"
           },
           "keywordsErro": {
             "nullable": true,
@@ -3665,7 +4447,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto77Dto": {
+      "RespostaObjeto84Dto": {
         "properties": {
           "curriculoId": {
             "nullable": true,
@@ -3693,16 +4475,10 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto78Dto": {
+      "RespostaObjeto85Dto": {
         "properties": {
-          "curriculoId": {
-            "type": "object"
-          },
           "jobId": {
             "type": "string"
-          },
-          "status": {
-            "type": "object"
           }
         },
         "required": [
@@ -3710,10 +4486,10 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto79Dto": {
+      "RespostaObjeto86Dto": {
         "properties": {
           "breakdown": {
-            "$ref": "#/components/schemas/RespostaObjeto80Dto"
+            "$ref": "#/components/schemas/ScoreBreakdown"
           },
           "degradacao": {
             "type": "string"
@@ -3756,66 +4532,34 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto7Dto": {
-        "properties": {
-          "email": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "email"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto80Dto": {
-        "properties": {
-          "densidade": {
-            "type": "number"
-          },
-          "faltando": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "keywordMatch": {
-            "type": "number"
-          },
-          "secoes": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "keywordMatch",
-          "densidade",
-          "secoes",
-          "faltando"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto81Dto": {
+      "RespostaObjeto87Dto": {
         "properties": {
           "analiseFinal": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AtsAnalysis"
+              }
+            ],
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "object"
           },
           "analiseInicial": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AtsAnalysis"
+              }
+            ],
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "object"
           },
           "breakdown": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ScoreBreakdown"
+              }
+            ],
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "object"
           },
           "degradacao": {
             "nullable": true,
@@ -3848,7 +4592,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto82Dto": {
+      "RespostaObjeto88Dto": {
         "properties": {
           "atualizadoEm": {
             "format": "date-time",
@@ -3856,20 +4600,20 @@
           },
           "certificacoes": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto86Dto"
+              "$ref": "#/components/schemas/RespostaObjeto92Dto"
             },
             "type": "array"
           },
           "emails": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto87Dto"
+              "$ref": "#/components/schemas/RespostaObjeto93Dto"
             },
             "type": "array"
           },
           "endereco": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RespostaObjeto90Dto"
+                "$ref": "#/components/schemas/RespostaObjeto96Dto"
               }
             ],
             "nullable": true,
@@ -3877,13 +4621,13 @@
           },
           "experiencias": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto83Dto"
+              "$ref": "#/components/schemas/RespostaObjeto89Dto"
             },
             "type": "array"
           },
           "formacao": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto85Dto"
+              "$ref": "#/components/schemas/RespostaObjeto91Dto"
             },
             "type": "array"
           },
@@ -3898,7 +4642,7 @@
           },
           "links": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto89Dto"
+              "$ref": "#/components/schemas/RespostaObjeto95Dto"
             },
             "type": "array"
           },
@@ -3907,7 +4651,7 @@
           },
           "outrosContatos": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto91Dto"
+              "$ref": "#/components/schemas/RespostaObjeto97Dto"
             },
             "type": "array"
           },
@@ -3922,7 +4666,7 @@
           },
           "telefones": {
             "items": {
-              "$ref": "#/components/schemas/RespostaObjeto88Dto"
+              "$ref": "#/components/schemas/RespostaObjeto94Dto"
             },
             "type": "array"
           },
@@ -3949,7 +4693,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto83Dto": {
+      "RespostaObjeto89Dto": {
         "properties": {
           "atual": {
             "enum": [
@@ -3989,7 +4733,7 @@
           "local": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RespostaObjeto84Dto"
+                "$ref": "#/components/schemas/RespostaObjeto90Dto"
               }
             ],
             "nullable": true,
@@ -4029,237 +4773,6 @@
           "atual",
           "local",
           "descricao"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto84Dto": {
-        "properties": {
-          "cidade": {
-            "type": "string"
-          },
-          "estado": {
-            "type": "string"
-          },
-          "pais": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "pais",
-          "estado",
-          "cidade"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto85Dto": {
-        "properties": {
-          "curso": {
-            "type": "string"
-          },
-          "fimAno": {
-            "nullable": true,
-            "type": "number"
-          },
-          "fimMes": {
-            "nullable": true,
-            "type": "number"
-          },
-          "grau": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "inicioAno": {
-            "nullable": true,
-            "type": "number"
-          },
-          "inicioMes": {
-            "nullable": true,
-            "type": "number"
-          },
-          "instituicao": {
-            "type": "string"
-          },
-          "revisao": {
-            "items": {
-              "enum": [
-                "formato_antigo",
-                "periodo_texto",
-                "local_texto",
-                "tecnologias_na_descricao",
-                "ddi_ausente",
-                "localizacao_texto",
-                "contato_sem_tipo",
-                "email_invalido"
-              ],
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "status": {
-            "enum": [
-              "",
-              "concluido",
-              "em_andamento",
-              "trancado"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "grau",
-          "status",
-          "instituicao",
-          "curso",
-          "inicioMes",
-          "inicioAno",
-          "fimMes",
-          "fimAno"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto86Dto": {
-        "properties": {
-          "descricao": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "revisao": {
-            "items": {
-              "enum": [
-                "formato_antigo",
-                "periodo_texto",
-                "local_texto",
-                "tecnologias_na_descricao",
-                "ddi_ausente",
-                "localizacao_texto",
-                "contato_sem_tipo",
-                "email_invalido"
-              ],
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "titulo": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "titulo",
-          "descricao"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto87Dto": {
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "principal": {
-            "enum": [
-              false,
-              true
-            ],
-            "type": "boolean"
-          },
-          "revisao": {
-            "items": {
-              "enum": [
-                "formato_antigo",
-                "periodo_texto",
-                "local_texto",
-                "tecnologias_na_descricao",
-                "ddi_ausente",
-                "localizacao_texto",
-                "contato_sem_tipo",
-                "email_invalido"
-              ],
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "valor": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "valor",
-          "principal"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto88Dto": {
-        "properties": {
-          "ddi": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "numero": {
-            "type": "string"
-          },
-          "principal": {
-            "enum": [
-              false,
-              true
-            ],
-            "type": "boolean"
-          },
-          "revisao": {
-            "items": {
-              "enum": [
-                "formato_antigo",
-                "periodo_texto",
-                "local_texto",
-                "tecnologias_na_descricao",
-                "ddi_ausente",
-                "localizacao_texto",
-                "contato_sem_tipo",
-                "email_invalido"
-              ],
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "ddi",
-          "numero",
-          "principal"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto89Dto": {
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "tipo": {
-            "enum": [
-              "linkedin",
-              "github",
-              "facebook",
-              "instagram",
-              "site"
-            ],
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "tipo",
-          "url"
         ],
         "type": "object"
       },
@@ -4337,6 +4850,237 @@
       },
       "RespostaObjeto90Dto": {
         "properties": {
+          "cidade": {
+            "type": "string"
+          },
+          "estado": {
+            "type": "string"
+          },
+          "pais": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "pais",
+          "estado",
+          "cidade"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto91Dto": {
+        "properties": {
+          "curso": {
+            "type": "string"
+          },
+          "fimAno": {
+            "nullable": true,
+            "type": "number"
+          },
+          "fimMes": {
+            "nullable": true,
+            "type": "number"
+          },
+          "grau": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "inicioAno": {
+            "nullable": true,
+            "type": "number"
+          },
+          "inicioMes": {
+            "nullable": true,
+            "type": "number"
+          },
+          "instituicao": {
+            "type": "string"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "",
+              "concluido",
+              "em_andamento",
+              "trancado"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "grau",
+          "status",
+          "instituicao",
+          "curso",
+          "inicioMes",
+          "inicioAno",
+          "fimMes",
+          "fimAno"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto92Dto": {
+        "properties": {
+          "descricao": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "titulo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "descricao"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto93Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "principal": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "valor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "valor",
+          "principal"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto94Dto": {
+        "properties": {
+          "ddi": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "numero": {
+            "type": "string"
+          },
+          "principal": {
+            "enum": [
+              false,
+              true
+            ],
+            "type": "boolean"
+          },
+          "revisao": {
+            "items": {
+              "enum": [
+                "formato_antigo",
+                "periodo_texto",
+                "local_texto",
+                "tecnologias_na_descricao",
+                "ddi_ausente",
+                "localizacao_texto",
+                "contato_sem_tipo",
+                "email_invalido"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "ddi",
+          "numero",
+          "principal"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto95Dto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tipo": {
+            "enum": [
+              "linkedin",
+              "github",
+              "facebook",
+              "instagram",
+              "site"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tipo",
+          "url"
+        ],
+        "type": "object"
+      },
+      "RespostaObjeto96Dto": {
+        "properties": {
           "bairro": {
             "type": "string"
           },
@@ -4382,7 +5126,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto91Dto": {
+      "RespostaObjeto97Dto": {
         "properties": {
           "id": {
             "type": "string"
@@ -4417,7 +5161,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto92Dto": {
+      "RespostaObjeto98Dto": {
         "properties": {
           "apresentacao": {
             "enum": [
@@ -4439,7 +5183,7 @@
           "curriculo": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/RespostaObjeto93Dto"
+                "$ref": "#/components/schemas/RespostaObjeto99Dto"
               }
             ],
             "nullable": true,
@@ -4463,10 +5207,11 @@
             "type": "string"
           },
           "keywords": {
+            "items": {
+              "$ref": "#/components/schemas/Keyword"
+            },
             "nullable": true,
-            "oneOf": [
-              {}
-            ]
+            "type": "array"
           },
           "nivel": {
             "nullable": true,
@@ -4526,7 +5271,7 @@
         ],
         "type": "object"
       },
-      "RespostaObjeto93Dto": {
+      "RespostaObjeto99Dto": {
         "properties": {
           "id": {
             "type": "string"
@@ -4543,141 +5288,6 @@
           "id",
           "rotulo",
           "score"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto94Dto": {
-        "properties": {
-          "edges": {
-            "items": {
-              "$ref": "#/components/schemas/RespostaObjeto96Dto"
-            },
-            "type": "array"
-          },
-          "facets": {
-            "$ref": "#/components/schemas/RespostaObjeto97Dto"
-          },
-          "nodes": {
-            "items": {
-              "$ref": "#/components/schemas/RespostaObjeto95Dto"
-            },
-            "type": "array"
-          },
-          "schemaVersion": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "schemaVersion",
-          "nodes",
-          "edges",
-          "facets"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto95Dto": {
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "rotulo": {
-            "type": "string"
-          },
-          "tipo": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "tipo",
-          "rotulo"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto96Dto": {
-        "properties": {
-          "destino": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "origem": {
-            "type": "string"
-          },
-          "tipo": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "origem",
-          "destino",
-          "tipo"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto97Dto": {
-        "properties": {
-          "categorias": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "empresas": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "niveis": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "skills": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "empresas",
-          "categorias",
-          "niveis",
-          "skills"
-        ],
-        "type": "object"
-      },
-      "RespostaObjeto99Dto": {
-        "properties": {
-          "dependencias": {
-            "items": {
-              "$ref": "#/components/schemas/RespostaObjeto100Dto"
-            },
-            "type": "array"
-          },
-          "servico": {
-            "enum": [
-              "api"
-            ],
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "pronto",
-              "indisponivel"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "servico",
-          "status",
-          "dependencias"
         ],
         "type": "object"
       },
@@ -4776,6 +5386,32 @@
         "required": [
           "oportunidadeId",
           "campos"
+        ],
+        "type": "object"
+      },
+      "ScoreBreakdown": {
+        "properties": {
+          "densidade": {
+            "type": "number"
+          },
+          "faltando": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "keywordMatch": {
+            "type": "number"
+          },
+          "secoes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "keywordMatch",
+          "densidade",
+          "secoes",
+          "faltando"
         ],
         "type": "object"
       },
@@ -4902,7 +5538,7 @@
     "contact": {},
     "description": "",
     "title": "prdal-careers-api",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "openapi": "3.0.0",
   "paths": {
@@ -4946,7 +5582,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto99Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto105Dto"
                 }
               }
             },
@@ -5610,7 +6246,10 @@
         },
         "tags": [
           "Copiloto"
-        ]
+        ],
+        "x-eventos": {
+          "$ref": "#/components/schemas/CopilotoEvento"
+        }
       }
     },
     "/v1/copiloto/conversas": {
@@ -5701,7 +6340,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto34Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto35Dto"
                 }
               }
             },
@@ -5735,7 +6374,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto35Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto36Dto"
                 }
               }
             },
@@ -5840,7 +6479,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto37Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto38Dto"
                 }
               }
             },
@@ -5873,7 +6512,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto43Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto46Dto"
                 }
               }
             },
@@ -5914,7 +6553,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto43Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto46Dto"
                 }
               }
             },
@@ -5947,7 +6586,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto43Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto46Dto"
                 }
               }
             },
@@ -5980,7 +6619,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto46Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto49Dto"
                 }
               }
             },
@@ -6020,7 +6659,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto46Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto49Dto"
                 }
               }
             },
@@ -6060,7 +6699,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto46Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto49Dto"
                 }
               }
             },
@@ -6100,7 +6739,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto41Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto44Dto"
                 }
               }
             },
@@ -6164,7 +6803,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto47Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto50Dto"
                 }
               }
             },
@@ -6204,7 +6843,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto55Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto61Dto"
                 }
               }
             },
@@ -6303,13 +6942,13 @@
                 "schema": {
                   "oneOf": [
                     {
-                      "$ref": "#/components/schemas/RespostaObjeto57Dto"
-                    },
-                    {
-                      "$ref": "#/components/schemas/RespostaObjeto59Dto"
-                    },
-                    {
                       "$ref": "#/components/schemas/RespostaObjeto63Dto"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RespostaObjeto66Dto"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RespostaObjeto70Dto"
                     }
                   ]
                 }
@@ -6350,7 +6989,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto64Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto71Dto"
                 }
               }
             },
@@ -6383,7 +7022,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto64Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto71Dto"
                 }
               }
             },
@@ -6417,7 +7056,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto65Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto72Dto"
                 }
               }
             },
@@ -6450,7 +7089,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto67Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto74Dto"
                 }
               }
             },
@@ -6491,7 +7130,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto64Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto71Dto"
                 }
               }
             },
@@ -6601,7 +7240,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto79Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto86Dto"
                 }
               }
             },
@@ -6675,7 +7314,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/RespostaObjeto81Dto"
+                    "$ref": "#/components/schemas/RespostaObjeto87Dto"
                   },
                   "type": "array"
                 }
@@ -6712,10 +7351,10 @@
                 "schema": {
                   "oneOf": [
                     {
-                      "$ref": "#/components/schemas/RespostaObjeto77Dto"
+                      "$ref": "#/components/schemas/RespostaObjeto84Dto"
                     },
                     {
-                      "$ref": "#/components/schemas/RespostaObjeto78Dto"
+                      "$ref": "#/components/schemas/RespostaObjeto85Dto"
                     }
                   ]
                 }
@@ -6773,7 +7412,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto74Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto81Dto"
                 }
               }
             },
@@ -6816,7 +7455,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto73Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto80Dto"
                 }
               }
             },
@@ -6859,7 +7498,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto75Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto82Dto"
                 }
               }
             },
@@ -6892,7 +7531,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto66Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto73Dto"
                 }
               }
             },
@@ -6916,7 +7555,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto82Dto",
+                  "$ref": "#/components/schemas/RespostaObjeto88Dto",
                   "nullable": true
                 }
               }
@@ -6956,7 +7595,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto82Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto88Dto"
                 }
               }
             },
@@ -7105,7 +7744,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/RespostaObjeto92Dto"
+                    "$ref": "#/components/schemas/RespostaObjeto98Dto"
                   },
                   "type": "array"
                 }
@@ -7248,7 +7887,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto94Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto100Dto"
                 }
               }
             },
@@ -7281,7 +7920,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto54Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto60Dto"
                 }
               }
             },
@@ -7313,7 +7952,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto54Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto60Dto"
                 }
               }
             },
@@ -7337,7 +7976,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RespostaObjeto101Dto"
+                  "$ref": "#/components/schemas/RespostaObjeto107Dto"
                 }
               }
             },

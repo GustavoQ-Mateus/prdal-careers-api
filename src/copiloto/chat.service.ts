@@ -1,3 +1,4 @@
+import type { CopilotoEvento } from './eventos';
 import { HttpException, Injectable } from '@nestjs/common';
 import { AxiosError } from 'axios';
 import type { Response } from 'express';
@@ -683,7 +684,7 @@ export class ChatService {
     }
   }
 
-  private enviar(res: Response, evento: string, data: unknown): void {
+  private enviar<E extends CopilotoEvento['evento']>(res: Response, evento: E, data: Extract<CopilotoEvento, { evento: E }>['data']): void {
     if (res.destroyed || res.writableEnded) return;
     res.write(`event: ${evento}\ndata: ${JSON.stringify(data)}\n\n`);
   }

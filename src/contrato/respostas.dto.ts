@@ -2740,6 +2740,11 @@ export const respostasContrato = [
     "schema": {
       "$ref": "#/components/schemas/RespostaObjeto107Dto"
     }
+  },
+  {
+    "controller": "TelemetriaController",
+    "metodo": "registrar",
+    "schema": null
   }
 ];
 export const eventosCopiloto = {"oneOf":[{"$ref":"#/components/schemas/RespostaObjeto108Dto"},{"$ref":"#/components/schemas/RespostaObjeto110Dto"},{"$ref":"#/components/schemas/RespostaObjeto112Dto"},{"$ref":"#/components/schemas/RespostaObjeto114Dto"},{"$ref":"#/components/schemas/RespostaObjeto117Dto"},{"$ref":"#/components/schemas/RespostaObjeto118Dto"},{"$ref":"#/components/schemas/RespostaObjeto120Dto"},{"$ref":"#/components/schemas/RespostaObjeto122Dto"}]};

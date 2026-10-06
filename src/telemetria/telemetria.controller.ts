@@ -1,5 +1,5 @@
 import { Body, Controller, HttpCode, Logger, Post, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth } from '@nestjs/swagger';
+import { ApiBody, ApiCookieAuth, ApiNoContentResponse } from '@nestjs/swagger';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LIMITES, LimitarRequisicoes } from '../limites/limite-requisicoes';
@@ -13,6 +13,7 @@ export class TelemetriaController {
 
   @Post('eventos')
   @HttpCode(204)
+  @ApiNoContentResponse()
   @LimitarRequisicoes(LIMITES.telemetria)
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
   @ApiBody({ schema: {

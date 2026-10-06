@@ -68,3 +68,36 @@ test('telemetria recusa evento, acao e identificador invalidos', async (t) => {
     assert.equal(resposta.status, 400, JSON.stringify(corpo));
   }
 });
+
+test('log estruturado permite contar eventos sem guardar texto livre', async (t) => {
+  const { LoggerJson } = require('../dist/observabilidade/logger');
+  const { configurarRequisicoes, configurarContexto } = require('../dist/observabilidade/requisicao');
+  const linhas = [];
+  const logger = new LoggerJson('api', (linha) => linhas.push(JSON.parse(linha)));
+  const { url } = await subirTelemetria(t, (app) => {
+    app.useLogger(logger);
+    configurarRequisicoes(app, logger);
+    configurarContexto(app);
+  });
+  const headers = { ...autenticado('usuario-log'), 'X-Request-Id': 'req-telemetria' };
+  const base = { evento: 'copiloto_primeira_mensagem', sessaoId: 'aba-log', mensagem: 'texto privado', usuarioId: 'usuario-forjado', requestId: 'req-forjado', telemetria: false };
+  assert.equal((await enviar(url, base, headers)).status, 204);
+  assert.equal((await enviar(url, { ...base, evento: 'copiloto_acao_rapida', acao: 'analisar_vaga' }, headers)).status, 204);
+  assert.equal((await enviar(url, { ...base, evento: 'desconhecido' }, headers)).status, 400);
+  const eventos = linhas.filter((linha) => linha.telemetria === true);
+  assert.equal(eventos.length, 2);
+  for (const linha of eventos) {
+    assert.equal(linha.usuarioId, 'usuario-log');
+    assert.equal(linha.requestId, 'req-telemetria');
+    assert.equal(linha.sessaoId, 'aba-log');
+    assert.equal(linha.contexto, 'TelemetriaController');
+    assert.equal(linha.servico, 'api');
+    assert.equal(linha.nivel, 'log');
+    assert.ok(linha.horario);
+    assert.equal(linha.mensagem, 'evento de telemetria');
+  }
+  assert.equal(eventos[0].acao, null);
+  assert.equal(eventos[1].acao, 'analisar_vaga');
+  assert.equal(eventos.filter((linha) => linha.evento === 'copiloto_primeira_mensagem').length, 1);
+  assert.doesNotMatch(JSON.stringify(linhas), /texto privado|usuario-forjado|req-forjado/);
+});

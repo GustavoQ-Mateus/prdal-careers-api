@@ -16,6 +16,20 @@ npm run start:prod
 
 Defina DATABASE_URL para um PostgreSQL com pgvector, JWT_SECRET e SERVICE_TOKEN com pelo menos 32 bytes aleatórios. As migrações desta pasta pertencem à API. Para executar também os testes PostgreSQL, defina PRDAL_TESTE_POSTGRES_URL para um banco descartável e rode node --test --test-concurrency=1 "test/*.test.js" após o build. /health indica execução e /ready verifica as dependências; somente PostgreSQL é obrigatório.
 
+## Telemetria do início do copiloto
+
+`POST /v1/telemetria/eventos` exige sessão autenticada e proteção CSRF. Recebe `evento`, `sessaoId` e `acao`, e responde 204 sem corpo. Os eventos aceitos são `copiloto_primeira_mensagem` e `copiloto_acao_rapida`; o segundo exige `acao`. `sessaoId` é opaco, tem de 1 a 64 caracteres e aceita somente letras ASCII, números, `_` e `-`. Não envie nomes, mensagens nem outros dados pessoais nesse identificador.
+
+As ações aceitas correspondem aos botões atuais do início: `preparar_envio`, `redigir_mensagem`, `redigir_resposta`, `preparar_entrevista`, `preparar_curriculo`, `definir_proximo_passo`, `abrir_oportunidade`, `analisar_vaga`, `montar_perfil`, `retomar_conversa`, `ver_agenda` e `abrir_curriculo`. Nenhum campo de texto livre é registrado.
+
+Cada evento validado gera uma linha JSON no logger da API, com `requestId` do contexto da requisição:
+
+```json
+{"horario":"2026-10-05T12:00:00.000Z","nivel":"log","servico":"api","contexto":"TelemetriaController","requestId":"req-exemplo","mensagem":"evento de telemetria","telemetria":true,"usuarioId":"usuario-exemplo","evento":"copiloto_acao_rapida","sessaoId":"aba-exemplo","acao":"preparar_envio"}
+```
+
+Quando não há ação, `acao` é `null`. A API não persiste esses eventos nem deduplica sessões. O cliente deve emitir a primeira mensagem uma vez por sessão. A infraestrutura cria posteriormente o filtro de métrica do CloudWatch com `{ $.telemetria = true }`, valor 1 por linha, e pode filtrar por `evento` e `acao`. A API não possui módulo de métricas nem publica métricas diretamente.
+
 ## Imagem
 
 ```text

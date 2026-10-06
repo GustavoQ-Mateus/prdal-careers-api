@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, HttpCode, Logger, Post, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth } from '@nestjs/swagger';
 import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -8,6 +8,8 @@ import { ACOES_RAPIDAS, EVENTOS_TELEMETRIA, SESSAO_ID_PADRAO, TelemetriaEventoDt
 @UseGuards(JwtAuthGuard)
 @Controller('telemetria')
 export class TelemetriaController {
+  private readonly logger = new Logger(TelemetriaController.name);
+
   @Post('eventos')
   @HttpCode(204)
   @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
@@ -23,7 +25,13 @@ export class TelemetriaController {
     })),
   } })
   registrar(@CurrentUser() user: AuthUser, @Body() dto: TelemetriaEventoDto): void {
-    void user;
-    void dto;
+    this.logger.log({
+      mensagem: 'evento de telemetria',
+      telemetria: true,
+      usuarioId: user.userId,
+      evento: dto.evento,
+      sessaoId: dto.sessaoId,
+      acao: dto.acao ?? null,
+    });
   }
 }

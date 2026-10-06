@@ -69,6 +69,22 @@ test('telemetria recusa evento, acao e identificador invalidos', async (t) => {
   }
 });
 
+test('atalhos do rodape sao aceitos e registrados com a acao correta', async (t) => {
+  const { LoggerJson } = require('../dist/observabilidade/logger');
+  const linhas = [];
+  const logger = new LoggerJson('api', (linha) => linhas.push(JSON.parse(linha)));
+  const { url } = await subirTelemetria(t, (app) => app.useLogger(logger));
+  const acoes = ['colar_vaga_nova', 'priorizar_vagas', 'importar_vagas_lote'];
+  for (const acao of acoes) {
+    const resposta = await enviar(url, { evento: 'copiloto_acao_rapida', sessaoId: 'aba-rodape', acao });
+    assert.equal(resposta.status, 204, acao);
+    assert.equal(await resposta.text(), '');
+  }
+  const eventos = linhas.filter((linha) => linha.telemetria === true);
+  assert.deepEqual(eventos.map((linha) => linha.acao), acoes);
+  assert.ok(eventos.every((linha) => linha.evento === 'copiloto_acao_rapida' && linha.sessaoId === 'aba-rodape' && linha.usuarioId === 'usuario-telemetria'));
+});
+
 test('log estruturado permite contar eventos sem guardar texto livre', async (t) => {
   const { LoggerJson } = require('../dist/observabilidade/logger');
   const { configurarRequisicoes, configurarContexto } = require('../dist/observabilidade/requisicao');

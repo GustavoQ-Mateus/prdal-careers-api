@@ -16,6 +16,9 @@ export const ACOES_RAPIDAS = [
   'retomar_conversa',
   'ver_agenda',
   'abrir_curriculo',
+  'colar_vaga_nova',
+  'priorizar_vagas',
+  'importar_vagas_lote',
 ] as const;
 
 export const SESSAO_ID_PADRAO = '^[A-Za-z0-9_-]{1,64}$';

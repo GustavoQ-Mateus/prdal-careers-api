@@ -44,7 +44,7 @@ export async function gerarContrato() {
   try {
     app = await NestFactory.create(ModuloContrato, { logger: false, abortOnError: false });
     configurarPrefixo(app, {});
-    const documento = SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('prdal-careers-api').setVersion('1.2.0').addCookieAuth('prdal_access', undefined, 'prdal_access').build());
+    const documento = SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('prdal-careers-api').setVersion('1.3.0').addCookieAuth('prdal_access', undefined, 'prdal_access').build());
     documento.components!.schemas!.CopilotoEvento = eventosCopiloto;
     Object.assign(documento.paths['/v1/copiloto/chat'].post!, { 'x-eventos': { $ref: '#/components/schemas/CopilotoEvento' } });
     return documento;

@@ -20,7 +20,7 @@ Defina DATABASE_URL para um PostgreSQL com pgvector, JWT_SECRET e SERVICE_TOKEN 
 
 `POST /v1/telemetria/eventos` exige sessão autenticada e proteção CSRF. Recebe `evento`, `sessaoId` e `acao`, e responde 204 sem corpo. Os eventos aceitos são `copiloto_primeira_mensagem` e `copiloto_acao_rapida`; o segundo exige `acao`. `sessaoId` é opaco, tem de 1 a 64 caracteres e aceita somente letras ASCII, números, `_` e `-`. Não envie nomes, mensagens nem outros dados pessoais nesse identificador.
 
-As ações aceitas correspondem aos botões atuais do início: `preparar_envio`, `redigir_mensagem`, `redigir_resposta`, `preparar_entrevista`, `preparar_curriculo`, `definir_proximo_passo`, `abrir_oportunidade`, `analisar_vaga`, `montar_perfil`, `retomar_conversa`, `ver_agenda` e `abrir_curriculo`. Nenhum campo de texto livre é registrado.
+As ações aceitas correspondem aos botões atuais do início: `preparar_envio`, `redigir_mensagem`, `redigir_resposta`, `preparar_entrevista`, `preparar_curriculo`, `definir_proximo_passo`, `abrir_oportunidade`, `analisar_vaga`, `montar_perfil`, `retomar_conversa`, `ver_agenda`, `abrir_curriculo`, `colar_vaga_nova`, `priorizar_vagas` e `importar_vagas_lote`. As três últimas representam "Colar uma vaga nova", "Qual vaga priorizo hoje?" e "Importar vagas em lote". Nenhum campo de texto livre é registrado.
 
 Cada evento validado gera uma linha JSON no logger da API, com `requestId` do contexto da requisição:
 

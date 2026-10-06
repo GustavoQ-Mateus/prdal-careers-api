@@ -25,6 +25,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RepositoriosModule } from './repositorios/repositorios.module';
 import { SaudeModule } from './saude/saude.module';
 import { TaxonomiaModule } from './taxonomia/taxonomia.module';
+import { TelemetriaModule } from './telemetria/telemetria.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { TaxonomiaModule } from './taxonomia/taxonomia.module';
     PipelineModule,
     CopilotoModule,
     TaxonomiaModule,
+    TelemetriaModule,
     SaudeModule,
   ],
 })

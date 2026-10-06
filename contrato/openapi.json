@@ -5545,7 +5545,7 @@
     "contact": {},
     "description": "",
     "title": "prdal-careers-api",
-    "version": "1.2.0"
+    "version": "1.3.0"
   },
   "openapi": "3.0.0",
   "paths": {
@@ -8022,7 +8022,10 @@
                           "montar_perfil",
                           "retomar_conversa",
                           "ver_agenda",
-                          "abrir_curriculo"
+                          "abrir_curriculo",
+                          "colar_vaga_nova",
+                          "priorizar_vagas",
+                          "importar_vagas_lote"
                         ],
                         "type": "string"
                       },
@@ -8060,7 +8063,10 @@
                           "montar_perfil",
                           "retomar_conversa",
                           "ver_agenda",
-                          "abrir_curriculo"
+                          "abrir_curriculo",
+                          "colar_vaga_nova",
+                          "priorizar_vagas",
+                          "importar_vagas_lote"
                         ],
                         "type": "string"
                       },

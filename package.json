@@ -54,7 +54,7 @@
     "prisma": "^6.2.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "@prdal/contracts": "github:GustavoQ-Mateus/prdal-careers-contracts#v1.0.0"
+    "@prdal/contracts": "github:GustavoQ-Mateus/prdal-careers-contracts#v1.1.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
